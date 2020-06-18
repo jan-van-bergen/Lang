@@ -8,15 +8,15 @@
 
 void token_to_string(Token const * token, char * string, int string_size) {
 	switch (token->type) {
-		case TOKEN_IDENTIFIER:     sprintf_s(string, string_size, "Identifier \"%s\"", token->value_str); return;
-		case TOKEN_LITERAL_INT:    sprintf_s(string, string_size, "Int %i",            token->value_int); return;
-		case TOKEN_LITERAL_STRING: sprintf_s(string, string_size, "String \"%s\"",     token->value_str); return;
+		case TOKEN_IDENTIFIER:     sprintf_s(string, string_size, "%s",     token->value_str); return;
+		case TOKEN_LITERAL_INT:    sprintf_s(string, string_size, "%i",     token->value_int); return;
+		case TOKEN_LITERAL_STRING: sprintf_s(string, string_size, "\"%s\"", token->value_str); return;
 
-		case TOKEN_KEYWORD_IF:	   strcpy_s(string, string_size, "Keyword If");		return;
-		case TOKEN_KEYWORD_ELSE:   strcpy_s(string, string_size, "Keyword Else");	return;
-		case TOKEN_KEYWORD_FOR:	   strcpy_s(string, string_size, "Keyword For");	return;
-		case TOKEN_KEYWORD_WHILE:  strcpy_s(string, string_size, "Keyword While");	return;
-		case TOKEN_KEYWORD_STRUCT: strcpy_s(string, string_size, "Keyword Struct"); return;
+		case TOKEN_KEYWORD_IF:	   strcpy_s(string, string_size, "if");		return;
+		case TOKEN_KEYWORD_ELSE:   strcpy_s(string, string_size, "else");	return;
+		case TOKEN_KEYWORD_FOR:	   strcpy_s(string, string_size, "for");	return;
+		case TOKEN_KEYWORD_WHILE:  strcpy_s(string, string_size, "while");	return;
+		case TOKEN_KEYWORD_STRUCT: strcpy_s(string, string_size, "struct"); return;
 		
 		case TOKEN_PARENTESES_OPEN:  strcpy_s(string, string_size, "("); return;
 		case TOKEN_PARENTESES_CLOSE: strcpy_s(string, string_size, ")"); return;
@@ -62,10 +62,52 @@ static char lexer_next(Lexer * lexer) {
 static bool lexer_is_whitespace(Lexer const * lexer) {
 	char curr = lexer_peek(lexer);
 
-	return curr == ' ' || curr == '\t' || curr == '\n';
+	return curr == ' ' || curr == '\t' || curr == '\r' || curr == '\n';
+}
+
+// Skips whitespace, tabs, newlines, and comments
+static void lexer_skip(Lexer * lexer) {
+	bool changed;
+
+	do {
+		changed = false;
+
+		while (lexer_is_whitespace(lexer)) {
+			lexer_next(lexer);
+
+			changed = true;
+		}
+
+		if (lexer_match(lexer, "//")) { 
+			int comment_length = 0;
+
+			while (
+				lexer->source[lexer->index + comment_length] != '\r' &&
+				lexer->source[lexer->index + comment_length] != '\n' &&
+				lexer->source[lexer->index + comment_length] != '\0'
+			) comment_length++;
+
+			lexer->index += comment_length;
+
+			changed = true;
+		}
+
+		if (lexer_match(lexer, "/*")) {
+			lexer->index += 2;
+
+			const char * comment_start = lexer->source + lexer->index;
+			const char * comment_end   = strstr(comment_start, "*/");
+
+			lexer->index += comment_end - comment_start + 2;
+
+			changed = true;
+		}
+	} while (changed);
 }
 
 bool lexer_reached_end(Lexer const * lexer) {
+	lexer_skip(lexer);
+
 	return lexer_peek(lexer) == '\0' || lexer->index == lexer->source_len;
 }
 
@@ -82,7 +124,7 @@ static int lexer_match(Lexer const * lexer, char const * target) {
 }
 
 void lexer_next_token(Lexer * lexer, Token * token) {
-	while (lexer_is_whitespace(lexer)) lexer_next(lexer);
+	lexer_skip(lexer);
 
 	char curr = lexer_peek(lexer);
 	
@@ -152,8 +194,6 @@ void lexer_next_token(Lexer * lexer, Token * token) {
 	int index_str_start = lexer->index;
 		
 	curr = lexer_next(lexer); // Consume first letter of identifier
-
-	int test = isalnum(' ');
 
 	while (isalnum(curr)) curr = lexer_next(lexer);
 			

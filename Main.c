@@ -3,9 +3,36 @@
 
 #include "Lexer.h"
 
-char const * source = "i := 5;\nbruh: = \"Hello World!\"; \n      \nprint(bruh, 3);\nif(i==3){print(\"i is 3\"); } else { print(\"i is not 3\"); }";
+static char const * read_file(char const * filename) {
+	FILE * f;
+	fopen_s(&f, filename, "rb");
 
-int main(int arg_count, char const ** args) {
+	if (f == NULL) {
+		printf("Unable to open file %s!\n", filename);
+		abort();
+	}
+
+	fseek(f, 0, SEEK_END);
+	int file_length = ftell(f);
+	fseek(f, 0, SEEK_SET);
+
+	char * string = malloc(file_length + 1);
+	fread(string, 1, file_length, f);
+	string[file_length] = '\0';
+
+	fclose(f);
+
+	return string;
+}
+
+int main(int arg_count, char const * args[]) {
+	char const * filename = "Data/test.lang";
+	if (arg_count > 1) {
+		filename = args[1];
+	}
+
+	char const * source = read_file(filename);
+
 	Lexer lexer;
 	lexer_init(&lexer, source);
 
@@ -23,6 +50,8 @@ int main(int arg_count, char const ** args) {
 
 		printf("%i - %s\n", i, string);
 	}
+
+	free(source);
 
 	return EXIT_SUCCESS;
 }

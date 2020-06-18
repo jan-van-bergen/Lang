@@ -1,4 +1,20 @@
 num := 5;
-str := "Hello world!"
+str := "Hello world!";
 
-print(str)
+// test
+// test
+
+if (num == 3) { // ignore this
+	print(str);
+} else if (num == 2) {
+	print("abc"); /*/ bla
+	blabla
+	bla
+	*/
+} else {
+	print(num);
+}
+
+
+
+
