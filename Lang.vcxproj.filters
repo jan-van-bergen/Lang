@@ -6,6 +6,5 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Lexer.h" />
-    <ClInclude Include="Token.h" />
   </ItemGroup>
 </Project>
