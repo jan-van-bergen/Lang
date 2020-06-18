@@ -1,19 +1,22 @@
 #pragma once
+#include <stdbool.h>
+
 #include "Token.h"
 
 typedef struct Lexer {
-	const char * source;
+	int          source_len;
+	char const * source;
 
-	char curr;
 	int index;
 } Lexer;
 
-void lexer_init(Lexer * lexer, const char * source);
+void lexer_init(Lexer * lexer, char const * source);
 
-void lexer_next(Lexer * lexer);
+bool lexer_reached_end(Lexer const * lexer);
 
-void lexer_skip(Lexer * lexer);
+char lexer_peek(Lexer const * lexer);
+char lexer_next(Lexer       * lexer);
 
-void lexer_next_token(Lexer * lexer, Token * token);
+bool lexer_is_whitespace(Lexer const * lexer);
 
-void lexer_get_string(Lexer * lexer);
+bool lexer_next_token(Lexer * lexer, Token * token);
