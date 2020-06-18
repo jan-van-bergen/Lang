@@ -1,0 +1,4 @@
+num := 5;
+str := "Hello world!"
+
+print(str)
