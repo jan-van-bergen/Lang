@@ -1,19 +1,44 @@
 #pragma once
 #include "Token.h"
 
-typedef enum AST_Expression_Type {
+typedef enum AST_Type {
+	AST_STATEMENTS,
+	AST_STATEMENT_DECL,
+	AST_STATEMENT_ASSIGN,
+	AST_STATEMENT_IF,
+
 	AST_EXPRESSION_CONST,
 	AST_EXPRESSION_VAR,
 	AST_EXPRESSION_OPERATOR_BIN,
-	//AST_EXPRESSION_OPERATOR_PRE,
-	//AST_EXPRESSION_OPERATOR_POST,
-	//AST_EXPRESSION_FUNCTION_CALL
-} AST_Expression_Type;
+} AST_Type;
 
-typedef struct AST_Expression {
-	AST_Expression_Type type;
+typedef struct AST_Node {
+	AST_Type type;
 
 	union {
+		struct Statements {
+			struct AST_Node * head;
+			struct AST_Node * cons;
+		} stat_statements;
+
+		struct Decl {
+			char const * name;
+			char const * type;
+			struct AST_Node * expr;
+		} stat_decl;
+
+		struct Assign {
+			char const * name;
+			struct AST_Node * expr;
+		} stat_assign;
+
+		struct If {
+			struct AST_Node * condition;
+
+			struct AST_Node * case_true;
+			struct AST_Node * case_false;
+		} stat_if;
+
 		struct Const {
 			Token token;
 		} expr_const;
@@ -25,46 +50,10 @@ typedef struct AST_Expression {
 		struct Op_Bin {
 			Token token;
 
-			struct AST_Expression * expr_left;
-			struct AST_Expression * expr_right;
+			struct AST_Node * expr_left;
+			struct AST_Node * expr_right;
 		} expr_op_bin;
 	};
-} AST_Expression;
+} AST_Node;
 
-typedef enum AST_Statement_Type {
-	AST_STATEMENT_DECL,
-	AST_STATEMENT_ASSIGN,
-	AST_STATEMENT_IF,
-	AST_STATEMENT_BLOCK
-} AST_Statement_Type;
-
-typedef struct AST_Statement {
-	AST_Statement_Type type;
-
-	union {
-		struct Decl {
-			char const * name;
-			char const * type;
-			struct AST_Expression * expr;
-		} stat_decl;
-
-		struct Assign {
-			char const * name;
-			struct AST_Expression * expr;
-		} stat_assign;
-
-		struct If {
-			struct AST_Expression * condition;
-
-			struct AST_Statement * case_true;
-			struct AST_Statement * case_false;
-		} stat_if;
-
-		struct Block {
-			int                    statement_count;
-			struct AST_Statement * statements;
-		} stat_block;
-	};
-} AST_Statement;
-
-void ast_debug(AST_Statement const * program);
+// void ast_debug(AST_Statement const * program);

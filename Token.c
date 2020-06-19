@@ -42,6 +42,8 @@ void token_to_string(Token const * token, char * string, int string_size) {
 		case TOKEN_COLON:	  strcpy_s(string, string_size, ":"); return;
 		case TOKEN_SEMICOLON: strcpy_s(string, string_size, ";"); return;
 
+		case TOKEN_EOF: strcpy_s(string, string_size, "EOF");
+
 		default: strcpy_s(string, string_size, "Unknown Token"); return;
 	}
 }

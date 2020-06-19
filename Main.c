@@ -67,10 +67,10 @@ int main(int arg_count, char const * args[]) {
 	Parser parser;
 	parser_init(&parser, tokens, token_count);
 
-	AST_Statement program;
-	parse_program(&parser, &program);
+	AST_Node program;
+	parser_parse_program(&parser, &program);
 
-	ast_debug(&program);
+	//ast_debug(&program);
 
 	clock_t clock_end = clock();
 
