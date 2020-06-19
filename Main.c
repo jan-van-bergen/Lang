@@ -1,7 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <time.h>
+#include <assert.h>
+
 #include "Lexer.h"
+#include "Parser.h"
 
 static char const * read_file(char const * filename) {
 	FILE * f;
@@ -26,6 +30,8 @@ static char const * read_file(char const * filename) {
 }
 
 int main(int arg_count, char const * args[]) {
+	clock_t clock_start = clock();
+
 	char const * filename = "Data/test.lang";
 	if (arg_count > 1) {
 		filename = args[1];
@@ -39,19 +45,38 @@ int main(int arg_count, char const * args[]) {
 	int   token_count = 0;
 	Token tokens[64];
 
+	// Lexing
 	while (!lexer_reached_end(&lexer)) {
-		lexer_next_token(&lexer, tokens + token_count);
+		lexer_get_token(&lexer, tokens + token_count);
 		token_count++;
 	}
 
-	for (int i = 0; i < token_count; i++) {
-		char string[128];
-		token_to_string(&tokens[i], string, sizeof(string));
+	assert(token_count <= sizeof(tokens) / sizeof(Token));
 
-		printf("%i - %s\n", i, string);
-	}
+	// Print Tokens
+	//for (int i = 0; i < token_count; i++) {
+	//	char string[128];
+	//	token_to_string(&tokens[i], string, sizeof(string));
 
-	free(source);
+	//	printf("%i - %s\n", i, string);
+	//}
+
+	tokens[token_count++].type = TOKEN_EOF;
+
+	// Parsing
+	Parser parser;
+	parser_init(&parser, tokens, token_count);
+
+	AST_Statement program;
+	parse_program(&parser, &program);
+
+	ast_debug(&program);
+
+	clock_t clock_end = clock();
+
+	int time = (clock_end - clock_start) * 1000 / CLOCKS_PER_SEC;
+
+	printf("Completed in %i ms\n", time);
 
 	return EXIT_SUCCESS;
 }

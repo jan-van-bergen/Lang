@@ -1,20 +1,27 @@
-num := 5;
-str := "Hello world!";
+num: int;
+num = 5;
 
-// test
-// test
+str: string = "Hello world!";
 
-if (num == 3) { // ignore this
-	print(str);
-} else if (num == 2) {
-	print("abc"); /*/ bla
-	blabla
-	bla
-	*/
+b := true;
+
+if (b) {
+	b = false;
+	num = 3;
 } else {
-	print(num);
+	num = 4;
 }
 
+// test
+// test
 
-
-
+// if (num == 3) { // ignore this
+	// print(str);
+// } else if (num == 2) {
+	// print("abc"); /*/ bla
+	// blabla
+	// bla
+	// */
+// } else {
+	// print(num);
+// }

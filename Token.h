@@ -1,0 +1,72 @@
+#pragma once
+
+typedef enum Token_Type {
+	TOKEN_IDENTIFIER,
+	TOKEN_LITERAL_INT,
+	TOKEN_LITERAL_BOOL,
+	TOKEN_LITERAL_STRING,
+
+	TOKEN_KEYWORD_IF,	  // if
+	TOKEN_KEYWORD_ELSE,	  // else
+	TOKEN_KEYWORD_FOR,	  // for
+	TOKEN_KEYWORD_WHILE,  // while
+	TOKEN_KEYWORD_STRUCT, // struct
+		
+	TOKEN_PARENTESES_OPEN,  // (
+	TOKEN_PARENTESES_CLOSE, // )
+
+	TOKEN_BRACES_OPEN,  // {
+	TOKEN_BRACES_CLOSE, // }
+	
+	TOKEN_ASSIGN,          // =
+	TOKEN_ASSIGN_PLUS,     // +=
+	TOKEN_ASSIGN_MINUS,    // -=
+	TOKEN_ASSIGN_MULTIPLY, // *=
+	TOKEN_ASSIGN_DIVIDE,   // /=
+	//TOKEN_ASSIGN_MODULO,   // %=
+
+	TOKEN_OPERATOR_PLUS,	 // +
+	TOKEN_OPERATOR_MINUS,	 // -
+	TOKEN_OPERATOR_MULTIPLY, // *
+	TOKEN_OPERATOR_DIVIDE,	 // /
+	//TOKEN_OPERATOR_MODULO,	 // %
+
+	TOKEN_OPERATOR_LT,    // <
+	TOKEN_OPERATOR_GT,    // >
+	TOKEN_OPERATOR_LT_EQ, // <=
+	TOKEN_OPERATOR_GT_EQ, // >= 
+
+	TOKEN_OPERATOR_EQ, // ==
+	TOKEN_OPERATOR_NE, // !=
+
+	//TOKEN_OPERATOR_LOGICAL_AND, // &&
+	//TOKEN_OPERATOR_LOGICAL_OR,  // ||
+	//TOKEN_OPERATOR_LOGICAL_NOT, // !
+
+	//TOKEN_OPERATOR_BITWISE_AND, // &
+	//TOKEN_OPERATOR_BITWISE_OR,  // |
+	//TOKEN_OPERATOR_BITWISE_NOT, // ~
+
+	//TOKEN_OPERATOR_PRE_INC,  // ++var
+	//TOKEN_OPERATOR_PRE_DEC,  // --var
+	//TOKEN_OPERATOR_POST_INC, // var++
+	//TOKEN_OPERATOR_POST_DEC, // var--
+
+	TOKEN_COMMA,     // ,
+	TOKEN_COLON,     // :
+	TOKEN_SEMICOLON, // ;
+
+	TOKEN_EOF
+} Token_Type;
+
+typedef struct Token {
+	Token_Type type;
+
+	union {
+		char const * value_str;
+		char         value_char;
+		int          value_int;
+	};
+} Token;
+
+void token_to_string(Token const * token, char * string, int string_size);

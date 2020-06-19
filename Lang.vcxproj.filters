@@ -3,8 +3,14 @@
   <ItemGroup>
     <ClCompile Include="Main.c" />
     <ClCompile Include="Lexer.c" />
+    <ClCompile Include="Token.c" />
+    <ClCompile Include="AST.c" />
+    <ClCompile Include="Parser.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Lexer.h" />
+    <ClInclude Include="Parser.h" />
+    <ClInclude Include="AST.h" />
+    <ClInclude Include="Token.h" />
   </ItemGroup>
 </Project>

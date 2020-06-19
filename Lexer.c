@@ -6,42 +6,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void token_to_string(Token const * token, char * string, int string_size) {
-	switch (token->type) {
-		case TOKEN_IDENTIFIER:     sprintf_s(string, string_size, "%s",     token->value_str); return;
-		case TOKEN_LITERAL_INT:    sprintf_s(string, string_size, "%i",     token->value_int); return;
-		case TOKEN_LITERAL_STRING: sprintf_s(string, string_size, "\"%s\"", token->value_str); return;
-
-		case TOKEN_KEYWORD_IF:	   strcpy_s(string, string_size, "if");		return;
-		case TOKEN_KEYWORD_ELSE:   strcpy_s(string, string_size, "else");	return;
-		case TOKEN_KEYWORD_FOR:	   strcpy_s(string, string_size, "for");	return;
-		case TOKEN_KEYWORD_WHILE:  strcpy_s(string, string_size, "while");	return;
-		case TOKEN_KEYWORD_STRUCT: strcpy_s(string, string_size, "struct"); return;
-		
-		case TOKEN_PARENTESES_OPEN:  strcpy_s(string, string_size, "("); return;
-		case TOKEN_PARENTESES_CLOSE: strcpy_s(string, string_size, ")"); return;
-
-		case TOKEN_BRACES_OPEN:  strcpy_s(string, string_size, "{"); return;
-		case TOKEN_BRACES_CLOSE: strcpy_s(string, string_size, "}"); return;
-
-		case TOKEN_OPERATOR_PLUS:	  strcpy_s(string, string_size, "+"); return;
-		case TOKEN_OPERATOR_MINUS:	  strcpy_s(string, string_size, "-"); return;
-		case TOKEN_OPERATOR_MULTIPLY: strcpy_s(string, string_size, "*"); return;
-		case TOKEN_OPERATOR_DIVIDE:   strcpy_s(string, string_size, "/"); return;
-
-		case TOKEN_OPERATOR_EQUALS:	    strcpy_s(string, string_size, "=="); return;
-		case TOKEN_OPERATOR_NOT_EQUALS: strcpy_s(string, string_size, "!="); return;
-
-		case TOKEN_ASSIGN: strcpy_s(string, string_size, "="); return;
-
-		case TOKEN_COMMA:	  strcpy_s(string, string_size, ","); return;
-		case TOKEN_COLON:	  strcpy_s(string, string_size, ":"); return;
-		case TOKEN_SEMICOLON: strcpy_s(string, string_size, ";"); return;
-
-		default: strcpy_s(string, string_size, "Unknown Token"); return;
-	}
-}
-
 void lexer_init(Lexer * lexer, char const * source) {
 	lexer->source_len = strlen(source);
 	lexer->source     = source;
@@ -123,7 +87,7 @@ static int lexer_match(Lexer const * lexer, char const * target) {
 	return 0;
 }
 
-void lexer_next_token(Lexer * lexer, Token * token) {
+void lexer_get_token(Lexer * lexer, Token * token) {
 	lexer_skip(lexer);
 
 	char curr = lexer_peek(lexer);
@@ -136,6 +100,10 @@ void lexer_next_token(Lexer * lexer, Token * token) {
 
 		return;
 	}
+	
+	int match_length = 0;
+	if (match_length = lexer_match(lexer, "true"))  { token->type = TOKEN_LITERAL_BOOL; token->value_char = 1; lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "false")) { token->type = TOKEN_LITERAL_BOOL; token->value_char = 0; lexer->index += match_length; return; }
 
 	if (curr == '"') {
 		curr = lexer_next(lexer); // Consume "
@@ -160,15 +128,28 @@ void lexer_next_token(Lexer * lexer, Token * token) {
 		return;
 	}
 	
-	int match_length = 0;
+	// Keywords
 	if (match_length = lexer_match(lexer, "if"))     { token->type = TOKEN_KEYWORD_IF;     lexer->index += match_length; return; }
 	if (match_length = lexer_match(lexer, "else"))   { token->type = TOKEN_KEYWORD_ELSE;   lexer->index += match_length; return; }
 	if (match_length = lexer_match(lexer, "for"))    { token->type = TOKEN_KEYWORD_FOR;    lexer->index += match_length; return; }
 	if (match_length = lexer_match(lexer, "while"))  { token->type = TOKEN_KEYWORD_WHILE;  lexer->index += match_length; return; }
 	if (match_length = lexer_match(lexer, "struct")) { token->type = TOKEN_KEYWORD_STRUCT; lexer->index += match_length; return; }
 
-	if (match_length = lexer_match(lexer, "==")) { token->type = TOKEN_OPERATOR_EQUALS;     lexer->index += match_length; return; }
-	if (match_length = lexer_match(lexer, "!=")) { token->type = TOKEN_OPERATOR_NOT_EQUALS; lexer->index += match_length; return; }
+	// Relational Operators
+	if (match_length = lexer_match(lexer, "<"))  { token->type = TOKEN_OPERATOR_LT;    lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, ">"))  { token->type = TOKEN_OPERATOR_GT;    lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "<=")) { token->type = TOKEN_OPERATOR_LT_EQ; lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, ">=")) { token->type = TOKEN_OPERATOR_GT_EQ; lexer->index += match_length; return; }
+
+	// Equality Operators
+	if (match_length = lexer_match(lexer, "==")) { token->type = TOKEN_OPERATOR_EQ; lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "!=")) { token->type = TOKEN_OPERATOR_NE; lexer->index += match_length; return; }
+
+	// Aassignment Operators (excluding = see switch statement)
+	if (match_length = lexer_match(lexer, "+=")) { token->type = TOKEN_ASSIGN_PLUS;     lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "-=")) { token->type = TOKEN_ASSIGN_MINUS;    lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "*=")) { token->type = TOKEN_ASSIGN_MULTIPLY; lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "/=")) { token->type = TOKEN_ASSIGN_DIVIDE;   lexer->index += match_length; return; }
 
 	switch (curr) {
 		case '(': token->type = TOKEN_PARENTESES_OPEN;  lexer_next(lexer); return;
