@@ -43,7 +43,7 @@ int main(int arg_count, char const * args[]) {
 	lexer_init(&lexer, source);
 
 	int   token_count = 0;
-	Token tokens[64];
+	Token tokens[1024];
 
 	// Lexing
 	while (!lexer_reached_end(&lexer)) {
@@ -67,10 +67,9 @@ int main(int arg_count, char const * args[]) {
 	Parser parser;
 	parser_init(&parser, tokens, token_count);
 
-	AST_Node program;
-	parser_parse_program(&parser, &program);
+	AST_Node * program = parser_parse_program(&parser);
 
-	//ast_debug(&program);
+	ast_pretty_print(program);
 
 	clock_t clock_end = clock();
 

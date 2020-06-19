@@ -6,6 +6,7 @@ typedef enum AST_Type {
 	AST_STATEMENT_DECL,
 	AST_STATEMENT_ASSIGN,
 	AST_STATEMENT_IF,
+	AST_STATEMENT_FOR,
 
 	AST_EXPRESSION_CONST,
 	AST_EXPRESSION_VAR,
@@ -39,6 +40,14 @@ typedef struct AST_Node {
 			struct AST_Node * case_false;
 		} stat_if;
 
+		struct For {
+			struct AST_Node * expr_init;
+			struct AST_Node * expr_condition;
+			struct AST_Node * expr_next;
+
+			struct AST_Node * body;
+		} stat_for;
+
 		struct Const {
 			Token token;
 		} expr_const;
@@ -56,4 +65,4 @@ typedef struct AST_Node {
 	};
 } AST_Node;
 
-// void ast_debug(AST_Statement const * program);
+void ast_pretty_print(AST_Node const * program);
