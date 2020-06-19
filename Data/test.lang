@@ -21,12 +21,12 @@ str: string = "Hello world!";
 // }
 
 if (b) b = 1 < 2;
-
+/*
 if (b) {
 	b = false;
 	num = 3;
-} else {
-	num = 4;
+} else */ {
+	num= 4;
 }
 
 // test

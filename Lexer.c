@@ -11,6 +11,7 @@ void lexer_init(Lexer * lexer, char const * source) {
 	lexer->source     = source;
 
 	lexer->index = 0;
+	lexer->line  = 1;
 }
 
 static char lexer_peek(Lexer const * lexer) {
@@ -23,8 +24,10 @@ static char lexer_next(Lexer * lexer) {
 	return lexer->source[++lexer->index];
 }
 
-static bool lexer_is_whitespace(Lexer const * lexer) {
+static bool lexer_is_whitespace(Lexer * lexer) {
 	char curr = lexer_peek(lexer);
+
+	if (curr == '\n') lexer->line++;
 
 	return curr == ' ' || curr == '\t' || curr == '\r' || curr == '\n';
 }
@@ -59,10 +62,13 @@ static void lexer_skip(Lexer * lexer) {
 		if (lexer_match(lexer, "/*")) {
 			lexer->index += 2;
 
-			const char * comment_start = lexer->source + lexer->index;
-			const char * comment_end   = strstr(comment_start, "*/");
+			while (!lexer_match(lexer, "*/")) {
+				if (lexer_next(lexer) == '\n') {
+					lexer->line++;
+				}
+			}
 
-			lexer->index += comment_end - comment_start + 2;
+			lexer->index += 2;
 
 			changed = true;
 		}
@@ -92,6 +98,8 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 
 	char curr = lexer_peek(lexer);
 	
+	token->line = lexer->line;
+
 	if (isdigit(curr)) {
 		token->type      = TOKEN_LITERAL_INT;
 		token->value_int = curr - '0';

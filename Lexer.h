@@ -8,6 +8,7 @@ typedef struct Lexer {
 	char const * source;
 
 	int index;
+	int line;
 } Lexer;
 
 void lexer_init(Lexer * lexer, char const * source);

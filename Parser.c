@@ -10,9 +10,15 @@ void parser_init(Parser * parser, Token const * tokens, int token_count) {
 	parser->index = 0;
 }
 
-//static Token const * parser_curr(Parser const * parser) {
-//	return parser->tokens + parser->index;
-//}
+static void parser_error(Parser * parser) {
+	Token const * token = parser->tokens + parser->index;
+
+	char token_string[128];
+	token_to_string(token, token_string, sizeof(token_string));
+
+	printf("ERROR: Unexpected Token '%s' at line %i!\n", token_string, token->line);
+	abort();
+}
 
 static bool parser_match(Parser * parser, Token_Type token_type) {
 	return parser->tokens[parser->index].type == token_type;
@@ -30,10 +36,7 @@ static Token const * parser_advance(Parser * parser) {
 static void parser_match_and_advance(Parser * parser, Token_Type token_type) {
 	bool match = parser_match(parser, token_type);
 	if (!match) {
-		char token_string[128];
-		token_to_string(parser->tokens + parser->index, token_string, sizeof(token_string));
-
-		printf("ERROR: Unexpected Token '%s'!\n", token_string);
+		parser_error(parser);
 	}
 
 	parser_advance(parser);
@@ -52,7 +55,8 @@ bool parser_match_statement(Parser * parser) {
 		parser_match_statement_decl(parser)   ||
 		parser_match_statement_assign(parser) ||
 		parser_match_statement_if(parser)     ||
-		parser_match_statement_for(parser);
+		parser_match_statement_for(parser)    ||
+		parser_match_statement_block(parser);
 }
 
 bool parser_match_statement_decl(Parser * parser) {
@@ -164,7 +168,7 @@ AST_Node * parser_parse_statement(Parser * parser) {
 	} else if (parser_match_statement_block(parser)) {
 		return parser_parse_statement_block(parser);
 	} else {
-		abort();
+		parser_error(parser);
 	}
 }
 
@@ -400,6 +404,6 @@ AST_Node * parser_parse_expression_factor(Parser * parser) {
 
 		return expr;
 	} else {
-		abort();
+		parser_error(parser);
 	}
 }

@@ -63,6 +63,8 @@ typedef enum Token_Type {
 typedef struct Token {
 	Token_Type type;
 
+	int line;
+
 	union {
 		char const * value_str;
 		char         value_char;
