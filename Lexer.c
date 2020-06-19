@@ -135,6 +135,10 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 	if (match_length = lexer_match(lexer, "while"))  { token->type = TOKEN_KEYWORD_WHILE;  lexer->index += match_length; return; }
 	if (match_length = lexer_match(lexer, "struct")) { token->type = TOKEN_KEYWORD_STRUCT; lexer->index += match_length; return; }
 
+	// Bitshift Operators
+	if (match_length = lexer_match(lexer, "<<")) { token->type = TOKEN_OPERATOR_SHIFT_LEFT;  lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, ">>")) { token->type = TOKEN_OPERATOR_SHIFT_RIGHT; lexer->index += match_length; return; }
+
 	// Relational Operators
 	if (match_length = lexer_match(lexer, "<"))  { token->type = TOKEN_OPERATOR_LT;    lexer->index += match_length; return; }
 	if (match_length = lexer_match(lexer, ">"))  { token->type = TOKEN_OPERATOR_GT;    lexer->index += match_length; return; }
@@ -144,6 +148,10 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 	// Equality Operators
 	if (match_length = lexer_match(lexer, "==")) { token->type = TOKEN_OPERATOR_EQ; lexer->index += match_length; return; }
 	if (match_length = lexer_match(lexer, "!=")) { token->type = TOKEN_OPERATOR_NE; lexer->index += match_length; return; }
+	
+	// Unary Increment/Decrement Operators
+	if (match_length = lexer_match(lexer, "++")) { token->type = TOKEN_OPERATOR_INC; lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "--")) { token->type = TOKEN_OPERATOR_DEC; lexer->index += match_length; return; }
 
 	// Aassignment Operators (excluding = see switch statement)
 	if (match_length = lexer_match(lexer, "+=")) { token->type = TOKEN_ASSIGN_PLUS;     lexer->index += match_length; return; }

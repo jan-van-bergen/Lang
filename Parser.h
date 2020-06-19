@@ -57,11 +57,21 @@ AST_Node * parser_parse_statement_for(Parser * parser);
 
 AST_Node * parser_parse_statement_block(Parser * parser);
 
-// Expression
+// Expressions
+AST_Node * parser_parse_expression(Parser * parser);
+
+AST_Node * parser_parse_expression_equality(Parser * parser);
+
 AST_Node * parser_parse_expression_relational(Parser * parser);
 
-AST_Node * parser_parse_expression_arithmetic(Parser * parser);
+AST_Node * parser_parse_expression_bitshift(Parser * parser);
 
-AST_Node * parser_parse_expression_term(Parser * parser);
+AST_Node * parser_parse_expression_additive(Parser * parser);
+
+AST_Node * parser_parse_expression_multiplicative(Parser * parser);
+
+AST_Node * parser_parse_expression_prefix(Parser * parser);
+
+AST_Node * parser_parse_expression_postfix(Parser * parser);
 
 AST_Node * parser_parse_expression_factor(Parser * parser);

@@ -1,7 +1,15 @@
+a = -a + +b;
+a = +a + ++b++;
+
+a = ++a;
+a = a++;
+
 a = a + b + c;
 a = a - b - c;
-a = a + b * c + d;
-//a = (a + b) * c;
+a = a + b * c + d/e - 1;
+a = (a + b) * c;
+
+test = 0 < 2 == a < a << 2 < 3;
 
 num01: int;
 num01 = 5;

@@ -30,19 +30,25 @@ void token_to_string(Token const * token, char * string, int string_size) {
 		case TOKEN_OPERATOR_MULTIPLY: strcpy_s(string, string_size, "*"); return;
 		case TOKEN_OPERATOR_DIVIDE:   strcpy_s(string, string_size, "/"); return;
 
+		case TOKEN_OPERATOR_SHIFT_LEFT:  strcpy_s(string, string_size, "<<"); return;
+		case TOKEN_OPERATOR_SHIFT_RIGHT: strcpy_s(string, string_size, ">>"); return;
+
 		case TOKEN_OPERATOR_LT:    strcpy_s(string, string_size, "<");  return;
 		case TOKEN_OPERATOR_GT:    strcpy_s(string, string_size, ">");  return;
 		case TOKEN_OPERATOR_LT_EQ: strcpy_s(string, string_size, "<="); return;
 		case TOKEN_OPERATOR_GT_EQ: strcpy_s(string, string_size, ">="); return; 
 
-		case TOKEN_OPERATOR_EQ:	    strcpy_s(string, string_size, "=="); return;
+		case TOKEN_OPERATOR_EQ:	strcpy_s(string, string_size, "=="); return;
 		case TOKEN_OPERATOR_NE: strcpy_s(string, string_size, "!="); return;
+
+		case TOKEN_OPERATOR_INC:  strcpy_s(string, string_size, "++"); return;  
+		case TOKEN_OPERATOR_DEC:  strcpy_s(string, string_size, "--"); return;  
 
 		case TOKEN_COMMA:	  strcpy_s(string, string_size, ","); return;
 		case TOKEN_COLON:	  strcpy_s(string, string_size, ":"); return;
 		case TOKEN_SEMICOLON: strcpy_s(string, string_size, ";"); return;
 
-		case TOKEN_EOF: strcpy_s(string, string_size, "EOF");
+		case TOKEN_EOF: strcpy_s(string, string_size, "EOF"); return;
 
 		default: strcpy_s(string, string_size, "Unknown Token"); return;
 	}

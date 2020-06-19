@@ -11,6 +11,8 @@ typedef enum AST_Type {
 	AST_EXPRESSION_CONST,
 	AST_EXPRESSION_VAR,
 	AST_EXPRESSION_OPERATOR_BIN,
+	AST_EXPRESSION_OPERATOR_PRE,
+	AST_EXPRESSION_OPERATOR_POST,
 } AST_Type;
 
 typedef struct AST_Node {
@@ -62,6 +64,18 @@ typedef struct AST_Node {
 			struct AST_Node * expr_left;
 			struct AST_Node * expr_right;
 		} expr_op_bin;
+
+		struct Op_Pre {
+			Token token;
+
+			struct AST_Node * expr;
+		} expr_op_pre;
+		
+		struct Op_Post {
+			Token token;
+
+			struct AST_Node * expr;
+		} expr_op_post;
 	};
 } AST_Node;
 

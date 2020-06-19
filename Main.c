@@ -69,6 +69,7 @@ int main(int arg_count, char const * args[]) {
 
 	AST_Node * program = parser_parse_program(&parser);
 
+	printf("\n\nPretty Print:\n\n");
 	ast_pretty_print(program);
 
 	clock_t clock_end = clock();

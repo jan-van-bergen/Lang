@@ -95,6 +95,32 @@ static void print_ast(AST_Node const * node, int indent) {
 			break;
 		}
 
+		case AST_EXPRESSION_OPERATOR_PRE: {
+			printf("(");
+
+			char token_string[128];
+			token_to_string(&node->expr_var.token, token_string, sizeof(token_string));
+			printf("%s", token_string);
+			
+			print_ast(node->expr_op_pre.expr, indent);
+			printf(")");
+
+			break;
+		}
+
+		case AST_EXPRESSION_OPERATOR_POST: {
+			printf("(");
+
+			print_ast(node->expr_op_pre.expr, indent);
+			
+			char token_string[128];
+			token_to_string(&node->expr_var.token, token_string, sizeof(token_string));
+			printf("%s", token_string);
+			printf(")");
+
+			break;
+		}
+
 		default: printf("Unsupported AST_Node!\n");
 	}
 }
