@@ -11,6 +11,10 @@ a = (a + b) * c;
 
 test = 0 < 2 == a < a << 2 < 3;
 
+func abc(a: int, b: string, c: int) {
+	a = 3;
+}
+
 num01: int;
 num01 = 5;
 

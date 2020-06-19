@@ -47,6 +47,23 @@ static void print_ast(AST_Node const * node, int indent) {
 			break;
 		}
 
+		case AST_STATEMENT_FUNC: {
+			print_indent(indent);
+			printf("func %s(", node->stat_func.name);
+
+			print_ast(node->stat_func.args, indent);
+			printf(") {\n");
+
+			if (node->stat_func.body) {
+				print_ast(node->stat_func.body, indent + 1);
+			}
+
+			print_indent(indent);
+			printf("}\n");
+
+			break;
+		}
+
 		case AST_STATEMENT_IF: {
 			print_indent(indent);
 			printf("if (");
@@ -121,7 +138,18 @@ static void print_ast(AST_Node const * node, int indent) {
 			break;
 		}
 
-		default: printf("Unsupported AST_Node!\n");
+		case AST_ARGS: {
+			printf("%s: %s", node->args.name, node->args.type);
+
+			if (node->args.next) {
+				printf(", ");
+				print_ast(node->args.next, indent);
+			}
+
+			break;
+		}
+
+		default: printf("Unsupported AST_Node!\n"); return;
 	}
 }
 

@@ -5,6 +5,7 @@ typedef enum AST_Type {
 	AST_STATEMENTS,
 	AST_STATEMENT_DECL,
 	AST_STATEMENT_ASSIGN,
+	AST_STATEMENT_FUNC,
 	AST_STATEMENT_IF,
 	AST_STATEMENT_FOR,
 
@@ -13,6 +14,8 @@ typedef enum AST_Type {
 	AST_EXPRESSION_OPERATOR_BIN,
 	AST_EXPRESSION_OPERATOR_PRE,
 	AST_EXPRESSION_OPERATOR_POST,
+
+	AST_ARGS
 } AST_Type;
 
 typedef struct AST_Node {
@@ -34,6 +37,12 @@ typedef struct AST_Node {
 			char const * name;
 			struct AST_Node * expr;
 		} stat_assign;
+
+		struct Func {
+			char const * name;
+			struct AST_Node * args;
+			struct AST_Node * body;
+		} stat_func;
 
 		struct If {
 			struct AST_Node * condition;
@@ -76,6 +85,13 @@ typedef struct AST_Node {
 
 			struct AST_Node * expr;
 		} expr_op_post;
+
+		struct Args {
+			char const * name;
+			char const * type;
+
+			struct AST_Node * next;
+		} args;
 	};
 } AST_Node;
 

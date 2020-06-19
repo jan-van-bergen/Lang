@@ -10,6 +10,7 @@ typedef enum Token_Type {
 	TOKEN_KEYWORD_ELSE,	  // else
 	TOKEN_KEYWORD_FOR,	  // for
 	TOKEN_KEYWORD_WHILE,  // while
+	TOKEN_KEYWORD_FUNC,   // func
 	TOKEN_KEYWORD_STRUCT, // struct
 		
 	TOKEN_PARENTESES_OPEN,  // (

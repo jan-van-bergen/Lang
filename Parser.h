@@ -24,6 +24,8 @@ bool parser_match_statement_decl(Parser * parser);
 
 bool parser_match_statement_assign(Parser * parser);
 
+bool parser_match_statement_func(Parser * parser);
+
 bool parser_match_statement_if(Parser * parser);
 
 bool parser_match_statement_for(Parser * parser);
@@ -50,6 +52,8 @@ AST_Node * parser_parse_statement(Parser * parser);
 AST_Node * parser_parse_statement_decl(Parser * parser);
 
 AST_Node * parser_parse_statement_assign(Parser * parser);
+
+AST_Node * parser_parse_statement_func(Parser * parser);
 
 AST_Node * parser_parse_statement_if(Parser * parser);
 
