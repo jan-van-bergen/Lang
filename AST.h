@@ -4,7 +4,7 @@
 typedef enum AST_Expression_Type {
 	AST_EXPRESSION_CONST,
 	AST_EXPRESSION_VAR,
-	//AST_EXPRESSION_OPERATOR_BIN,
+	AST_EXPRESSION_OPERATOR_BIN,
 	//AST_EXPRESSION_OPERATOR_PRE,
 	//AST_EXPRESSION_OPERATOR_POST,
 	//AST_EXPRESSION_FUNCTION_CALL
@@ -21,6 +21,13 @@ typedef struct AST_Expression {
 		struct Var {
 			Token token;
 		} expr_var;
+
+		struct Op_Bin {
+			Token token;
+
+			struct AST_Expression * expr_left;
+			struct AST_Expression * expr_right;
+		} expr_op_bin;
 	};
 } AST_Expression;
 

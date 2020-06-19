@@ -1,5 +1,5 @@
-num: int;
-num = 5;
+num01: int;
+num01 = 5;
 
 str: string = "Hello world!";
 
