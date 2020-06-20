@@ -3,19 +3,23 @@
 
 typedef enum AST_Type {
 	AST_STATEMENTS,
-	AST_STATEMENT_DECL,
-	AST_STATEMENT_ASSIGN,
-	AST_STATEMENT_FUNC,
+
+	AST_STATEMENT_EXPR,
+	AST_STATEMENT_DECL_VAR,
+	AST_STATEMENT_DECL_FUNC,
 	AST_STATEMENT_IF,
-	AST_STATEMENT_FOR,
+	AST_STATEMENT_WHILE,
 
 	AST_EXPRESSION_CONST,
 	AST_EXPRESSION_VAR,
+	AST_EXPRESSION_ASSIGN,
 	AST_EXPRESSION_OPERATOR_BIN,
 	AST_EXPRESSION_OPERATOR_PRE,
 	AST_EXPRESSION_OPERATOR_POST,
+	AST_EXPRESSION_CALL_FUNC,
 
-	AST_ARGS
+	AST_DECL_ARGS,
+	AST_CALL_ARGS
 } AST_Type;
 
 typedef struct AST_Node {
@@ -30,7 +34,6 @@ typedef struct AST_Node {
 		struct Decl {
 			char const * name;
 			char const * type;
-			struct AST_Node * expr;
 		} stat_decl;
 
 		struct Assign {
@@ -38,8 +41,13 @@ typedef struct AST_Node {
 			struct AST_Node * expr;
 		} stat_assign;
 
+		struct Expr {
+			struct AST_Node * expr;
+		} stat_expr;
+
 		struct Func {
 			char const * name;
+			char const * return_type;
 			struct AST_Node * args;
 			struct AST_Node * body;
 		} stat_func;
@@ -86,12 +94,23 @@ typedef struct AST_Node {
 			struct AST_Node * expr;
 		} expr_op_post;
 
-		struct Args {
+		struct Call {
+			char const * function;
+
+			struct AST_Node * args;
+		} expr_call;
+
+		struct DeclArgs {
 			char const * name;
 			char const * type;
 
 			struct AST_Node * next;
-		} args;
+		} decl_args;
+
+		struct CallArgs {
+			struct AST_Node * arg;
+			struct AST_Node * next;
+		} call_args;
 	};
 } AST_Node;
 

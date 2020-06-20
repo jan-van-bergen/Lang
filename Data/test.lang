@@ -11,14 +11,23 @@ a = (a + b) * c;
 
 test = 0 < 2 == a < a << 2 < 3;
 
+func noargs() -> int {
+	print("hi", 0, a, b + 1);
+}
+
+func arg_1(test: Type) {
+	
+}
+
 func abc(a: int, b: string, c: int) {
 	a = 3;
 }
 
-num01: int;
+let num01: int;
 num01 = 5;
 
-str: string = "Hello world!";
+let str: string;
+str = "Hello world!";
 
 // for (i = 0; i < 2; i++) {
 	// num01 = 0;

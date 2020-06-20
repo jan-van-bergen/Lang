@@ -17,43 +17,31 @@ static void print_ast(AST_Node const * node, int indent) {
 			break;
 		}
 
-		case AST_STATEMENT_DECL: {
+		case AST_STATEMENT_EXPR: {
 			print_indent(indent);
-			printf("%s", node->stat_decl.name);
-
-			if (node->stat_decl.type) {
-				printf(": %s ", node->stat_decl.type, indent);
-			} else {
-				printf(" :");
-			}
-
-			if (node->stat_decl.expr) {
-				printf("= ");
-				print_ast(node->stat_decl.expr, indent);
-			}
-
-			printf("\n");
+			print_ast(node->stat_expr.expr, indent);
+			printf(";\n");
 
 			break;
 		}
 
-		case AST_STATEMENT_ASSIGN: {
+		case AST_STATEMENT_DECL_VAR: {
 			print_indent(indent);
-			printf("%s = ", node->stat_assign.name);
-			print_ast(node->stat_assign.expr, indent);
-			printf(";");
-			printf("\n");
+			printf("let %s: %s;\n", node->stat_decl.name, node->stat_decl.type);
 
 			break;
 		}
 
-		case AST_STATEMENT_FUNC: {
+		case AST_STATEMENT_DECL_FUNC: {
 			print_indent(indent);
 			printf("func %s(", node->stat_func.name);
 
-			print_ast(node->stat_func.args, indent);
-			printf(") {\n");
+			if (node->stat_func.args) {
+				print_ast(node->stat_func.args, indent);
+			}
 
+			printf(") -> %s {\n", node->stat_func.return_type);
+			
 			if (node->stat_func.body) {
 				print_ast(node->stat_func.body, indent + 1);
 			}
@@ -138,18 +126,37 @@ static void print_ast(AST_Node const * node, int indent) {
 			break;
 		}
 
-		case AST_ARGS: {
-			printf("%s: %s", node->args.name, node->args.type);
+		case AST_EXPRESSION_CALL_FUNC: {
+			printf("%s(", node->expr_call.function);
+			print_ast(node->expr_call.args, indent);
+			printf(")");
 
-			if (node->args.next) {
+			break;
+		}
+
+		case AST_DECL_ARGS: {
+			printf("%s: %s", node->decl_args.name, node->decl_args.type);
+
+			if (node->decl_args.next) {
 				printf(", ");
-				print_ast(node->args.next, indent);
+				print_ast(node->decl_args.next, indent);
 			}
 
 			break;
 		}
 
-		default: printf("Unsupported AST_Node!\n"); return;
+		case AST_CALL_ARGS: {
+			print_ast(node->call_args.arg, indent);
+
+			if (node->call_args.next) {
+				printf(", ");
+				print_ast(node->call_args.next, indent);
+			}
+
+			break;
+		}
+
+		default: printf("Unprintable AST_Node!\n"); return;
 	}
 }
 

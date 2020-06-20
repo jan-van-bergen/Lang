@@ -7,6 +7,7 @@ void token_to_string(Token const * token, char * string, int string_size) {
 		case TOKEN_LITERAL_BOOL:   sprintf_s(string, string_size, "%s",     token->value_char ? "true" : "false"); return;
 		case TOKEN_LITERAL_STRING: sprintf_s(string, string_size, "\"%s\"", token->value_str);                     return;
 
+		case TOKEN_KEYWORD_LET:    strcpy_s(string, string_size, "let");    return;
 		case TOKEN_KEYWORD_IF:	   strcpy_s(string, string_size, "if");     return;
 		case TOKEN_KEYWORD_ELSE:   strcpy_s(string, string_size, "else");   return;
 		case TOKEN_KEYWORD_FOR:	   strcpy_s(string, string_size, "for");    return;
@@ -20,6 +21,8 @@ void token_to_string(Token const * token, char * string, int string_size) {
 		case TOKEN_BRACES_OPEN:  strcpy_s(string, string_size, "{"); return;
 		case TOKEN_BRACES_CLOSE: strcpy_s(string, string_size, "}"); return;
 		
+		case TOKEN_ARROW: strcpy_s(string, string_size, "->"); return;
+
 		case TOKEN_ASSIGN:		    strcpy_s(string, string_size, "=");  return;
 		case TOKEN_ASSIGN_PLUS:     strcpy_s(string, string_size, "+="); return;
 		case TOKEN_ASSIGN_MINUS:    strcpy_s(string, string_size, "-="); return;

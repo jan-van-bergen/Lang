@@ -137,6 +137,7 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 	}
 	
 	// Keywords
+	if (match_length = lexer_match(lexer, "let"))    { token->type = TOKEN_KEYWORD_LET;    lexer->index += match_length; return; }
 	if (match_length = lexer_match(lexer, "if"))     { token->type = TOKEN_KEYWORD_IF;     lexer->index += match_length; return; }
 	if (match_length = lexer_match(lexer, "else"))   { token->type = TOKEN_KEYWORD_ELSE;   lexer->index += match_length; return; }
 	if (match_length = lexer_match(lexer, "for"))    { token->type = TOKEN_KEYWORD_FOR;    lexer->index += match_length; return; }
@@ -168,6 +169,8 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 	if (match_length = lexer_match(lexer, "*=")) { token->type = TOKEN_ASSIGN_MULTIPLY; lexer->index += match_length; return; }
 	if (match_length = lexer_match(lexer, "/=")) { token->type = TOKEN_ASSIGN_DIVIDE;   lexer->index += match_length; return; }
 
+	if (match_length = lexer_match(lexer, "->")) { token->type = TOKEN_ARROW; lexer->index += match_length; return; }
+
 	switch (curr) {
 		case '(': token->type = TOKEN_PARENTESES_OPEN;  lexer_next(lexer); return;
 		case ')': token->type = TOKEN_PARENTESES_CLOSE; lexer_next(lexer); return;
@@ -193,7 +196,7 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 		
 	curr = lexer_next(lexer); // Consume first letter of identifier
 
-	while (isalnum(curr)) curr = lexer_next(lexer);
+	while (isalnum(curr) || curr == '_') curr = lexer_next(lexer);
 			
 	int index_str_end = lexer->index;
 

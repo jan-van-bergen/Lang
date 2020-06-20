@@ -6,6 +6,7 @@ typedef enum Token_Type {
 	TOKEN_LITERAL_BOOL,
 	TOKEN_LITERAL_STRING,
 
+	TOKEN_KEYWORD_LET,    // let
 	TOKEN_KEYWORD_IF,	  // if
 	TOKEN_KEYWORD_ELSE,	  // else
 	TOKEN_KEYWORD_FOR,	  // for
@@ -18,6 +19,8 @@ typedef enum Token_Type {
 
 	TOKEN_BRACES_OPEN,  // {
 	TOKEN_BRACES_CLOSE, // }
+
+	TOKEN_ARROW, // ->
 	
 	TOKEN_ASSIGN,          // =
 	TOKEN_ASSIGN_PLUS,     // +=
