@@ -6,13 +6,15 @@ typedef enum Token_Type {
 	TOKEN_LITERAL_BOOL,
 	TOKEN_LITERAL_STRING,
 
-	TOKEN_KEYWORD_LET,    // let
-	TOKEN_KEYWORD_IF,	  // if
-	TOKEN_KEYWORD_ELSE,	  // else
-	TOKEN_KEYWORD_FOR,	  // for
-	TOKEN_KEYWORD_WHILE,  // while
-	TOKEN_KEYWORD_FUNC,   // func
-	TOKEN_KEYWORD_STRUCT, // struct
+	TOKEN_KEYWORD_LET,      // let
+	TOKEN_KEYWORD_IF,       // if
+	TOKEN_KEYWORD_ELSE,     // else
+	//TOKEN_KEYWORD_FOR,	// for
+	TOKEN_KEYWORD_WHILE,    // while
+	TOKEN_KEYWORD_BREAK,    // break
+	TOKEN_KEYWORD_CONTINUE, // continue
+	TOKEN_KEYWORD_FUNC,     // func
+	//TOKEN_KEYWORD_STRUCT, // struct
 		
 	TOKEN_PARENTESES_OPEN,  // (
 	TOKEN_PARENTESES_CLOSE, // )

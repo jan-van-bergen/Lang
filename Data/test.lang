@@ -4,6 +4,8 @@ a = +a + ++b++;
 a = ++a;
 a = a++;
 
+a = b = c;
+
 a = a + b + c;
 a = a - b - c;
 a = a + b * c + d/e - 1;
@@ -29,9 +31,17 @@ num01 = 5;
 let str: string;
 str = "Hello world!";
 
-// for (i = 0; i < 2; i++) {
-	// num01 = 0;
-// }
+while (a > 0) {
+	a--;
+	
+	if (a == 3) {
+		//a = 3;
+		//break;
+	} else {
+		a=3;
+		//continue;
+	}
+}
 
 if (b) b = 1 < 2;
 /*

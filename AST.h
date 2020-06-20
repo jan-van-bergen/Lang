@@ -2,6 +2,7 @@
 #include "Token.h"
 
 typedef enum AST_Type {
+	AST_STATEMENT_NOOP,
 	AST_STATEMENTS,
 
 	AST_STATEMENT_EXPR,
@@ -59,13 +60,10 @@ typedef struct AST_Node {
 			struct AST_Node * case_false;
 		} stat_if;
 
-		struct For {
-			struct AST_Node * expr_init;
-			struct AST_Node * expr_condition;
-			struct AST_Node * expr_next;
-
+		struct While {
+			struct AST_Node * condition;
 			struct AST_Node * body;
-		} stat_for;
+		} stat_while;
 
 		struct Const {
 			Token token;

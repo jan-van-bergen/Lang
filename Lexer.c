@@ -137,13 +137,15 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 	}
 	
 	// Keywords
-	if (match_length = lexer_match(lexer, "let"))    { token->type = TOKEN_KEYWORD_LET;    lexer->index += match_length; return; }
-	if (match_length = lexer_match(lexer, "if"))     { token->type = TOKEN_KEYWORD_IF;     lexer->index += match_length; return; }
-	if (match_length = lexer_match(lexer, "else"))   { token->type = TOKEN_KEYWORD_ELSE;   lexer->index += match_length; return; }
-	if (match_length = lexer_match(lexer, "for"))    { token->type = TOKEN_KEYWORD_FOR;    lexer->index += match_length; return; }
-	if (match_length = lexer_match(lexer, "while"))  { token->type = TOKEN_KEYWORD_WHILE;  lexer->index += match_length; return; }
-	if (match_length = lexer_match(lexer, "func"))   { token->type = TOKEN_KEYWORD_FUNC;   lexer->index += match_length; return; }
-	if (match_length = lexer_match(lexer, "struct")) { token->type = TOKEN_KEYWORD_STRUCT; lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "let"))      { token->type = TOKEN_KEYWORD_LET;      lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "if"))       { token->type = TOKEN_KEYWORD_IF;       lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "else"))     { token->type = TOKEN_KEYWORD_ELSE;     lexer->index += match_length; return; }
+	//if (match_length = lexer_match(lexer, "for"))    { token->type = TOKEN_KEYWORD_FOR;    lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "while"))    { token->type = TOKEN_KEYWORD_WHILE;    lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "break"))    { token->type = TOKEN_KEYWORD_BREAK;    lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "continue")) { token->type = TOKEN_KEYWORD_CONTINUE; lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "func"))     { token->type = TOKEN_KEYWORD_FUNC;     lexer->index += match_length; return; }
+	//if (match_length = lexer_match(lexer, "struct")) { token->type = TOKEN_KEYWORD_STRUCT; lexer->index += match_length; return; }
 
 	// Bitshift Operators
 	if (match_length = lexer_match(lexer, "<<")) { token->type = TOKEN_OPERATOR_SHIFT_LEFT;  lexer->index += match_length; return; }

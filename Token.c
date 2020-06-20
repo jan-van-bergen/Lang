@@ -10,10 +10,10 @@ void token_to_string(Token const * token, char * string, int string_size) {
 		case TOKEN_KEYWORD_LET:    strcpy_s(string, string_size, "let");    return;
 		case TOKEN_KEYWORD_IF:	   strcpy_s(string, string_size, "if");     return;
 		case TOKEN_KEYWORD_ELSE:   strcpy_s(string, string_size, "else");   return;
-		case TOKEN_KEYWORD_FOR:	   strcpy_s(string, string_size, "for");    return;
+		//case TOKEN_KEYWORD_FOR:	   strcpy_s(string, string_size, "for");    return;
 		case TOKEN_KEYWORD_WHILE:  strcpy_s(string, string_size, "while");  return;
 		case TOKEN_KEYWORD_FUNC:   strcpy_s(string, string_size, "func");   return;
-		case TOKEN_KEYWORD_STRUCT: strcpy_s(string, string_size, "struct"); return;
+		//case TOKEN_KEYWORD_STRUCT: strcpy_s(string, string_size, "struct"); return;
 		
 		case TOKEN_PARENTESES_OPEN:  strcpy_s(string, string_size, "("); return;
 		case TOKEN_PARENTESES_CLOSE: strcpy_s(string, string_size, ")"); return;

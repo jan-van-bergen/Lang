@@ -10,6 +10,13 @@ static void print_indent(int level) {
 
 static void print_ast(AST_Node const * node, int indent) {
 	switch (node->type) {
+		case AST_STATEMENT_NOOP: {
+			print_indent(indent);
+			printf(";\n");
+
+			break;
+		}
+
 		case AST_STATEMENTS: {
 			print_ast(node->stat_statements.head, indent);
 			print_ast(node->stat_statements.cons, indent);
@@ -60,10 +67,25 @@ static void print_ast(AST_Node const * node, int indent) {
 			print_ast(node->stat_if.case_true, indent + 1);
 
 			if (node->stat_if.case_false) {
+				print_indent(indent);
 				printf("} else {\n");
 				print_ast(node->stat_if.case_false, indent + 1);
 			}
 		
+			print_indent(indent);
+			printf("}\n");
+
+			break;
+		}
+
+		case AST_STATEMENT_WHILE: {
+			print_indent(indent);
+			printf("while (");
+			print_ast(node->stat_while.condition, indent);
+			printf(") {\n");
+
+			print_ast(node->stat_while.body, indent + 1);
+
 			print_indent(indent);
 			printf("}\n");
 
@@ -92,7 +114,7 @@ static void print_ast(AST_Node const * node, int indent) {
 
 			char token_string[128];
 			token_to_string(&node->expr_var.token, token_string, sizeof(token_string));
-			printf("%s", token_string);
+			printf(" %s ", token_string);
 			
 			print_ast(node->expr_op_bin.expr_right, indent);
 			printf(")");
