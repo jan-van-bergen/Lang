@@ -52,7 +52,8 @@ bool parser_match_statement(Parser * parser) {
 		parser_match_statement_decl_var(parser)  ||
 		parser_match_statement_decl_func(parser) ||
 		parser_match_statement_if(parser)        ||
-		parser_match_statement_while(parser)       ||
+		parser_match_statement_while(parser)     ||
+		parser_match_statement_return(parser)    ||
 		parser_match_statement_block(parser);
 }
 
@@ -78,6 +79,10 @@ bool parser_match_statement_while(Parser * parser) {
 
 bool parser_match_statement_block(Parser * parser) {
 	return parser_match(parser, TOKEN_BRACES_OPEN);
+}
+
+bool parser_match_statement_return(Parser * parser) {
+	return parser_match(parser, TOKEN_KEYWORD_RETURN);
 }
 
 bool parser_match_expression(Parser * parser) {
@@ -162,6 +167,8 @@ AST_Statement * parser_parse_statement(Parser * parser) {
 		return parser_parse_statement_if(parser);
 	} else if (parser_match_statement_while(parser)) {
 		return parser_parse_statement_while(parser);
+	} else if (parser_match_statement_return(parser)) {
+		return parser_parse_statement_return(parser);
 	} else if (parser_match_statement_block(parser)) {
 		return parser_parse_statement_block(parser);
 	} else {
@@ -289,6 +296,23 @@ AST_Statement * parser_parse_statement_while(Parser * parser) {
 	while_loop->stat_while.body = parser_parse_statement(parser);
 
 	return while_loop;
+}
+
+AST_Statement * parser_parse_statement_return(Parser * parser) {
+	AST_Statement * ret = malloc(sizeof(AST_Statement));
+	ret->type = AST_STATEMENT_RETURN;
+	
+	parser_match_and_advance(parser, TOKEN_KEYWORD_RETURN);
+
+	if (!parser_match(parser, TOKEN_SEMICOLON)) {
+		ret->stat_return.expr = parser_parse_expression(parser);
+	} else {
+		ret->stat_return.expr = NULL;
+	}
+
+	parser_match_and_advance(parser, TOKEN_SEMICOLON);
+
+	return ret;
 }
 
 AST_Statement * parser_parse_statement_block(Parser * parser) {

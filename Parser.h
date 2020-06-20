@@ -26,6 +26,8 @@ bool parser_match_statement_decl_func(Parser * parser);
 bool parser_match_statement_if   (Parser * parser);
 bool parser_match_statement_while(Parser * parser);
 
+bool parser_match_statement_return(Parser * parser);
+
 bool parser_match_statement_block(Parser * parser);
 
 // Expressions
@@ -46,6 +48,8 @@ AST_Statement * parser_parse_statement_decl_func(Parser * parser);
 
 AST_Statement * parser_parse_statement_if   (Parser * parser);
 AST_Statement * parser_parse_statement_while(Parser * parser);
+
+AST_Statement * parser_parse_statement_return(Parser * parser);
 
 AST_Statement * parser_parse_statement_block(Parser * parser);
 

@@ -14,6 +14,7 @@ typedef enum Token_Type {
 	TOKEN_KEYWORD_BREAK,    // break
 	TOKEN_KEYWORD_CONTINUE, // continue
 	TOKEN_KEYWORD_FUNC,     // func
+	TOKEN_KEYWORD_RETURN,   // return
 	//TOKEN_KEYWORD_STRUCT, // struct
 		
 	TOKEN_PARENTESES_OPEN,  // (

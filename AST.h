@@ -10,6 +10,7 @@ typedef enum AST_Statement_Type {
 	AST_STATEMENT_DECL_FUNC,
 	AST_STATEMENT_IF,
 	AST_STATEMENT_WHILE,
+	AST_STATEMENT_RETURN
 } AST_Statement_Type;
 
 typedef enum AST_Expression_Type {
@@ -19,7 +20,7 @@ typedef enum AST_Expression_Type {
 	AST_EXPRESSION_OPERATOR_BIN,
 	AST_EXPRESSION_OPERATOR_PRE,
 	AST_EXPRESSION_OPERATOR_POST,
-	AST_EXPRESSION_CALL_FUNC,
+	AST_EXPRESSION_CALL_FUNC
 } AST_Expression_Type;
 
 typedef struct AST_Decl_Arg {
@@ -74,6 +75,10 @@ typedef struct AST_Statement {
 			struct AST_Expression * condition;
 			struct AST_Statement  * body;
 		} stat_while;
+
+		struct Return {
+			struct AST_Expression * expr;
+		} stat_return;
 	};
 } AST_Statement;
 

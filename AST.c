@@ -184,6 +184,20 @@ static void print_statement(AST_Statement const * stat, int indent) {
 			break;
 		}
 
+		case AST_STATEMENT_RETURN: {
+			print_indent(indent);
+			printf("return");
+
+			if (stat->stat_return.expr) {
+				printf(" ");
+				print_expression(stat->stat_return.expr);
+			}
+
+			printf(";\n");
+
+			break;
+		}
+
 		default: printf("Unprintable Statement!\n");
 	}
 }

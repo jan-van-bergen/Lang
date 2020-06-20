@@ -6,6 +6,7 @@
 
 #include "Lexer.h"
 #include "Parser.h"
+#include "Godegen.h"
 
 static char const * read_file(char const * filename) {
 	FILE * f;
@@ -32,7 +33,7 @@ static char const * read_file(char const * filename) {
 int main(int arg_count, char const * args[]) {
 	clock_t clock_start = clock();
 
-	char const * filename = "Data/test.lang";
+	char const * filename = "Data/code.lang";
 	if (arg_count > 1) {
 		filename = args[1];
 	}
@@ -71,6 +72,8 @@ int main(int arg_count, char const * args[]) {
 
 	printf("\n\nPretty Print:\n\n");
 	ast_pretty_print(program);
+
+	codegen_program(program);
 
 	clock_t clock_end = clock();
 
