@@ -67,7 +67,7 @@ int main(int arg_count, char const * args[]) {
 	Parser parser;
 	parser_init(&parser, tokens, token_count);
 
-	AST_Node * program = parser_parse_program(&parser);
+	AST_Statement * program = parser_parse_program(&parser);
 
 	printf("\n\nPretty Print:\n\n");
 	ast_pretty_print(program);

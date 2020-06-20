@@ -32,35 +32,34 @@ bool parser_match_statement_block(Parser * parser);
 bool parser_match_expression(Parser * parser);
 
 // Program
-AST_Node * parser_parse_program(Parser * parser);
+AST_Statement * parser_parse_program(Parser * parser);
 
 // Statements
-AST_Node * parser_parse_statements(Parser * parser);
+AST_Statement * parser_parse_statements(Parser * parser);
 
-AST_Node * parser_parse_statement(Parser * parser);
+AST_Statement * parser_parse_statement(Parser * parser);
 
-AST_Node * parser_parse_statement_expr(Parser * parser);
+AST_Statement * parser_parse_statement_expr(Parser * parser);
 
-AST_Node * parser_parse_statement_decl_var (Parser * parser);
-AST_Node * parser_parse_statement_decl_func(Parser * parser);
+AST_Statement * parser_parse_statement_decl_var (Parser * parser);
+AST_Statement * parser_parse_statement_decl_func(Parser * parser);
 
-AST_Node * parser_parse_statement_if   (Parser * parser);
-AST_Node * parser_parse_statement_while(Parser * parser);
+AST_Statement * parser_parse_statement_if   (Parser * parser);
+AST_Statement * parser_parse_statement_while(Parser * parser);
 
-AST_Node * parser_parse_statement_block(Parser * parser);
+AST_Statement * parser_parse_statement_block(Parser * parser);
 
 // Expressions
-AST_Node * parser_parse_expression(Parser * parser);
+AST_Expression * parser_parse_expression(Parser * parser);
 
-AST_Node * parser_parse_expression_assign        (Parser * parser);
-AST_Node * parser_parse_expression_equality      (Parser * parser);
-AST_Node * parser_parse_expression_relational    (Parser * parser);
-AST_Node * parser_parse_expression_bitshift      (Parser * parser);
-AST_Node * parser_parse_expression_additive      (Parser * parser);
-AST_Node * parser_parse_expression_multiplicative(Parser * parser);
+AST_Expression * parser_parse_expression_assign        (Parser * parser);
+AST_Expression * parser_parse_expression_equality      (Parser * parser);
+AST_Expression * parser_parse_expression_relational    (Parser * parser);
+AST_Expression * parser_parse_expression_bitshift      (Parser * parser);
+AST_Expression * parser_parse_expression_additive      (Parser * parser);
+AST_Expression * parser_parse_expression_multiplicative(Parser * parser);
 
-AST_Node * parser_parse_expression_prefix (Parser * parser);
-AST_Node * parser_parse_expression_postfix(Parser * parser);
+AST_Expression * parser_parse_expression_prefix (Parser * parser);
+AST_Expression * parser_parse_expression_postfix(Parser * parser);
 
-AST_Node * parser_parse_expression_elementary(Parser * parser);
-
+AST_Expression * parser_parse_expression_elementary(Parser * parser);

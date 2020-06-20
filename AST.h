@@ -1,7 +1,7 @@
 #pragma once
 #include "Token.h"
 
-typedef enum AST_Type {
+typedef enum AST_Statement_Type {
 	AST_STATEMENT_NOOP,
 	AST_STATEMENTS,
 
@@ -10,7 +10,9 @@ typedef enum AST_Type {
 	AST_STATEMENT_DECL_FUNC,
 	AST_STATEMENT_IF,
 	AST_STATEMENT_WHILE,
+} AST_Statement_Type;
 
+typedef enum AST_Expression_Type {
 	AST_EXPRESSION_CONST,
 	AST_EXPRESSION_VAR,
 	AST_EXPRESSION_ASSIGN,
@@ -18,18 +20,26 @@ typedef enum AST_Type {
 	AST_EXPRESSION_OPERATOR_PRE,
 	AST_EXPRESSION_OPERATOR_POST,
 	AST_EXPRESSION_CALL_FUNC,
+} AST_Expression_Type;
 
-	AST_DECL_ARGS,
-	AST_CALL_ARGS
-} AST_Type;
+typedef struct AST_Decl_Arg {
+	char const * name;
+	char const * type;
+	struct AST_Decl_Arg * next;
+} AST_Decl_Arg;
 
-typedef struct AST_Node {
-	AST_Type type;
+typedef struct AST_Call_Arg {
+	struct AST_Expression * expr;
+	struct AST_Call_Arg   * next;
+} AST_Call_Arg;
+
+typedef struct AST_Statement {
+	AST_Statement_Type type;
 
 	union {
 		struct Statements {
-			struct AST_Node * head;
-			struct AST_Node * cons;
+			struct AST_Statement * head;
+			struct AST_Statement * cons;
 		} stat_statements;
 
 		struct Decl {
@@ -39,32 +49,38 @@ typedef struct AST_Node {
 
 		struct Assign {
 			char const * name;
-			struct AST_Node * expr;
+			struct AST_Expression * expr;
 		} stat_assign;
 
 		struct Expr {
-			struct AST_Node * expr;
+			struct AST_Expression * expr;
 		} stat_expr;
 
 		struct Func {
 			char const * name;
 			char const * return_type;
-			struct AST_Node * args;
-			struct AST_Node * body;
+			struct AST_Decl_Args * args;
+			struct AST_Statement * body;
 		} stat_func;
 
 		struct If {
-			struct AST_Node * condition;
+			struct AST_Expression * condition;
 
-			struct AST_Node * case_true;
-			struct AST_Node * case_false;
+			struct AST_Statement * case_true;
+			struct AST_Statement * case_false;
 		} stat_if;
 
 		struct While {
-			struct AST_Node * condition;
-			struct AST_Node * body;
+			struct AST_Expression * condition;
+			struct AST_Statement  * body;
 		} stat_while;
+	};
+} AST_Statement;
 
+typedef struct AST_Expression {
+	AST_Expression_Type type;
+
+	union {
 		struct Const {
 			Token token;
 		} expr_const;
@@ -76,40 +92,28 @@ typedef struct AST_Node {
 		struct Op_Bin {
 			Token token;
 
-			struct AST_Node * expr_left;
-			struct AST_Node * expr_right;
+			struct AST_Expression * expr_left;
+			struct AST_Expression * expr_right;
 		} expr_op_bin;
 
 		struct Op_Pre {
 			Token token;
 
-			struct AST_Node * expr;
+			struct AST_Expression * expr;
 		} expr_op_pre;
 		
 		struct Op_Post {
 			Token token;
 
-			struct AST_Node * expr;
+			struct AST_Expression * expr;
 		} expr_op_post;
 
 		struct Call {
 			char const * function;
 
-			struct AST_Node * args;
+			struct AST_Call_Arg * args;
 		} expr_call;
-
-		struct DeclArgs {
-			char const * name;
-			char const * type;
-
-			struct AST_Node * next;
-		} decl_args;
-
-		struct CallArgs {
-			struct AST_Node * arg;
-			struct AST_Node * next;
-		} call_args;
 	};
-} AST_Node;
+} AST_Expression;
 
-void ast_pretty_print(AST_Node const * program);
+void ast_pretty_print(AST_Statement const * program);

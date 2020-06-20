@@ -93,20 +93,20 @@ bool parser_match_expression(Parser * parser) {
 		parser_match(parser, TOKEN_PARENTESES_OPEN);
 }
 
-AST_Node * parser_parse_program(Parser * parser) {
-	AST_Node * program = parser_parse_statements(parser);
+AST_Statement * parser_parse_program(Parser * parser) {
+	AST_Statement * program = parser_parse_statements(parser);
 	parser_match_and_advance(parser, TOKEN_EOF);
 
 	return program;
 }
 
-AST_Node * parser_parse_statements(Parser * parser) {
-	AST_Node * statement_head = parser_parse_statement(parser);
+AST_Statement * parser_parse_statements(Parser * parser) {
+	AST_Statement * statement_head = parser_parse_statement(parser);
 
 	if (parser_match_statement(parser)) {
-		AST_Node * statement_cons = parser_parse_statements(parser);
+		AST_Statement * statement_cons = parser_parse_statements(parser);
 		
-		AST_Node * statements = malloc(sizeof(AST_Node));
+		AST_Statement * statements = malloc(sizeof(AST_Statement));
 		statements->type = AST_STATEMENTS;
 		statements->stat_statements.head = statement_head;
 		statements->stat_statements.cons = statement_cons;
@@ -118,18 +118,16 @@ AST_Node * parser_parse_statements(Parser * parser) {
 }
 
 
-static AST_Node * parser_parse_call_arg(Parser * parser) {
-	AST_Node * arg = malloc(sizeof(AST_Node));
-	arg->type = AST_CALL_ARGS;
-
-	arg->call_args.arg  = parser_parse_expression(parser);
-	arg->call_args.next = NULL;
+static AST_Call_Arg * parser_parse_call_arg(Parser * parser) {
+	AST_Call_Arg * arg = malloc(sizeof(AST_Call_Arg));
+	arg->expr = parser_parse_expression(parser);
+	arg->next = NULL;
 
 	return arg;
 }
 
-static AST_Node * parser_parse_call_args(Parser * parser) {
-	AST_Node * args_head = NULL;
+static AST_Call_Arg * parser_parse_call_args(Parser * parser) {
+	AST_Call_Arg * args_head = NULL;
 
 	parser_match_and_advance(parser, TOKEN_PARENTESES_OPEN);
 	
@@ -137,14 +135,14 @@ static AST_Node * parser_parse_call_args(Parser * parser) {
 		args_head = parser_parse_call_arg(parser);
 	}
 	
-	AST_Node * args_curr = args_head;
+	AST_Call_Arg * args_curr = args_head;
 
 	while (parser_match(parser, TOKEN_COMMA)) {
 		parser_advance(parser);
 
-		AST_Node * arg = parser_parse_call_arg(parser);
-		args_curr->call_args.next = arg;
-		args_curr = arg;
+		AST_Call_Arg * arg = parser_parse_call_arg(parser);
+		args_curr->next = arg;
+		args_curr       = arg;
 	}
 		
 	parser_match_and_advance(parser, TOKEN_PARENTESES_CLOSE);
@@ -153,7 +151,7 @@ static AST_Node * parser_parse_call_args(Parser * parser) {
 }
 
 
-AST_Node * parser_parse_statement(Parser * parser) {
+AST_Statement * parser_parse_statement(Parser * parser) {
 	if (parser_match_expression(parser)) {
 		return parser_parse_statement_expr(parser);
 	} else if (parser_match_statement_decl_var(parser)) {
@@ -171,8 +169,8 @@ AST_Node * parser_parse_statement(Parser * parser) {
 	}
 }
 
-AST_Node * parser_parse_statement_expr(Parser * parser) {
-	AST_Node * stat = malloc(sizeof(AST_Node));
+AST_Statement * parser_parse_statement_expr(Parser * parser) {
+	AST_Statement * stat = malloc(sizeof(AST_Statement));
 
 	stat->type = AST_STATEMENT_EXPR;
 	stat->stat_expr.expr = parser_parse_expression(parser);
@@ -182,10 +180,10 @@ AST_Node * parser_parse_statement_expr(Parser * parser) {
 	return stat;
 }
 
-AST_Node * parser_parse_statement_decl_var(Parser * parser) {
+AST_Statement * parser_parse_statement_decl_var(Parser * parser) {
 	parser_match_and_advance(parser, TOKEN_KEYWORD_LET);
 
-	AST_Node * decl = malloc(sizeof(AST_Node));
+	AST_Statement * decl = malloc(sizeof(AST_Statement));
 	decl->type = AST_STATEMENT_DECL_VAR;
 
 	decl->stat_decl.name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
@@ -197,20 +195,19 @@ AST_Node * parser_parse_statement_decl_var(Parser * parser) {
 	return decl;
 }
 
-static AST_Node * parser_parse_decl_arg(Parser * parser) {
-	AST_Node * arg = malloc(sizeof(AST_Node));
-	arg->type = AST_DECL_ARGS;
+static AST_Decl_Arg * parser_parse_decl_arg(Parser * parser) {
+	AST_Decl_Arg * arg = malloc(sizeof(AST_Decl_Arg));
 
-	arg->decl_args.name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
+	arg->name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
 	parser_match_and_advance(parser, TOKEN_COLON);
-	arg->decl_args.type = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
-	arg->decl_args.next = NULL;
+	arg->type = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
+	arg->next = NULL;
 
 	return arg;
 }
 
-static AST_Node * parser_parse_decl_args(Parser * parser) {
-	AST_Node * args_head = NULL;
+static AST_Decl_Arg * parser_parse_decl_args(Parser * parser) {
+	AST_Decl_Arg * args_head = NULL;
 
 	parser_match_and_advance(parser, TOKEN_PARENTESES_OPEN);
 	
@@ -218,14 +215,14 @@ static AST_Node * parser_parse_decl_args(Parser * parser) {
 		args_head = parser_parse_decl_arg(parser);
 	}
 	
-	AST_Node * args_curr = args_head;
+	AST_Decl_Arg * args_curr = args_head;
 
 	while (parser_match(parser, TOKEN_COMMA)) {
 		parser_advance(parser);
 
-		AST_Node * arg = parser_parse_decl_arg(parser);
-		args_curr->decl_args.next = arg;
-		args_curr = arg;
+		AST_Decl_Arg * arg = parser_parse_decl_arg(parser);
+		args_curr->next = arg;
+		args_curr       = arg;
 	}
 		
 	parser_match_and_advance(parser, TOKEN_PARENTESES_CLOSE);
@@ -233,10 +230,10 @@ static AST_Node * parser_parse_decl_args(Parser * parser) {
 	return args_head;
 }
 
-AST_Node * parser_parse_statement_decl_func(Parser * parser) {
+AST_Statement * parser_parse_statement_decl_func(Parser * parser) {
 	parser_match_and_advance(parser, TOKEN_KEYWORD_FUNC);
 
-	AST_Node * func = malloc(sizeof(AST_Node));
+	AST_Statement * func = malloc(sizeof(AST_Statement));
 	func->type = AST_STATEMENT_DECL_FUNC;
 	func->stat_func.name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
 	func->stat_func.args = parser_parse_decl_args(parser);
@@ -254,8 +251,8 @@ AST_Node * parser_parse_statement_decl_func(Parser * parser) {
 	return func;
 }
 
-AST_Node * parser_parse_statement_if(Parser * parser) {
-	AST_Node * branch = malloc(sizeof(AST_Node));
+AST_Statement * parser_parse_statement_if(Parser * parser) {
+	AST_Statement * branch = malloc(sizeof(AST_Statement));
 	branch->type = AST_STATEMENT_IF;
 
 	parser_match_and_advance(parser, TOKEN_KEYWORD_IF);
@@ -278,8 +275,8 @@ AST_Node * parser_parse_statement_if(Parser * parser) {
 	return branch;
 }
 
-AST_Node * parser_parse_statement_while(Parser * parser) {
-	AST_Node * while_loop = malloc(sizeof(AST_Node));
+AST_Statement * parser_parse_statement_while(Parser * parser) {
+	AST_Statement * while_loop = malloc(sizeof(AST_Statement));
 	while_loop->type = AST_STATEMENT_WHILE;
 	
 	parser_match_and_advance(parser, TOKEN_KEYWORD_WHILE);
@@ -294,15 +291,15 @@ AST_Node * parser_parse_statement_while(Parser * parser) {
 	return while_loop;
 }
 
-AST_Node * parser_parse_statement_block(Parser * parser) {
+AST_Statement * parser_parse_statement_block(Parser * parser) {
 	parser_match_and_advance(parser, TOKEN_BRACES_OPEN);
 
-	AST_Node * block;
+	AST_Statement * block;
 	
 	if (parser_match_statement(parser)) {
 		block = parser_parse_statements(parser);
 	} else {
-		block = malloc(sizeof(AST_Node));
+		block = malloc(sizeof(AST_Statement));
 		block->type = AST_STATEMENT_NOOP;
 	}
 
@@ -311,16 +308,16 @@ AST_Node * parser_parse_statement_block(Parser * parser) {
 	return block;
 }
 
-AST_Node * parser_parse_expression(Parser * parser) {
+AST_Expression * parser_parse_expression(Parser * parser) {
 	return parser_parse_expression_assign(parser);
 }
 
-AST_Node * parser_parse_expression_assign(Parser * parser) {
-	AST_Node * arithmetic = parser_parse_expression_equality(parser);
+AST_Expression * parser_parse_expression_assign(Parser * parser) {
+	AST_Expression * arithmetic = parser_parse_expression_equality(parser);
 
 	// Right Associative
 	if (parser_match(parser, TOKEN_ASSIGN)) {
-		AST_Node * expression = malloc(sizeof(AST_Node));
+		AST_Expression * expression = malloc(sizeof(AST_Expression));
 		expression->type = AST_EXPRESSION_OPERATOR_BIN;
 
 		expression->expr_op_bin.token = *parser_advance(parser);
@@ -333,15 +330,15 @@ AST_Node * parser_parse_expression_assign(Parser * parser) {
 	return arithmetic;
 }
 
-AST_Node * parser_parse_expression_equality(Parser * parser) {
-	AST_Node * arithmetic = parser_parse_expression_relational(parser);
+AST_Expression * parser_parse_expression_equality(Parser * parser) {
+	AST_Expression * arithmetic = parser_parse_expression_relational(parser);
 
 	// Left Associative
 	while (
 		parser_match(parser, TOKEN_OPERATOR_EQ)    ||
 		parser_match(parser, TOKEN_OPERATOR_NE)
 	) {
-		AST_Node * expression = malloc(sizeof(AST_Node));
+		AST_Expression * expression = malloc(sizeof(AST_Expression));
 		expression->type = AST_EXPRESSION_OPERATOR_BIN;
 
 		expression->expr_op_bin.token = *parser_advance(parser);
@@ -354,8 +351,8 @@ AST_Node * parser_parse_expression_equality(Parser * parser) {
 	return arithmetic;
 }
 
-AST_Node * parser_parse_expression_relational(Parser * parser) {
-	AST_Node * lhs = parser_parse_expression_bitshift(parser);
+AST_Expression * parser_parse_expression_relational(Parser * parser) {
+	AST_Expression * lhs = parser_parse_expression_bitshift(parser);
 	
 	// Left Associative
 	while (
@@ -364,7 +361,7 @@ AST_Node * parser_parse_expression_relational(Parser * parser) {
 		parser_match(parser, TOKEN_OPERATOR_GT)    ||
 		parser_match(parser, TOKEN_OPERATOR_GT_EQ)
 	) {
-		AST_Node * expression = malloc(sizeof(AST_Node));
+		AST_Expression * expression = malloc(sizeof(AST_Expression));
 		expression->type = AST_EXPRESSION_OPERATOR_BIN;
 
 		expression->expr_op_bin.token = *parser_advance(parser);
@@ -377,15 +374,15 @@ AST_Node * parser_parse_expression_relational(Parser * parser) {
 	return lhs;
 }
 
-AST_Node * parser_parse_expression_bitshift(Parser * parser) {
-	AST_Node * lhs = parser_parse_expression_additive(parser);
+AST_Expression * parser_parse_expression_bitshift(Parser * parser) {
+	AST_Expression * lhs = parser_parse_expression_additive(parser);
 	
 	// Left Associative
 	while (
 		parser_match(parser, TOKEN_OPERATOR_SHIFT_LEFT) ||
 		parser_match(parser, TOKEN_OPERATOR_SHIFT_RIGHT)
 	) {
-		AST_Node * expression = malloc(sizeof(AST_Node));
+		AST_Expression * expression = malloc(sizeof(AST_Expression));
 		expression->type = AST_EXPRESSION_OPERATOR_BIN;
 
 		expression->expr_op_bin.token = *parser_advance(parser);
@@ -398,15 +395,15 @@ AST_Node * parser_parse_expression_bitshift(Parser * parser) {
 	return lhs;
 }
 
-AST_Node * parser_parse_expression_additive(Parser * parser) {
-	AST_Node * lhs = parser_parse_expression_multiplicative(parser);
+AST_Expression * parser_parse_expression_additive(Parser * parser) {
+	AST_Expression * lhs = parser_parse_expression_multiplicative(parser);
 	
 	// Left Associative
 	while (
 		parser_match(parser, TOKEN_OPERATOR_PLUS) ||
 		parser_match(parser, TOKEN_OPERATOR_MINUS)
 	) {
-		AST_Node * expression = malloc(sizeof(AST_Node));
+		AST_Expression * expression = malloc(sizeof(AST_Expression));
 		expression->type = AST_EXPRESSION_OPERATOR_BIN;
 
 		expression->expr_op_bin.token = *parser_advance(parser);
@@ -419,15 +416,15 @@ AST_Node * parser_parse_expression_additive(Parser * parser) {
 	return lhs;
 }
 
-AST_Node * parser_parse_expression_multiplicative(Parser * parser) {
-	AST_Node * lhs = parser_parse_expression_prefix(parser);
+AST_Expression * parser_parse_expression_multiplicative(Parser * parser) {
+	AST_Expression * lhs = parser_parse_expression_prefix(parser);
 	
 	// Left Associative
 	while (
 		parser_match(parser, TOKEN_OPERATOR_MULTIPLY) ||
 		parser_match(parser, TOKEN_OPERATOR_DIVIDE)
 	) {
-		AST_Node * expression = malloc(sizeof(AST_Node));
+		AST_Expression * expression = malloc(sizeof(AST_Expression));
 		expression->type = AST_EXPRESSION_OPERATOR_BIN;
 
 		expression->expr_op_bin.token = *parser_advance(parser);
@@ -440,13 +437,13 @@ AST_Node * parser_parse_expression_multiplicative(Parser * parser) {
 	return lhs;
 }
 
-AST_Node * parser_parse_expression_prefix(Parser * parser) {
+AST_Expression * parser_parse_expression_prefix(Parser * parser) {
 	if (parser_match(parser, TOKEN_OPERATOR_INC) ||
 		parser_match(parser, TOKEN_OPERATOR_DEC) ||
 		parser_match(parser, TOKEN_OPERATOR_PLUS) ||
 		parser_match(parser, TOKEN_OPERATOR_MINUS)
 	) {
-		AST_Node * prefix = malloc(sizeof(AST_Node));
+		AST_Expression * prefix = malloc(sizeof(AST_Expression));
 		prefix->type = AST_EXPRESSION_OPERATOR_PRE;
 		prefix->expr_op_pre.token = *parser_advance(parser);
 		prefix->expr_op_pre.expr  = parser_parse_expression_postfix(parser);
@@ -457,13 +454,13 @@ AST_Node * parser_parse_expression_prefix(Parser * parser) {
 	return parser_parse_expression_postfix(parser);
 }
 
-AST_Node * parser_parse_expression_postfix(Parser * parser) {
-	AST_Node * operand =  parser_parse_expression_elementary(parser);
+AST_Expression * parser_parse_expression_postfix(Parser * parser) {
+	AST_Expression * operand =  parser_parse_expression_elementary(parser);
 
 	if (parser_match(parser, TOKEN_OPERATOR_INC) ||
 		parser_match(parser, TOKEN_OPERATOR_DEC)
 	) {
-		AST_Node * postfix = malloc(sizeof(AST_Node));
+		AST_Expression * postfix = malloc(sizeof(AST_Expression));
 		postfix->type = AST_EXPRESSION_OPERATOR_POST;
 		postfix->expr_op_post.token = *parser_advance(parser);
 		postfix->expr_op_post.expr  = operand;
@@ -474,12 +471,12 @@ AST_Node * parser_parse_expression_postfix(Parser * parser) {
 	return operand;
 }
 
-AST_Node * parser_parse_expression_elementary(Parser * parser) {
+AST_Expression * parser_parse_expression_elementary(Parser * parser) {
 	if (parser_match(parser, TOKEN_IDENTIFIER)) {
 		Token const * identifier = parser_advance(parser);
 
 		if (parser_match(parser, TOKEN_PARENTESES_OPEN)) {
-			AST_Node * factor = malloc(sizeof(AST_Node));
+			AST_Expression * factor = malloc(sizeof(AST_Expression));
 
 			factor->type = AST_EXPRESSION_CALL_FUNC;
 			factor->expr_call.function = identifier->value_str;
@@ -487,7 +484,7 @@ AST_Node * parser_parse_expression_elementary(Parser * parser) {
 
 			return factor;
 		} else {
-			AST_Node * factor = malloc(sizeof(AST_Node));
+			AST_Expression * factor = malloc(sizeof(AST_Expression));
 
 			factor->type = AST_EXPRESSION_VAR;
 			factor->expr_var.token = *identifier;
@@ -499,7 +496,7 @@ AST_Node * parser_parse_expression_elementary(Parser * parser) {
 		parser_match(parser, TOKEN_LITERAL_BOOL) ||
 		parser_match(parser, TOKEN_LITERAL_STRING)
 	) {
-		AST_Node * factor = malloc(sizeof(AST_Node));
+		AST_Expression * factor = malloc(sizeof(AST_Expression));
 
 		factor->type = AST_EXPRESSION_CONST;
 		factor->expr_var.token = *parser_advance(parser);
@@ -508,7 +505,7 @@ AST_Node * parser_parse_expression_elementary(Parser * parser) {
 	} else if (parser_match(parser, TOKEN_PARENTESES_OPEN)) {
 		parser_advance(parser);
 
-		AST_Node * expr = parser_parse_expression(parser);
+		AST_Expression * expr = parser_parse_expression(parser);
 
 		parser_match_and_advance(parser, TOKEN_PARENTESES_CLOSE);
 
