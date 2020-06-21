@@ -53,6 +53,8 @@ bool parser_match_statement(Parser * parser) {
 		parser_match_statement_decl_func(parser) ||
 		parser_match_statement_if(parser)        ||
 		parser_match_statement_while(parser)     ||
+		parser_match_statement_break(parser)     ||
+		parser_match_statement_continue(parser)  ||
 		parser_match_statement_return(parser)    ||
 		parser_match_statement_block(parser);
 }
@@ -79,6 +81,14 @@ bool parser_match_statement_while(Parser * parser) {
 
 bool parser_match_statement_block(Parser * parser) {
 	return parser_match(parser, TOKEN_BRACES_OPEN);
+}
+
+bool parser_match_statement_break(Parser * parser) {
+	return parser_match(parser, TOKEN_KEYWORD_BREAK);
+}
+
+bool parser_match_statement_continue(Parser * parser) {
+	return parser_match(parser, TOKEN_KEYWORD_CONTINUE);
 }
 
 bool parser_match_statement_return(Parser * parser) {
@@ -167,6 +177,10 @@ AST_Statement * parser_parse_statement(Parser * parser) {
 		return parser_parse_statement_if(parser);
 	} else if (parser_match_statement_while(parser)) {
 		return parser_parse_statement_while(parser);
+	} else if (parser_match_statement_break(parser)) {
+		return parser_parse_statement_break(parser);
+	} else if (parser_match_statement_continue(parser)) {
+		return parser_parse_statement_continue(parser);
 	} else if (parser_match_statement_return(parser)) {
 		return parser_parse_statement_return(parser);
 	} else if (parser_match_statement_block(parser)) {
@@ -298,6 +312,26 @@ AST_Statement * parser_parse_statement_while(Parser * parser) {
 	return while_loop;
 }
 
+AST_Statement * parser_parse_statement_break(Parser * parser) {
+	AST_Statement * ret = malloc(sizeof(AST_Statement));
+	ret->type = AST_STATEMENT_BREAK;
+	
+	parser_match_and_advance(parser, TOKEN_KEYWORD_BREAK);
+	parser_match_and_advance(parser, TOKEN_SEMICOLON);
+
+	return ret;
+}
+
+AST_Statement * parser_parse_statement_continue(Parser * parser) {
+	AST_Statement * ret = malloc(sizeof(AST_Statement));
+	ret->type = AST_STATEMENT_CONTINUE;
+	
+	parser_match_and_advance(parser, TOKEN_KEYWORD_CONTINUE);
+	parser_match_and_advance(parser, TOKEN_SEMICOLON);
+
+	return ret;
+}
+
 AST_Statement * parser_parse_statement_return(Parser * parser) {
 	AST_Statement * ret = malloc(sizeof(AST_Statement));
 	ret->type = AST_STATEMENT_RETURN;
@@ -337,42 +371,57 @@ AST_Expression * parser_parse_expression(Parser * parser) {
 }
 
 AST_Expression * parser_parse_expression_assign(Parser * parser) {
-	AST_Expression * arithmetic = parser_parse_expression_equality(parser);
+	AST_Expression * lhs = parser_parse_expression_equality(parser);
 
 	// Right Associative
 	if (parser_match(parser, TOKEN_ASSIGN)) {
+		if (lhs->type != AST_EXPRESSION_VAR) {
+			printf("ERROR: Left hand operand of '=' operator must be a variable!\n");
+			abort();
+		}
+
 		AST_Expression * expression = malloc(sizeof(AST_Expression));
 		expression->type = AST_EXPRESSION_OPERATOR_BIN;
 
 		expression->expr_op_bin.token = *parser_advance(parser);
-		expression->expr_op_bin.expr_left  = arithmetic;
+		expression->expr_op_bin.expr_left  = lhs;
 		expression->expr_op_bin.expr_right = parser_parse_expression(parser);
 
-		arithmetic = expression;
+		expression->height = max(
+			expression->expr_op_bin.expr_left->height,
+			expression->expr_op_bin.expr_right->height
+		) + 1;
+
+		lhs = expression;
 	}
 
-	return arithmetic;
+	return lhs;
 }
 
 AST_Expression * parser_parse_expression_equality(Parser * parser) {
-	AST_Expression * arithmetic = parser_parse_expression_relational(parser);
+	AST_Expression * lhs = parser_parse_expression_relational(parser);
 
 	// Left Associative
 	while (
-		parser_match(parser, TOKEN_OPERATOR_EQ)    ||
+		parser_match(parser, TOKEN_OPERATOR_EQ) ||
 		parser_match(parser, TOKEN_OPERATOR_NE)
 	) {
 		AST_Expression * expression = malloc(sizeof(AST_Expression));
 		expression->type = AST_EXPRESSION_OPERATOR_BIN;
 
 		expression->expr_op_bin.token = *parser_advance(parser);
-		expression->expr_op_bin.expr_left  = arithmetic;
+		expression->expr_op_bin.expr_left  = lhs;
 		expression->expr_op_bin.expr_right = parser_parse_expression_relational(parser);
 
-		arithmetic = expression;
+		expression->height = max(
+			expression->expr_op_bin.expr_left->height,
+			expression->expr_op_bin.expr_right->height
+		) + 1;
+
+		lhs = expression;
 	}
 
-	return arithmetic;
+	return lhs;
 }
 
 AST_Expression * parser_parse_expression_relational(Parser * parser) {
@@ -391,6 +440,11 @@ AST_Expression * parser_parse_expression_relational(Parser * parser) {
 		expression->expr_op_bin.token = *parser_advance(parser);
 		expression->expr_op_bin.expr_left  = lhs;
 		expression->expr_op_bin.expr_right = parser_parse_expression_bitshift(parser);
+
+		expression->height = max(
+			expression->expr_op_bin.expr_left->height,
+			expression->expr_op_bin.expr_right->height
+		) + 1;
 
 		lhs = expression;
 	}
@@ -413,6 +467,11 @@ AST_Expression * parser_parse_expression_bitshift(Parser * parser) {
 		expression->expr_op_bin.expr_left  = lhs;
 		expression->expr_op_bin.expr_right = parser_parse_expression_additive(parser);
 
+		expression->height = max(
+			expression->expr_op_bin.expr_left->height,
+			expression->expr_op_bin.expr_right->height
+		) + 1;
+
 		lhs = expression;
 	}
 
@@ -433,6 +492,11 @@ AST_Expression * parser_parse_expression_additive(Parser * parser) {
 		expression->expr_op_bin.token = *parser_advance(parser);
 		expression->expr_op_bin.expr_left  = lhs;
 		expression->expr_op_bin.expr_right = parser_parse_expression_multiplicative(parser);
+
+		expression->height = max(
+			expression->expr_op_bin.expr_left->height,
+			expression->expr_op_bin.expr_right->height
+		) + 1;
 
 		lhs = expression;
 	}
@@ -455,6 +519,11 @@ AST_Expression * parser_parse_expression_multiplicative(Parser * parser) {
 		expression->expr_op_bin.expr_left  = lhs;
 		expression->expr_op_bin.expr_right = parser_parse_expression_prefix(parser);
 
+		expression->height = max(
+			expression->expr_op_bin.expr_left->height,
+			expression->expr_op_bin.expr_right->height
+		) + 1;
+
 		lhs = expression;
 	}
 
@@ -471,6 +540,7 @@ AST_Expression * parser_parse_expression_prefix(Parser * parser) {
 		prefix->type = AST_EXPRESSION_OPERATOR_PRE;
 		prefix->expr_op_pre.token = *parser_advance(parser);
 		prefix->expr_op_pre.expr  = parser_parse_expression_postfix(parser);
+		prefix->height = prefix->expr_op_pre.expr->height + 1;
 
 		return prefix;
 	}
@@ -486,6 +556,7 @@ AST_Expression * parser_parse_expression_postfix(Parser * parser) {
 	) {
 		AST_Expression * postfix = malloc(sizeof(AST_Expression));
 		postfix->type = AST_EXPRESSION_OPERATOR_POST;
+		postfix->height = operand->height + 1;
 		postfix->expr_op_post.token = *parser_advance(parser);
 		postfix->expr_op_post.expr  = operand;
 
@@ -503,6 +574,7 @@ AST_Expression * parser_parse_expression_elementary(Parser * parser) {
 			AST_Expression * factor = malloc(sizeof(AST_Expression));
 
 			factor->type = AST_EXPRESSION_CALL_FUNC;
+			factor->height = 0;
 			factor->expr_call.function = identifier->value_str;
 			factor->expr_call.args = parser_parse_call_args(parser);
 
@@ -511,6 +583,7 @@ AST_Expression * parser_parse_expression_elementary(Parser * parser) {
 			AST_Expression * factor = malloc(sizeof(AST_Expression));
 
 			factor->type = AST_EXPRESSION_VAR;
+			factor->height = 0;
 			factor->expr_var.token = *identifier;
 
 			return factor;
@@ -523,6 +596,7 @@ AST_Expression * parser_parse_expression_elementary(Parser * parser) {
 		AST_Expression * factor = malloc(sizeof(AST_Expression));
 
 		factor->type = AST_EXPRESSION_CONST;
+		factor->height = 0;
 		factor->expr_var.token = *parser_advance(parser);
 
 		return factor;

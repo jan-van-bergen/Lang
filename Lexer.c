@@ -153,11 +153,11 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 	if (match_length = lexer_match(lexer, ">>")) { token->type = TOKEN_OPERATOR_SHIFT_RIGHT; lexer->index += match_length; return; }
 
 	// Relational Operators
-	if (match_length = lexer_match(lexer, "<"))  { token->type = TOKEN_OPERATOR_LT;    lexer->index += match_length; return; }
-	if (match_length = lexer_match(lexer, ">"))  { token->type = TOKEN_OPERATOR_GT;    lexer->index += match_length; return; }
 	if (match_length = lexer_match(lexer, "<=")) { token->type = TOKEN_OPERATOR_LT_EQ; lexer->index += match_length; return; }
 	if (match_length = lexer_match(lexer, ">=")) { token->type = TOKEN_OPERATOR_GT_EQ; lexer->index += match_length; return; }
-
+	if (match_length = lexer_match(lexer, "<"))  { token->type = TOKEN_OPERATOR_LT;    lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, ">"))  { token->type = TOKEN_OPERATOR_GT;    lexer->index += match_length; return; }
+	
 	// Equality Operators
 	if (match_length = lexer_match(lexer, "==")) { token->type = TOKEN_OPERATOR_EQ; lexer->index += match_length; return; }
 	if (match_length = lexer_match(lexer, "!=")) { token->type = TOKEN_OPERATOR_NE; lexer->index += match_length; return; }

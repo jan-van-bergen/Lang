@@ -198,6 +198,20 @@ static void print_statement(AST_Statement const * stat, int indent) {
 			break;
 		}
 
+		case AST_STATEMENT_BREAK: {
+			print_indent(indent);
+			printf("break;\n");
+
+			break;
+		}
+
+		case AST_STATEMENT_CONTINUE: {
+			print_indent(indent);
+			printf("continue;\n");
+
+			break;
+		}
+
 		default: printf("Unprintable Statement!\n");
 	}
 }

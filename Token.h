@@ -38,10 +38,10 @@ typedef enum Token_Type {
 	TOKEN_OPERATOR_DIVIDE,	 // /
 	//TOKEN_OPERATOR_MODULO,	 // %
 
-	TOKEN_OPERATOR_LT,    // <
-	TOKEN_OPERATOR_GT,    // >
 	TOKEN_OPERATOR_LT_EQ, // <=
 	TOKEN_OPERATOR_GT_EQ, // >= 
+	TOKEN_OPERATOR_LT,    // <
+	TOKEN_OPERATOR_GT,    // >
 
 	TOKEN_OPERATOR_EQ, // ==
 	TOKEN_OPERATOR_NE, // !=
