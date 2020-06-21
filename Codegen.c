@@ -23,7 +23,7 @@
 
 #define REGISTER_COUNT 12
 
-char const * reg_names[REGISTER_COUNT] = {
+static char const * reg_names[REGISTER_COUNT] = {
 	[EAX] = "eax",
 	[EBX] = "ebx",
 	[ECX] = "ecx",
@@ -38,54 +38,6 @@ char const * reg_names[REGISTER_COUNT] = {
 	[R15] = "r15d",
 };
 
-typedef struct Code {
-	char * code;
-	int code_len;
-	int code_cap;
-} Code;
-
-static void code_init(Code * code) {
-	const int initial_capacity = 512;
-
-	code->code     = malloc(initial_capacity);
-	code->code_len = 0;
-	code->code_cap = initial_capacity;
-}
-
-//static void code_append(Code * code, char const * chars, int char_count) {
-//	int new_length = code->code_len + char_count;
-//	if (new_length >= code->code_cap) {
-//		code->code_cap *= 2;
-//		code->code = realloc(code->code, code->code_cap);
-//	}
-//
-//	memcpy(code->code + code->code_len, chars, char_count);
-//	code->code_len = new_length;
-//}
-//
-//#define CODE_APPEND(code, buf) code_append(code, buf, sizeof(buf) - 1);
-
-static void code_append(Code * code, char const * fmt, ...) {
-	va_list args;
-    va_start(args, fmt);
-
-	char new_code[1024];
-	vsprintf_s(new_code, sizeof(new_code), fmt, args);
-	
-	va_end(args);
-	
-	int new_code_len = strlen(new_code);
-
-	int new_length = code->code_len + new_code_len;
-	if (new_length >= code->code_cap) {
-		code->code_cap *= 2;
-		code->code = realloc(code->code, code->code_cap);
-	}
-
-	memcpy(code->code + code->code_len, new_code, new_code_len + 1);
-	code->code_len = new_length;
-}
-
 typedef struct Context {
 	bool regs_occupied[12];
 
@@ -95,7 +47,9 @@ typedef struct Context {
 	char const ** variables;
 	char const ** functions;
 
-	Code code;
+	char * code;
+	int    code_len;
+	int    code_cap;
 } Context;
 
 void context_init(Context * context) {
@@ -107,7 +61,11 @@ void context_init(Context * context) {
 	context->variables = malloc(sizeof(char const *) * 64);
 	context->functions = malloc(sizeof(char const *) * 32);
 
-	code_init(&context->code);
+	const int initial_capacity = 512;
+
+	context->code = malloc(initial_capacity);
+	context->code_len = 0;
+	context->code_cap = initial_capacity;
 }
 
 int context_reg_request(Context * context) {
@@ -132,6 +90,27 @@ int context_new_label(Context * ctx) {
 	return ctx->label++;
 }
 
+static void code_append(Context * ctx, char const * fmt, ...) {
+	va_list args;
+    va_start(args, fmt);
+
+	char new_code[1024];
+	vsprintf_s(new_code, sizeof(new_code), fmt, args);
+	
+	va_end(args);
+	
+	int new_code_len = strlen(new_code);
+
+	int new_length = ctx->code_len + new_code_len;
+	if (new_length >= ctx->code_cap) {
+		ctx->code_cap *= 2;
+		ctx->code = realloc(ctx->code, ctx->code_cap);
+	}
+
+	memcpy(ctx->code + ctx->code_len, new_code, new_code_len + 1);
+	ctx->code_len = new_length;
+}
+
 static int  codegen_expression(Context * ctx, AST_Expression const * expr);
 static void codegen_statement (Context * ctx, AST_Statement  const * stat);
 
@@ -142,13 +121,13 @@ static int codegen_expression_const(Context * ctx, AST_Expression const * expr) 
 	switch (expr->expr_const.token.type) {
 		case TOKEN_LITERAL_INT:  val = expr->expr_const.token.value_int;  break;
 		case TOKEN_LITERAL_BOOL: val = expr->expr_const.token.value_char; break;
-		//case TOKEN_LITERAL_STRING: code_append(&ctx->code, "mov %s, %i\n", reg_names[reg], expr->expr_const.token.value_int); break;
+		//case TOKEN_LITERAL_STRING: code_append(ctx, "mov %s, %i\n", reg_names[reg], expr->expr_const.token.value_int); break;
 
 		default: abort();
 	}
 	
 	int reg = context_reg_request(ctx);
-	code_append(&ctx->code, "mov %s, %i\n", reg_names[reg], val);
+	code_append(ctx, "mov %s, %i\n", reg_names[reg], val);
 
 	return reg;
 }
@@ -157,7 +136,7 @@ static int codegen_expression_var(Context * ctx, AST_Expression const * expr) {
 	assert(expr->type == AST_EXPRESSION_VAR);
 
 	int reg = context_reg_request(ctx);
-	code_append(&ctx->code, "mov %s, %s\n", reg_names[reg], expr->expr_var.token.value_str);
+	code_append(ctx, "mov %s, %s\n", reg_names[reg], expr->expr_var.token.value_str);
 
 	return reg;
 }
@@ -166,13 +145,13 @@ static void codegen_compare_branch(Context * ctx, char const * jump_instruction,
 	int label_else = context_new_label(ctx);
 	int label_exit = context_new_label(ctx);
 
-	code_append(&ctx->code, "cmp %s, %s\n", reg_name_left, reg_name_right);
-	code_append(&ctx->code, "%s L%i\n", jump_instruction, label_else);
-	code_append(&ctx->code, "mov %s, 1\n", reg_name_left);
-	code_append(&ctx->code, "jmp L%i\n", label_exit);
-	code_append(&ctx->code, "L%i:\n", label_else);
-	code_append(&ctx->code, "mov %s, 0\n", reg_name_left);
-	code_append(&ctx->code, "L%i:\n", label_exit);
+	code_append(ctx, "cmp %s, %s\n", reg_name_left, reg_name_right);
+	code_append(ctx, "%s L%i\n", jump_instruction, label_else);
+	code_append(ctx, "mov %s, 1\n", reg_name_left);
+	code_append(ctx, "jmp L%i\n", label_exit);
+	code_append(ctx, "L%i:\n", label_else);
+	code_append(ctx, "mov %s, 0\n", reg_name_left);
+	code_append(ctx, "L%i:\n", label_exit);
 }
 
 static int codegen_expression_op_bin(Context * ctx, AST_Expression const * expr) {
@@ -182,7 +161,7 @@ static int codegen_expression_op_bin(Context * ctx, AST_Expression const * expr)
 		char const * var = expr->expr_op_bin.expr_left->expr_var.token.value_str;
 
 		int reg = codegen_expression(ctx, expr->expr_op_bin.expr_right);
-		code_append(&ctx->code, "mov %s, %s\n", var, reg_names[reg]);
+		code_append(ctx, "mov %s, %s\n", var, reg_names[reg]);
 
 		return reg;
 	}
@@ -201,25 +180,25 @@ static int codegen_expression_op_bin(Context * ctx, AST_Expression const * expr)
 	char const * reg_name_right = reg_names[reg_right];
 
 	switch (expr->expr_op_bin.token.type) {
-		case TOKEN_OPERATOR_PLUS:  code_append(&ctx->code, "add %s, %s\n", reg_name_left, reg_name_right); break;
-		case TOKEN_OPERATOR_MINUS: code_append(&ctx->code, "sub %s, %s\n", reg_name_left, reg_name_right); break;
+		case TOKEN_OPERATOR_PLUS:  code_append(ctx, "add %s, %s\n", reg_name_left, reg_name_right); break;
+		case TOKEN_OPERATOR_MINUS: code_append(ctx, "sub %s, %s\n", reg_name_left, reg_name_right); break;
 
-		case TOKEN_OPERATOR_MULTIPLY: code_append(&ctx->code, "imul %s, %s\n", reg_name_left, reg_name_right); break;
+		case TOKEN_OPERATOR_MULTIPLY: code_append(ctx, "imul %s, %s\n", reg_name_left, reg_name_right); break;
 		//case TOKEN_OPERATOR_DIVIDE: {
 		//	int reg_temp;
 
 		//	if (reg_left != EAX) {
 		//		reg_temp = context_reg_request(ctx);
 
-		//		code_append(&ctx->code, "mov %s, eax\n", reg_names[reg_temp]);
-		//		code_append(&ctx->code, "mov eax, %s\n", reg_name_left);
+		//		code_append(ctx, "mov %s, eax\n", reg_names[reg_temp]);
+		//		code_append(ctx, "mov eax, %s\n", reg_name_left);
 		//	}
 
-		//	code_append(&ctx->code, "cdq\nidiv %s\n", reg_name_right);
+		//	code_append(ctx, "cdq\nidiv %s\n", reg_name_right);
 
 		//	if (reg_left != EAX) {
-		//		code_append(&ctx->code, "mov %s, eax\n", reg_name_left);
-		//		code_append(&ctx->code, "mov eax, %s\n", reg_names[reg_temp]);
+		//		code_append(ctx, "mov %s, eax\n", reg_name_left);
+		//		code_append(ctx, "mov eax, %s\n", reg_names[reg_temp]);
 
 		//		context_reg_free(ctx, reg_temp);
 		//	}
@@ -259,7 +238,7 @@ static int codegen_expression(Context * ctx, AST_Expression const * expr) {
 static void codegen_statement_noop(Context * ctx, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_NOOP);
 
-	code_append(&ctx->code, "nop\n");
+	code_append(ctx, "nop\n");
 }
 
 static void codegen_statement_statements(Context * ctx, AST_Statement const * stat) {
@@ -293,24 +272,24 @@ static void codegen_statement_if(Context * ctx, AST_Statement const * stat) {
 	int label = context_new_label(ctx);
 
 	if (stat->stat_if.case_false == NULL) {
-		code_append(&ctx->code, "cmp %s, 0\n", reg_names[reg]);
-		code_append(&ctx->code, "je L_exit%i\n", label);
+		code_append(ctx, "cmp %s, 0\n", reg_names[reg]);
+		code_append(ctx, "je L_exit%i\n", label);
 
 		codegen_statement(ctx, stat->stat_if.case_true);
 
-		code_append(&ctx->code, "L_exit%i:\n", label);
+		code_append(ctx, "L_exit%i:\n", label);
 	} else {
-		code_append(&ctx->code, "cmp %s, 0\n", reg_names[reg]);
-		code_append(&ctx->code, "je L_else%i\n", label);
+		code_append(ctx, "cmp %s, 0\n", reg_names[reg]);
+		code_append(ctx, "je L_else%i\n", label);
 
 		codegen_statement(ctx, stat->stat_if.case_true);
 
-		code_append(&ctx->code, "jmp L_exit%i\n", label);
-		code_append(&ctx->code, "L_else%i:\n",   label);
+		code_append(ctx, "jmp L_exit%i\n", label);
+		code_append(ctx, "L_else%i:\n",   label);
 		
 		codegen_statement(ctx, stat->stat_if.case_false);
 
-		code_append(&ctx->code, "L_exit%i:\n", label);
+		code_append(ctx, "L_exit%i:\n", label);
 	}
 }
 
@@ -318,20 +297,20 @@ static void codegen_statement_while(Context * ctx, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_WHILE);
 
 	int label = context_new_label(ctx);
-	code_append(&ctx->code, "L_loop%i:\n", label);
+	code_append(ctx, "L_loop%i:\n", label);
 	
 	int reg = codegen_expression(ctx, stat->stat_while.condition);
 	context_reg_free(ctx, reg);
 
-	code_append(&ctx->code, "cmp %s, 0\n", reg_names[reg]);
-	code_append(&ctx->code, "je L_exit%i\n", label);
+	code_append(ctx, "cmp %s, 0\n", reg_names[reg]);
+	code_append(ctx, "je L_exit%i\n", label);
 
 	ctx->current_loop_label = label;
 	codegen_statement(ctx, stat->stat_while.body);
 	ctx->current_loop_label = -1;
 
-	code_append(&ctx->code, "jmp L_loop%i\n", label);
-	code_append(&ctx->code, "L_exit%i:\n", label);
+	code_append(ctx, "jmp L_loop%i\n", label);
+	code_append(ctx, "L_exit%i:\n", label);
 }
 
 static void codegen_statement_break(Context * ctx, AST_Statement const * stat) {
@@ -339,7 +318,7 @@ static void codegen_statement_break(Context * ctx, AST_Statement const * stat) {
 
 	if (ctx->current_loop_label == -1) abort();
 
-	code_append(&ctx->code, "jmp L_exit%i\n", ctx->current_loop_label);
+	code_append(ctx, "jmp L_exit%i\n", ctx->current_loop_label);
 }
 
 static void codegen_statement_continue(Context * ctx, AST_Statement const * stat) {
@@ -347,7 +326,7 @@ static void codegen_statement_continue(Context * ctx, AST_Statement const * stat
 	
 	if (ctx->current_loop_label == -1) abort();
 	
-	code_append(&ctx->code, "jmp L_loop%i\n", ctx->current_loop_label);
+	code_append(ctx, "jmp L_loop%i\n", ctx->current_loop_label);
 }
 
 static void codegen_statement_return(Context * ctx, AST_Statement const * stat) {
@@ -357,13 +336,13 @@ static void codegen_statement_return(Context * ctx, AST_Statement const * stat) 
 		int reg_return = codegen_expression(ctx, stat->stat_return.expr);
 
 		if (reg_return != EAX) {
-			code_append(&ctx->code, "mov eax, %s ; Return via eax\n", reg_names[reg_return]);
+			code_append(ctx, "mov eax, %s ; Return via eax\n", reg_names[reg_return]);
 		}
 	} else {
-		code_append(&ctx->code, "mov eax, 0\n");
+		code_append(ctx, "mov eax, 0\n");
 	}
 
-	code_append(&ctx->code, "ret\n");
+	code_append(ctx, "ret\n");
 }
 
 static void codegen_statement(Context * ctx, AST_Statement const * stat) {
@@ -401,19 +380,20 @@ void codegen_program(AST_Statement const * program) {
 		"b dd 0\n"
 		"c dd 0\n"
 		"d dd 0\n"
+		"i dd 0\n"
+		"j dd 0\n"
 
 		".code\n"
 		"main PROC\n";
 
-	code_append(&ctx.code, pre);
+	code_append(&ctx, pre);
 
 	codegen_statement(&ctx, program);
 
 	char const post[] = "main ENDP\nEND";
 
-	code_append(&ctx.code, post);
-	ctx.code.code_len++;
-
+	code_append(&ctx, post);
+	
 	char const * file_asm = "codegen.asm";
 	char const * file_exe = "codegen.exe";
 
@@ -422,14 +402,14 @@ void codegen_program(AST_Statement const * program) {
 
 	if (file == NULL) abort();
 
-	fwrite(ctx.code.code, 1, strlen(ctx.code.code), file);
+	fwrite(ctx.code, 1, strlen(ctx.code), file);
 	fclose(file);
 
 	char const * dir_kernel32 = "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.18362.0\\um\\x64\\kernel32.lib";
 	char const * dir_user32   = "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.18362.0\\um\\x64\\user32.lib";
 
 	char const cmd[1024];
-	sprintf_s(cmd, sizeof(cmd), "ml64.exe %s /link /subsystem:windows /defaultlib:\"%s\" /defaultlib:\"%s\" /entry:main", file_asm, dir_kernel32, dir_user32);
+	sprintf_s(cmd, sizeof(cmd), "ml64.exe %s /link /subsystem:WINDOWS /defaultlib:\"%s\" /defaultlib:\"%s\" /entry:main", file_asm, dir_kernel32, dir_user32);
 
 	if (system(cmd) != EXIT_SUCCESS) abort();
 
