@@ -207,8 +207,7 @@ static int codegen_expression_const(Context * ctx, AST_Expression const * expr) 
 	switch (expr->expr_const.token.type) {
 		case TOKEN_LITERAL_INT:  val = expr->expr_const.token.value_int;  break;
 		case TOKEN_LITERAL_BOOL: val = expr->expr_const.token.value_char; break;
-		//case TOKEN_LITERAL_STRING: code_append(ctx, "mov %s, %i\n", reg_names[reg], expr->expr_const.token.value_int); break;
-		
+
 		case TOKEN_LITERAL_STRING: {
 			int reg = context_reg_request(ctx);
 			int lit_index = context_add_string_literal(ctx, expr->expr_const.token.value_str);
@@ -265,7 +264,7 @@ static int codegen_expression_op_bin(Context * ctx, AST_Expression const * expr)
 				char const * var_name = expr_left->expr_var.token.value_str;
 				int          var_offset = context_get_var_offset(ctx, var_name);
 
-				if (expr_right->type == AST_EXPRESSION_CONST) {
+				if (expr_right->type == AST_EXPRESSION_CONST && expr_right->expr_const.token.type != TOKEN_LITERAL_STRING) {
 					code_append(ctx, "mov QWORD [rsp + %i * 8], %i ; set %s\n", var_offset, expr_right->expr_const.token.value_int, var_name);
 
 					return -1;
@@ -284,7 +283,7 @@ static int codegen_expression_op_bin(Context * ctx, AST_Expression const * expr)
 				int deref_reg = context_reg_request(ctx);
 				code_append(ctx, "mov %s, QWORD [rsp + %i * 8]\n", reg_names[deref_reg], var_offset);
 
-				if (expr_right->type == AST_EXPRESSION_CONST) {
+				if (expr_right->type == AST_EXPRESSION_CONST && expr_right->expr_const.token.type != TOKEN_LITERAL_STRING) {
 					code_append(ctx, "mov QWORD [%s], %i ; set ptr %s\n", reg_names[deref_reg], expr_right->expr_const.token.value_int, var_name);
 					context_reg_free(ctx, deref_reg);
 
@@ -692,9 +691,6 @@ char const * codegen_program(AST_Statement const * program) {
 	context_init(&ctx);
 
 	char const asm_init[] =
-		"EXTERN MessageBoxA: PROC\n"
-		"EXTERN GetForegroundWindow: PROC\n\n"
-
 		"GLOBAL main\n\n"
 
 		"SECTION .code\n";
