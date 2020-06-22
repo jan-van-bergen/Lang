@@ -4,7 +4,7 @@ EXTERN GetForegroundWindow: PROC
 GLOBAL main
 
 SECTION .data
-hello_msg db "Hello world", 0
+hello_msg db "Hello world\n", 0
 info_msg  db "Info", 0
 
 SECTION .bss

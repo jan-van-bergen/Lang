@@ -3,27 +3,30 @@ EXTERN GetForegroundWindow: PROC
 
 GLOBAL main
 
-SECTION .data
-hello_msg db "Hello world", 0
-info_msg  db "Info", 0
-
-SECTION .bss
-alignb 8
-
 SECTION .code
-use_ptr:
+deref:
     push rcx
-    mov rax, QWORD [RSP + 0 * 8] ; deref ptr
-    mov rax, QWORD [rax]
+    mov rax, QWORD [rsp + 0 * 8]
+    mov QWORD [rax], 21 ; set ptr ptr
+    ; Default return
     add rsp, 8
+    xor rax, rax
     ret
-
+    
 main:
     sub rsp, 8
     mov QWORD [rsp + 0 * 8], 42 ; set a
-    lea rax, QWORD [RSP + 0 * 8] ; addrof a
+    sub rsp, 32 + 0
+    lea rax, QWORD [RSP + 4 * 8] ; addrof a
     mov rcx, rax ; arg 0
-    call use_ptr
+    call deref
+    add rsp, 32 + 0
+    mov rax, QWORD [rsp + 0 * 8] ; get a
     add rsp, 8
     ret
-
+    ; Default return
+    add rsp, 8
+    xor rax, rax
+    ret
+    
+SECTION .data

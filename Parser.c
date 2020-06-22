@@ -387,7 +387,7 @@ static AST_Expression * parser_parse_expression_assign(Parser * parser) {
 
 	// Right Associative
 	if (parser_match(parser, TOKEN_ASSIGN)) {
-		if (lhs->type != AST_EXPRESSION_VAR) {
+		if (lhs->type != AST_EXPRESSION_VAR && lhs->type != AST_EXPRESSION_OPERATOR_PRE) {
 			printf("ERROR: Left hand operand of '=' operator must be a variable!\n");
 			abort();
 		}

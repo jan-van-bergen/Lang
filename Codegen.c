@@ -65,6 +65,10 @@ typedef struct Context {
 	char * code;
 	int    code_len;
 	int    code_cap;
+
+	char const ** string_lits; // String Literals
+	int           string_lit_len;
+	int           string_lit_cap;
 } Context;
 
 void context_init(Context * ctx) {
@@ -78,11 +82,13 @@ void context_init(Context * ctx) {
 	ctx->current_scope = NULL;
 	ctx->stack_offset = 0;
 
-	const int initial_capacity = 512;
-
-	ctx->code = malloc(initial_capacity);
 	ctx->code_len = 0;
-	ctx->code_cap = initial_capacity;
+	ctx->code_cap = 512;
+	ctx->code     = malloc(ctx->code_cap);
+
+	ctx->string_lit_len = 0;
+	ctx->string_lit_cap = 16;
+	ctx->string_lits    = malloc(ctx->string_lit_cap * sizeof(char const *));
 }
 
 int context_reg_request(Context * context) {
@@ -179,6 +185,18 @@ static void code_append(Context * ctx, char const * fmt, ...) {
 	ctx->code_len = new_length;
 }
 
+static int context_add_string_literal(Context * ctx, char const * str_lit) {
+	if (ctx->string_lit_len == ctx->string_lit_cap) {
+		ctx->string_lit_cap *= 2;
+		ctx->string_lits = realloc(ctx->string_lits, ctx->string_lit_cap * sizeof(char const *));
+	}
+
+	int index = ctx->string_lit_len++;
+	ctx->string_lits[index] = str_lit;
+
+	return index;
+}
+
 static int  codegen_expression(Context * ctx, AST_Expression const * expr);
 static void codegen_statement (Context * ctx, AST_Statement  const * stat);
 
@@ -193,7 +211,9 @@ static int codegen_expression_const(Context * ctx, AST_Expression const * expr) 
 		
 		case TOKEN_LITERAL_STRING: {
 			int reg = context_reg_request(ctx);
-			code_append(ctx, "lea %s, [REL hello_msg]\n", reg_names[reg]);
+			int lit_index = context_add_string_literal(ctx, expr->expr_const.token.value_str);
+
+			code_append(ctx, "lea %s, [REL str_lit_%i]\n", reg_names[reg], lit_index);
 
 			return reg;
 		}
@@ -237,20 +257,48 @@ static int codegen_expression_op_bin(Context * ctx, AST_Expression const * expr)
 	assert(expr->type == AST_EXPRESSION_OPERATOR_BIN);
 
 	if (expr->expr_op_bin.token.type == TOKEN_ASSIGN) {
-		char const * var_name = expr->expr_op_bin.expr_left->expr_var.token.value_str;
-		int          var_offset = context_get_var_offset(ctx, var_name);
-
+		AST_Expression const * expr_left  = expr->expr_op_bin.expr_left;
 		AST_Expression const * expr_right = expr->expr_op_bin.expr_right;
 
-		if (expr_right->type == AST_EXPRESSION_CONST) {
-			code_append(ctx, "mov QWORD [rsp + %i * 8], %i ; set %s\n", var_offset, expr_right->expr_const.token.value_int, var_name);
+		switch (expr_left->type) {
+			case AST_EXPRESSION_VAR: {
+				char const * var_name = expr_left->expr_var.token.value_str;
+				int          var_offset = context_get_var_offset(ctx, var_name);
 
-			return -1;
-		} else {
-			int reg = codegen_expression(ctx, expr_right);
-			code_append(ctx, "mov QWORD [rsp + %i * 8], %s ; set %s\n", var_offset, reg_names[reg], var_name);
+				if (expr_right->type == AST_EXPRESSION_CONST) {
+					code_append(ctx, "mov QWORD [rsp + %i * 8], %i ; set %s\n", var_offset, expr_right->expr_const.token.value_int, var_name);
 
-			return reg;
+					return -1;
+				} else {
+					int reg = codegen_expression(ctx, expr_right);
+					code_append(ctx, "mov QWORD [rsp + %i * 8], %s ; set %s\n", var_offset, reg_names[reg], var_name);
+
+					return reg;
+				}
+			}
+
+			case AST_EXPRESSION_OPERATOR_PRE: {
+				char const * var_name = expr_left->expr_op_pre.expr->expr_var.token.value_str;
+				int          var_offset = context_get_var_offset(ctx, var_name);
+
+				int deref_reg = context_reg_request(ctx);
+				code_append(ctx, "mov %s, QWORD [rsp + %i * 8]\n", reg_names[deref_reg], var_offset);
+
+				if (expr_right->type == AST_EXPRESSION_CONST) {
+					code_append(ctx, "mov QWORD [%s], %i ; set ptr %s\n", reg_names[deref_reg], expr_right->expr_const.token.value_int, var_name);
+					context_reg_free(ctx, deref_reg);
+
+					return -1;
+				} else {
+					int reg = codegen_expression(ctx, expr_right);
+					code_append(ctx, "mov QWORD [%s], %s ; set ptr %s\n", reg_names[deref_reg], reg_names[reg], var_name);
+					context_reg_free(ctx, deref_reg);
+
+					return reg;
+				}
+			}
+
+			default: abort(); // LHS of assignment must be variable
 		}
 	}
 
@@ -498,7 +546,9 @@ static void codegen_statement_decl_func(Context * ctx, AST_Statement const * sta
 	while (arg) {
 		context_decl_var(ctx, arg->name);
 
-		code_append(ctx, "push %s\n", function_call_reg_names[arg_offset++]);
+		if (arg_offset < 4) {
+			code_append(ctx, "push %s\n", function_call_reg_names[arg_offset++]);
+		}
 		arg = arg->next;
 	}
 
@@ -508,11 +558,15 @@ static void codegen_statement_decl_func(Context * ctx, AST_Statement const * sta
 	// Function body
 	codegen_statement(ctx, stat->stat_decl_func.body);
 
-	ctx->indent--;
+	code_append(ctx, "; Default return\n");
+	code_append(ctx, "add rsp, %i\n", ctx->current_scope->var_count * 8);
+	code_append(ctx, "xor rax, rax\n");
+	code_append(ctx, "ret\n");
+	code_append(ctx, "\n");
 
 	context_scope_pop(ctx);
-
-	code_append(ctx, "\n");
+	
+	ctx->indent--;
 }
 
 static void codegen_statement_extern(Context * ctx, AST_Statement const * stat) {
@@ -643,18 +697,17 @@ char const * codegen_program(AST_Statement const * program) {
 
 		"GLOBAL main\n\n"
 
-		"SECTION .data\n"
-		"hello_msg db \"Hello world\", 0\n"
-		"info_msg  db \"Info\", 0\n\n"
-
-		"SECTION .bss\n"
-		"alignb 8\n\n"
-
 		"SECTION .code\n";
 
 	code_append(&ctx, asm_init);
 
 	codegen_statement(&ctx, program);
+
+	code_append(&ctx, "SECTION .data\n");
+
+	for (int i = 0; i < ctx.string_lit_len; i++) {
+		code_append(&ctx, "str_lit_%i db \"%s\", 0\n", i, ctx.string_lits[i]);
+	}
 
 	return ctx.code;
 }
