@@ -16,7 +16,23 @@ static void parser_error(Parser * parser) {
 	char token_string[128];
 	token_to_string(token, token_string, sizeof(token_string));
 
-	printf("ERROR: Unexpected Token '%s' at line %i!\n", token_string, token->line);
+	printf("ERROR: Invalid Token '%s' at line %i!\n", token_string, token->line);
+	abort();
+}
+
+static void parser_error_expected(Parser * parser, Token_Type expected) {
+	Token const * token = parser->tokens + parser->index;
+
+	char token_string[128];
+	token_to_string(token, token_string, sizeof(token_string));
+	
+	Token expected_token;
+	expected_token.type = expected;
+	expected_token.value_str = NULL;
+	char expected_token_string[128];
+	token_to_string(&expected_token, expected_token_string, sizeof(expected_token_string));
+
+	printf("ERROR: Unexpected Token '%s' at line %i! Expected: '%s'\n", token_string, token->line, expected_token_string);
 	abort();
 }
 
@@ -36,7 +52,7 @@ static Token const * parser_advance(Parser * parser) {
 static Token const * parser_match_and_advance(Parser * parser, Token_Type token_type) {
 	bool match = parser_match(parser, token_type);
 	if (!match) {
-		parser_error(parser);
+		parser_error_expected(parser, token_type);
 	}
 
 	return parser_advance(parser);
