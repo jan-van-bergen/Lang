@@ -120,7 +120,7 @@ static void print_statement(AST_Statement const * stat, int indent) {
 
 		case AST_STATEMENT_EXPR: {
 			print_indent(indent);
-			print_expression(stat->stat_expr.expr, indent);
+			print_expression(stat->stat_expr.expr);
 			printf(";\n");
 
 			break;
@@ -138,7 +138,7 @@ static void print_statement(AST_Statement const * stat, int indent) {
 			printf("func %s(", stat->stat_decl_func.name);
 
 			if (stat->stat_decl_func.args) {
-				print_decl_args(stat->stat_decl_func.args, indent);
+				print_decl_args(stat->stat_decl_func.args);
 			}
 
 			printf(") -> %s {\n", stat->stat_decl_func.return_type);
@@ -161,7 +161,7 @@ static void print_statement(AST_Statement const * stat, int indent) {
 		case AST_STATEMENT_IF: {
 			print_indent(indent);
 			printf("if (");
-			print_expression(stat->stat_if.condition, indent);
+			print_expression(stat->stat_if.condition);
 			printf(") {\n");
 			print_statement(stat->stat_if.case_true, indent + 1);
 
@@ -180,7 +180,7 @@ static void print_statement(AST_Statement const * stat, int indent) {
 		case AST_STATEMENT_WHILE: {
 			print_indent(indent);
 			printf("while (");
-			print_expression(stat->stat_while.condition, indent);
+			print_expression(stat->stat_while.condition);
 			printf(") {\n");
 
 			print_statement(stat->stat_while.body, indent + 1);

@@ -1,5 +1,8 @@
 #include "Token.h"
 
+#include <string.h>
+#include <stdio.h>
+
 void token_to_string(Token const * token, char * string, int string_size) {
 	switch (token->type) {
 		case TOKEN_IDENTIFIER:     sprintf_s(string, string_size, "%s",     token->value_str);                     return;

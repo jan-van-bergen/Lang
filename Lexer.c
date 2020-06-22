@@ -4,6 +4,7 @@
 #include <assert.h>
 
 #include <stdio.h>
+#include <ctype.h>
 #include <stdlib.h>
 
 void lexer_init(Lexer * lexer, char const * source) {
