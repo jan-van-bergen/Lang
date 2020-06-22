@@ -84,12 +84,12 @@ typedef struct AST_Statement {
 		struct Statements {
 			struct AST_Statement * head;
 			struct AST_Statement * cons;
-		} stat_statements;
+		} stat_stats;
 
-		struct Decl {
+		struct Decl_Var {
 			char const * name;
 			char const * type;
-		} stat_decl;
+		} stat_decl_var;
 
 		struct Assign {
 			char const * name;
@@ -100,12 +100,12 @@ typedef struct AST_Statement {
 			struct AST_Expression * expr;
 		} stat_expr;
 
-		struct Func {
+		struct Decl_Func {
 			char const * name;
 			char const * return_type;
 			struct AST_Decl_Args * args;
 			struct AST_Statement * body;
-		} stat_func;
+		} stat_decl_func;
 
 		struct If {
 			struct AST_Expression * condition;

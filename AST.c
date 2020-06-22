@@ -112,8 +112,8 @@ static void print_statement(AST_Statement const * stat, int indent) {
 		}
 
 		case AST_STATEMENTS: {
-			print_statement(stat->stat_statements.head, indent);
-			print_statement(stat->stat_statements.cons, indent);
+			print_statement(stat->stat_stats.head, indent);
+			print_statement(stat->stat_stats.cons, indent);
 
 			break;
 		}
@@ -128,22 +128,22 @@ static void print_statement(AST_Statement const * stat, int indent) {
 
 		case AST_STATEMENT_DECL_VAR: {
 			print_indent(indent);
-			printf("let %s: %s;\n", stat->stat_decl.name, stat->stat_decl.type);
+			printf("let %s: %s;\n", stat->stat_decl_var.name, stat->stat_decl_var.type);
 
 			break;
 		}
 
 		case AST_STATEMENT_DECL_FUNC: {
 			print_indent(indent);
-			printf("func %s(", stat->stat_func.name);
+			printf("func %s(", stat->stat_decl_func.name);
 
-			if (stat->stat_func.args) {
-				print_decl_args(stat->stat_func.args, indent);
+			if (stat->stat_decl_func.args) {
+				print_decl_args(stat->stat_decl_func.args, indent);
 			}
 
-			printf(") -> %s {\n", stat->stat_func.return_type);
+			printf(") -> %s {\n", stat->stat_decl_func.return_type);
 
-			print_statement(stat->stat_func.body, indent + 1);
+			print_statement(stat->stat_decl_func.body, indent + 1);
 
 			print_indent(indent);
 			printf("}\n");

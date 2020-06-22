@@ -426,9 +426,9 @@ static AST_Statement * parser_parse_statement_decl_var(Parser * parser) {
 	AST_Statement * decl = malloc(sizeof(AST_Statement));
 	decl->type = AST_STATEMENT_DECL_VAR;
 
-	decl->stat_decl.name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
+	decl->stat_decl_var.name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
 	parser_match_and_advance(parser, TOKEN_COLON);
-	decl->stat_decl.type = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
+	decl->stat_decl_var.type = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
 
 	parser_match_and_advance(parser, TOKEN_SEMICOLON);
 
@@ -475,18 +475,18 @@ static AST_Statement * parser_parse_statement_decl_func(Parser * parser) {
 
 	AST_Statement * func = malloc(sizeof(AST_Statement));
 	func->type = AST_STATEMENT_DECL_FUNC;
-	func->stat_func.name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
-	func->stat_func.args = parser_parse_decl_args(parser);
+	func->stat_decl_func.name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
+	func->stat_decl_func.args = parser_parse_decl_args(parser);
 
 	if (parser_match(parser, TOKEN_ARROW)) {
 		parser_advance(parser);
 
-		func->stat_func.return_type = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
+		func->stat_decl_func.return_type = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
 	} else {
-		func->stat_func.return_type = "void";
+		func->stat_decl_func.return_type = "void";
 	}
 
-	func->stat_func.body = parser_parse_statement_block(parser);
+	func->stat_decl_func.body = parser_parse_statement_block(parser);
 
 	return func;
 }
@@ -617,8 +617,8 @@ static AST_Statement * parser_parse_statements(Parser * parser) {
 		
 		AST_Statement * statements = malloc(sizeof(AST_Statement));
 		statements->type = AST_STATEMENTS;
-		statements->stat_statements.head = statement_head;
-		statements->stat_statements.cons = statement_cons;
+		statements->stat_stats.head = statement_head;
+		statements->stat_stats.cons = statement_cons;
 
 		return statements;
 	}

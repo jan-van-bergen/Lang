@@ -37,6 +37,36 @@ static char const * reg_names[REGISTER_COUNT] = {
 	[R14] = "r14",
 	[R15] = "r15",
 };
+	
+static char const * function_call_reg_names[] = { "rcx", "rdx", "r8", "r9" }; 
+
+typedef struct Scope {
+	struct Scope * prev;
+
+	//int arg_count;
+
+	int           var_count;
+	char const ** vars;
+
+	int offset;
+} Scope;
+
+void scope_decl_var(Scope * scope, const char * name) {
+	int offset = scope->offset++;
+	if (offset > scope->var_count) abort();
+
+	scope->vars[offset] = name;
+}
+
+int scope_get_var_offset(Scope * scope, const char * name) {
+	for (int i = 0; i < scope->offset; i++) {
+		if (strcmp(scope->vars[i], name) == 0) {
+			return scope->var_count - i - 1;
+		}
+	}
+	
+	abort(); // Undeclared variable used
+}
 
 typedef struct Context {
 	bool regs_occupied[12];
@@ -46,34 +76,32 @@ typedef struct Context {
 	int label;
 	int current_loop_label;
 
-	char const ** variables;
-	char const ** functions;
+	Scope * current_scope;
 
 	char * code;
 	int    code_len;
 	int    code_cap;
 } Context;
 
-void context_init(Context * context) {
-	memset(context->regs_occupied, 0, sizeof(context->regs_occupied));
+void context_init(Context * ctx) {
+	memset(ctx->regs_occupied, 0, sizeof(ctx->regs_occupied));
 
-	context->indent = 0;
+	ctx->indent = 0;
 
-	context->label = 0;
-	context->current_loop_label = -1;
-
-	context->variables = malloc(sizeof(char const *) * 64);
-	context->functions = malloc(sizeof(char const *) * 32);
+	ctx->label = 0;
+	ctx->current_loop_label = -1;
 
 	const int initial_capacity = 512;
 
-	context->code = malloc(initial_capacity);
-	context->code_len = 0;
-	context->code_cap = initial_capacity;
+	ctx->code = malloc(initial_capacity);
+	ctx->code_len = 0;
+	ctx->code_cap = initial_capacity;
 }
 
 int context_reg_request(Context * context) {
 	for (int i = 0; i < REGISTER_COUNT; i++) {
+		if (i >= RCX && i <= R9) continue;
+
 		if (!context->regs_occupied[i]) {
 			context->regs_occupied[i] = true;
 
@@ -84,16 +112,36 @@ int context_reg_request(Context * context) {
 	abort(); // No registers available!
 }
 
-void context_reg_free(Context * context, int reg) {
+void context_reg_free(Context * ctx, int reg) {
 	if (reg == -1) return;
 
-	assert(context->regs_occupied[reg]);
+	assert(ctx->regs_occupied[reg]);
 
-	context->regs_occupied[reg] = false;
+	ctx->regs_occupied[reg] = false;
 }
 
 int context_new_label(Context * ctx) {
 	return ctx->label++;
+}
+
+Scope * context_scope_push(Context * ctx, int var_count) {
+	Scope * scope = malloc(sizeof(Scope));
+	scope->prev = ctx->current_scope;
+	scope->var_count = var_count;
+	scope->vars      = malloc(var_count * sizeof(char const *));
+	scope->offset = 0;
+
+	ctx->current_scope = scope;
+
+	return scope;
+}
+
+void context_scope_pop(Context * ctx) {
+	Scope * scope = ctx->current_scope;
+	ctx->current_scope = scope->prev;
+
+	free(scope->vars);
+	free(scope);
 }
 
 static void code_append(Context * ctx, char const * fmt, ...) {
@@ -149,8 +197,11 @@ static int codegen_expression_const(Context * ctx, AST_Expression const * expr) 
 static int codegen_expression_var(Context * ctx, AST_Expression const * expr) {
 	assert(expr->type == AST_EXPRESSION_VAR);
 
+	char const * var_name = expr->expr_var.token.value_str;
+	int offset = scope_get_var_offset(ctx->current_scope, var_name);
+
 	int reg = context_reg_request(ctx);
-	code_append(ctx, "mov %s, QWORD [REL %s]\n", reg_names[reg], expr->expr_var.token.value_str);
+	code_append(ctx, "mov %s, QWORD [rsp + %i * 8] ; get %s\n", reg_names[reg], offset, var_name);
 
 	return reg;
 }
@@ -173,17 +224,18 @@ static int codegen_expression_op_bin(Context * ctx, AST_Expression const * expr)
 	assert(expr->type == AST_EXPRESSION_OPERATOR_BIN);
 
 	if (expr->expr_op_bin.token.type == TOKEN_ASSIGN) {
-		char const * var = expr->expr_op_bin.expr_left->expr_var.token.value_str;
+		char const * var_name = expr->expr_op_bin.expr_left->expr_var.token.value_str;
+		int          var_offset = scope_get_var_offset(ctx->current_scope, var_name);
 
 		AST_Expression const * expr_right = expr->expr_op_bin.expr_right;
 
 		if (expr_right->type == AST_EXPRESSION_CONST) {
-			code_append(ctx, "mov QWORD [REL %s], %i\n", var, expr_right->expr_const.token.value_int);
+			code_append(ctx, "mov QWORD [rsp + %i * 8], %i ; set %s\n", var_offset, expr_right->expr_const.token.value_int, var_name);
 
 			return -1;
 		} else {
 			int reg = codegen_expression(ctx, expr_right);
-			code_append(ctx, "mov QWORD [REL %s], %s\n", var, reg_names[reg]);
+			code_append(ctx, "mov QWORD [rsp + %i * 8], %s ; set %s\n", var_offset, reg_names[reg], var_name);
 
 			return reg;
 		}
@@ -213,15 +265,15 @@ static int codegen_expression_op_bin(Context * ctx, AST_Expression const * expr)
 		//	if (reg_left != EAX) {
 		//		reg_temp = context_reg_request(ctx);
 
-		//		code_append(ctx, "mov %s, eax\n", reg_names[reg_temp]);
-		//		code_append(ctx, "mov eax, %s\n", reg_name_left);
+		//		code_append(ctx, "mov %s, rax\n", reg_names[reg_temp]);
+		//		code_append(ctx, "mov rax, %s\n", reg_name_left);
 		//	}
 
 		//	code_append(ctx, "cdq\nidiv %s\n", reg_name_right);
 
 		//	if (reg_left != EAX) {
-		//		code_append(ctx, "mov %s, eax\n", reg_name_left);
-		//		code_append(ctx, "mov eax, %s\n", reg_names[reg_temp]);
+		//		code_append(ctx, "mov %s, rax\n", reg_name_left);
+		//		code_append(ctx, "mov rax, %s\n", reg_names[reg_temp]);
 
 		//		context_reg_free(ctx, reg_temp);
 		//	}
@@ -247,20 +299,32 @@ static int codegen_expression_op_bin(Context * ctx, AST_Expression const * expr)
 
 static int codegen_expression_call_func(Context * ctx, AST_Expression * expr) {
 	assert(expr->type == AST_EXPRESSION_CALL_FUNC);
+	
+	int            arg_count = 0;
+	AST_Call_Arg * arg = expr->expr_call.args;
+
+	while (arg) {
+		int arg_reg = codegen_expression(ctx, arg->expr);
+		code_append(ctx, "mov %s, %s ; arg %i\n", function_call_reg_names[arg_count], reg_names[arg_reg], arg_count);
+		context_reg_free(ctx, arg_reg);
+
+		arg_count++;
+		arg = arg->next;
+	}
 
 	int reg = context_reg_request(ctx);
 	int tmp;
 
 	if (reg != RAX) {
 		tmp = context_reg_request(ctx);
-		code_append(ctx, "mov %s, eax ; save eax\n", reg_names[tmp]);
+		code_append(ctx, "mov %s, rax ; save rax\n", reg_names[tmp]);
 	}
 
 	code_append(ctx, "call %s\n", expr->expr_call.function);
 
 	if (reg != RAX) {
-		code_append(ctx, "mov %s, eax\n", reg_names[reg]);
-		code_append(ctx, "mov eax, %s ; restore eax\n", reg_names[tmp]);
+		code_append(ctx, "mov %s, rax\n", reg_names[reg]);
+		code_append(ctx, "mov rax, %s ; restore rax\n", reg_names[tmp]);
 
 		context_reg_free(ctx, tmp);
 	}
@@ -290,8 +354,8 @@ static void codegen_statement_noop(Context * ctx, AST_Statement const * stat) {
 static void codegen_statement_statements(Context * ctx, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENTS);
 
-	if (stat->stat_statements.head) codegen_statement(ctx, stat->stat_statements.head);
-	if (stat->stat_statements.cons) codegen_statement(ctx, stat->stat_statements.cons);
+	if (stat->stat_stats.head) codegen_statement(ctx, stat->stat_stats.head);
+	if (stat->stat_stats.cons) codegen_statement(ctx, stat->stat_stats.cons);
 }
 
 static void codegen_statement_expression(Context * ctx, AST_Statement const * stat) {
@@ -303,16 +367,77 @@ static void codegen_statement_expression(Context * ctx, AST_Statement const * st
 
 static void codegen_statement_decl_var(Context * ctx, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_DECL_VAR);
+
+	scope_decl_var(ctx->current_scope, stat->stat_decl_var.name);
+}
+
+static int count_vars_in_function(AST_Statement const * stat) {
+	if (stat->type != AST_STATEMENTS) return 0;
+
+	int count = 0;
+
+	if (stat->stat_stats.head) {
+		AST_Statement * head = stat->stat_stats.head;
+		if (head->type == AST_STATEMENT_DECL_VAR) {
+			count = 1;
+		} else if (head->type == AST_STATEMENT_IF) {
+			count += count_vars_in_function(head->stat_if.case_true);
+
+			if (head->stat_if.case_false) {
+				count += count_vars_in_function(head->stat_if.case_false);
+			}
+		} else if (head->type == AST_STATEMENT_WHILE) {
+			count += count_vars_in_function(head->stat_while.body);
+		}
+	}
+	if (stat->stat_stats.cons) {
+		count += count_vars_in_function(stat->stat_stats.cons);
+	}
+
+	return count;
 }
 
 static void codegen_statement_decl_func(Context * ctx, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_DECL_FUNC);
 
-	code_append(ctx, "%s:\n", stat->stat_func.name);
-
+	code_append(ctx, "%s:\n", stat->stat_decl_func.name);
 	ctx->indent++;
-	codegen_statement(ctx, stat->stat_func.body);
+
+	// Count arguments
+	int            arg_count = 0;
+	AST_Decl_Arg * arg = stat->stat_decl_func.args;
+
+	while (arg) {
+		arg_count++;
+		arg = arg->next;
+	}
+	
+	// Count variables
+	int var_count = count_vars_in_function(stat->stat_decl_func.body);
+
+	// Create new scope
+	context_scope_push(ctx, arg_count + var_count);
+
+	// Push arguments on stack
+	int arg_offset = 0;
+	arg = stat->stat_decl_func.args;
+
+	while (arg) {
+		scope_decl_var(ctx->current_scope, arg->name);
+
+		code_append(ctx, "push %s\n", function_call_reg_names[arg_offset++]);
+		arg = arg->next;
+	}
+
+	// Reserve space on stack for local variables
+	if (var_count > 0) code_append(ctx, "sub rsp, %i\n", var_count * 8);
+
+	// Function body
+	codegen_statement(ctx, stat->stat_decl_func.body);
+
 	ctx->indent--;
+
+	context_scope_pop(ctx);
 }
 
 static void codegen_statement_if(Context * ctx, AST_Statement const * stat) {
@@ -393,14 +518,15 @@ static void codegen_statement_return(Context * ctx, AST_Statement const * stat) 
 		int reg_return = codegen_expression(ctx, stat->stat_return.expr);
 
 		if (reg_return != RAX) {
-			code_append(ctx, "mov eax, %s ; Return via eax\n", reg_names[reg_return]);
+			code_append(ctx, "mov rax, %s ; Return via rax\n", reg_names[reg_return]);
 		}
 
 		context_reg_free(ctx, reg_return);
 	} else {
-		code_append(ctx, "mov eax, 0\n");
+		code_append(ctx, "mov rax, 0\n");
 	}
-
+	
+	code_append(ctx, "add rsp, %i\n", ctx->current_scope->var_count * 8);
 	code_append(ctx, "ret\n");
 }
 
@@ -439,12 +565,6 @@ char const * codegen_program(AST_Statement const * program) {
 
 		"SECTION .bss\n"
 		"alignb 8\n"
-		"a resd 1\n"
-		"b resq 1\n"
-		"c resq 1\n"
-		"d resq 1\n"
-		"i resq 1\n"
-		"j resq 1\n\n"
 
 		"SECTION .text\n\n";
 
@@ -454,62 +574,3 @@ char const * codegen_program(AST_Statement const * program) {
 
 	return ctx.code;
 }
-
-//static void test() {
-//	char const asm[] =
-//		"EXTERN MessageBoxA: PROC\n"
-//		"EXTERN GetForegroundWindow: PROC\n"
-//
-//		".data\n"
-//		"hello_msg db \"Hello world\", 0\n"
-//		"info_msg  db \"Info\", 0\n"
-//
-//		".code\n"
-//		"main PROC\n"
-//		"	push rbp ; save frame pointer\n"
-//		"	mov rbp, rsp ; fix stack pointer\n"
-//		"	sub rsp, 8 * (4 + 2) ; allocate shadow register area + 2 QWORDs for stack alignment\n"
-//
-//		"	; Get a window handle\n"
-//		"	call GetForegroundWindow\n"
-//		"	mov rcx, rax\n"
-//
-//		"	lea rdx, hello_msg\n"
-//		"	lea r8,  info_msg\n"
-//		"	mov r9, 0 ; MB_OK\n"
-//
-//		"	and rsp, not 8 ; align stack to 16 bytes prior to API call\n"
-//		"	call MessageBoxA\n"
-//
-//		"	; epilog. restore stack pointer\n"
-//		"	mov rsp, rbp\n"
-//		"	pop rbp\n"
-//
-//		"	mov rax, 3\n"
-//		"	ret \n"
-//		"main ENDP\n"
-//
-//		"END";
-//
-//	char const * file_asm = "test.asm";
-//	char const * file_exe = "test.exe";
-//
-//	FILE * file;
-//	fopen_s(&file, file_asm, "wb");
-//
-//	if (file == NULL) abort();
-//
-//	fwrite(asm, 1, sizeof(asm) - 1, file);
-//	fclose(file);
-//
-//	char const * dir_kernel32 = "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.18362.0\\um\\x64\\kernel32.lib";
-//	char const * dir_user32   = "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.18362.0\\um\\x64\\user32.lib";
-//
-//	char const cmd[1024];
-//	sprintf_s(cmd, sizeof(cmd), "ml64.exe %s /link /subsystem:windows /defaultlib:\"%s\" /defaultlib:\"%s\" /entry:main", file_asm, dir_kernel32, dir_user32);
-//
-//	if (system(cmd) != EXIT_SUCCESS) abort();
-//
-//	int ret = system(file_exe);
-//	printf("Program returned: %i\n", ret);
-//}

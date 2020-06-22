@@ -34,7 +34,7 @@ static char const * read_file(char const * filename) {
 int main(int arg_count, char const * args[]) {
 	clock_t clock_start = clock();
 
-	char const * filename = "Data\\code.lang";
+	char const * filename = "Data\\functions.lang";
 	if (arg_count > 1) {
 		filename = args[1];
 	}
