@@ -42,96 +42,73 @@ static Token const * parser_match_and_advance(Parser * parser, Token_Type token_
 	return parser_advance(parser);
 }
 
-bool parser_match_program(Parser * parser) {
-	return parser_match_statement(parser);
-}
-
-bool parser_match_statement(Parser * parser) {
+static bool parser_match_expression(Parser const * parser) {
 	return
-		parser_match_statement_expr(parser)      ||
-		parser_match_statement_decl_var(parser)  ||
-		parser_match_statement_decl_func(parser) ||
-		parser_match_statement_if(parser)        ||
-		parser_match_statement_while(parser)     ||
-		parser_match_statement_break(parser)     ||
-		parser_match_statement_continue(parser)  ||
-		parser_match_statement_return(parser)    ||
-		parser_match_statement_block(parser);
-}
-
-bool parser_match_statement_expr(Parser * parser) {
-	return parser_match_expression(parser);
-}
-
-bool parser_match_statement_decl_var(Parser * parser) {
-	return parser_match(parser, TOKEN_KEYWORD_LET);
-}
-
-bool parser_match_statement_decl_func(Parser * parser) {
-	return parser_match(parser, TOKEN_KEYWORD_FUNC);
-}
-
-bool parser_match_statement_if(Parser * parser) {
-	return parser_match(parser, TOKEN_KEYWORD_IF);
-}
-
-bool parser_match_statement_while(Parser * parser) {
-	return parser_match(parser, TOKEN_KEYWORD_WHILE);
-}
-
-bool parser_match_statement_block(Parser * parser) {
-	return parser_match(parser, TOKEN_BRACES_OPEN);
-}
-
-bool parser_match_statement_break(Parser * parser) {
-	return parser_match(parser, TOKEN_KEYWORD_BREAK);
-}
-
-bool parser_match_statement_continue(Parser * parser) {
-	return parser_match(parser, TOKEN_KEYWORD_CONTINUE);
-}
-
-bool parser_match_statement_return(Parser * parser) {
-	return parser_match(parser, TOKEN_KEYWORD_RETURN);
-}
-
-bool parser_match_expression(Parser * parser) {
-	return
-		parser_match(parser, TOKEN_IDENTIFIER)     ||
-		parser_match(parser, TOKEN_OPERATOR_PLUS)  ||
+		parser_match(parser, TOKEN_IDENTIFIER) || // Variable
+		parser_match(parser, TOKEN_OPERATOR_PLUS)  || // Unary operations
 		parser_match(parser, TOKEN_OPERATOR_MINUS) ||
 		parser_match(parser, TOKEN_OPERATOR_INC)   ||
 		parser_match(parser, TOKEN_OPERATOR_DEC)   ||
-		parser_match(parser, TOKEN_LITERAL_INT)    ||
+		parser_match(parser, TOKEN_LITERAL_INT)    || // Constant values
 		parser_match(parser, TOKEN_LITERAL_BOOL)   ||
 		parser_match(parser, TOKEN_LITERAL_STRING) ||
-		parser_match(parser, TOKEN_PARENTESES_OPEN);
+		parser_match(parser, TOKEN_PARENTESES_OPEN); // Subexpression
 }
 
-AST_Statement * parser_parse_program(Parser * parser) {
-	AST_Statement * program = parser_parse_statements(parser);
-	parser_match_and_advance(parser, TOKEN_EOF);
-
-	return program;
+static bool parser_match_statement_expr(Parser const * parser) {
+	return parser_match_expression(parser);
 }
 
-AST_Statement * parser_parse_statements(Parser * parser) {
-	AST_Statement * statement_head = parser_parse_statement(parser);
-
-	if (parser_match_statement(parser)) {
-		AST_Statement * statement_cons = parser_parse_statements(parser);
-		
-		AST_Statement * statements = malloc(sizeof(AST_Statement));
-		statements->type = AST_STATEMENTS;
-		statements->stat_statements.head = statement_head;
-		statements->stat_statements.cons = statement_cons;
-
-		return statements;
-	}
-
-	return statement_head;
+static bool parser_match_statement_decl_var(Parser const * parser) {
+	return parser_match(parser, TOKEN_KEYWORD_LET);
 }
 
+static bool parser_match_statement_decl_func(Parser const * parser) {
+	return parser_match(parser, TOKEN_KEYWORD_FUNC);
+}
+
+static bool parser_match_statement_if(Parser const * parser) {
+	return parser_match(parser, TOKEN_KEYWORD_IF);
+}
+
+static bool parser_match_statement_while(Parser const * parser) {
+	return parser_match(parser, TOKEN_KEYWORD_WHILE);
+}
+
+static bool parser_match_statement_break(Parser const * parser) {
+	return parser_match(parser, TOKEN_KEYWORD_BREAK);
+}
+
+static bool parser_match_statement_continue(Parser const * parser) {
+	return parser_match(parser, TOKEN_KEYWORD_CONTINUE);
+}
+
+static bool parser_match_statement_return(Parser const * parser) {
+	return parser_match(parser, TOKEN_KEYWORD_RETURN);
+}
+
+static bool parser_match_statement_block(Parser const * parser) {
+	return parser_match(parser, TOKEN_BRACES_OPEN);
+}
+
+static bool parser_match_statement(Parser const * parser) {
+	return
+		parser_match_statement_expr(parser) ||
+		parser_match_statement_decl_var (parser) ||
+		parser_match_statement_decl_func(parser) ||
+		parser_match_statement_if   (parser) ||
+		parser_match_statement_while(parser) ||
+		parser_match_statement_break   (parser) ||
+		parser_match_statement_continue(parser) ||
+		parser_match_statement_return  (parser) ||
+		parser_match_statement_block(parser);
+}
+
+static bool parser_match_program(Parser const * parser) {
+	return parser_match_statement(parser);
+}
+
+static AST_Expression * parser_parse_expression(Parser * parser);
 
 static AST_Call_Arg * parser_parse_call_arg(Parser * parser) {
 	AST_Call_Arg * arg = malloc(sizeof(AST_Call_Arg));
@@ -165,32 +142,258 @@ static AST_Call_Arg * parser_parse_call_args(Parser * parser) {
 	return args_head;
 }
 
+static AST_Expression * parser_parse_expression_elementary(Parser * parser) {
+	if (parser_match(parser, TOKEN_IDENTIFIER)) {
+		Token const * identifier = parser_advance(parser);
 
-AST_Statement * parser_parse_statement(Parser * parser) {
-	if (parser_match_expression(parser)) {
-		return parser_parse_statement_expr(parser);
-	} else if (parser_match_statement_decl_var(parser)) {
-		return parser_parse_statement_decl_var(parser);
-	} else if (parser_match_statement_decl_func(parser)) {
-		return parser_parse_statement_decl_func(parser);
-	} else if (parser_match_statement_if(parser)) {
-		return parser_parse_statement_if(parser);
-	} else if (parser_match_statement_while(parser)) {
-		return parser_parse_statement_while(parser);
-	} else if (parser_match_statement_break(parser)) {
-		return parser_parse_statement_break(parser);
-	} else if (parser_match_statement_continue(parser)) {
-		return parser_parse_statement_continue(parser);
-	} else if (parser_match_statement_return(parser)) {
-		return parser_parse_statement_return(parser);
-	} else if (parser_match_statement_block(parser)) {
-		return parser_parse_statement_block(parser);
+		if (parser_match(parser, TOKEN_PARENTESES_OPEN)) {
+			AST_Expression * factor = malloc(sizeof(AST_Expression));
+
+			factor->type = AST_EXPRESSION_CALL_FUNC;
+			factor->height = 0;
+			factor->expr_call.function = identifier->value_str;
+			factor->expr_call.args = parser_parse_call_args(parser);
+
+			return factor;
+		} else {
+			AST_Expression * factor = malloc(sizeof(AST_Expression));
+
+			factor->type = AST_EXPRESSION_VAR;
+			factor->height = 0;
+			factor->expr_var.token = *identifier;
+
+			return factor;
+		}
+	} else if (
+		parser_match(parser, TOKEN_LITERAL_INT)  ||
+		parser_match(parser, TOKEN_LITERAL_BOOL) ||
+		parser_match(parser, TOKEN_LITERAL_STRING)
+	) {
+		AST_Expression * factor = malloc(sizeof(AST_Expression));
+
+		factor->type = AST_EXPRESSION_CONST;
+		factor->height = 0;
+		factor->expr_var.token = *parser_advance(parser);
+
+		return factor;
+	} else if (parser_match(parser, TOKEN_PARENTESES_OPEN)) {
+		parser_advance(parser);
+
+		AST_Expression * expr = parser_parse_expression(parser);
+
+		parser_match_and_advance(parser, TOKEN_PARENTESES_CLOSE);
+
+		return expr;
 	} else {
 		parser_error(parser);
 	}
 }
 
-AST_Statement * parser_parse_statement_expr(Parser * parser) {
+static AST_Expression * parser_parse_expression_postfix(Parser * parser) {
+	AST_Expression * operand =  parser_parse_expression_elementary(parser);
+
+	if (parser_match(parser, TOKEN_OPERATOR_INC) ||
+		parser_match(parser, TOKEN_OPERATOR_DEC)
+	) {
+		AST_Expression * postfix = malloc(sizeof(AST_Expression));
+		postfix->type = AST_EXPRESSION_OPERATOR_POST;
+		postfix->height = operand->height + 1;
+		postfix->expr_op_post.token = *parser_advance(parser);
+		postfix->expr_op_post.expr  = operand;
+
+		return postfix;
+	}
+
+	return operand;
+}
+
+static AST_Expression * parser_parse_expression_prefix(Parser * parser) {
+	if (parser_match(parser, TOKEN_OPERATOR_INC) ||
+		parser_match(parser, TOKEN_OPERATOR_DEC) ||
+		parser_match(parser, TOKEN_OPERATOR_PLUS) ||
+		parser_match(parser, TOKEN_OPERATOR_MINUS)
+	) {
+		AST_Expression * prefix = malloc(sizeof(AST_Expression));
+		prefix->type = AST_EXPRESSION_OPERATOR_PRE;
+		prefix->expr_op_pre.token = *parser_advance(parser);
+		prefix->expr_op_pre.expr  = parser_parse_expression_postfix(parser);
+		prefix->height = prefix->expr_op_pre.expr->height + 1;
+
+		return prefix;
+	}
+
+	return parser_parse_expression_postfix(parser);
+}
+
+static AST_Expression * parser_parse_expression_multiplicative(Parser * parser) {
+	AST_Expression * lhs = parser_parse_expression_prefix(parser);
+	
+	// Left Associative
+	while (
+		parser_match(parser, TOKEN_OPERATOR_MULTIPLY) ||
+		parser_match(parser, TOKEN_OPERATOR_DIVIDE)
+	) {
+		AST_Expression * expression = malloc(sizeof(AST_Expression));
+		expression->type = AST_EXPRESSION_OPERATOR_BIN;
+
+		expression->expr_op_bin.token = *parser_advance(parser);
+		expression->expr_op_bin.expr_left  = lhs;
+		expression->expr_op_bin.expr_right = parser_parse_expression_prefix(parser);
+
+		expression->height = max(
+			expression->expr_op_bin.expr_left->height,
+			expression->expr_op_bin.expr_right->height
+		) + 1;
+
+		lhs = expression;
+	}
+
+	return lhs;
+}
+
+static AST_Expression * parser_parse_expression_additive(Parser * parser) {
+	AST_Expression * lhs = parser_parse_expression_multiplicative(parser);
+	
+	// Left Associative
+	while (
+		parser_match(parser, TOKEN_OPERATOR_PLUS) ||
+		parser_match(parser, TOKEN_OPERATOR_MINUS)
+	) {
+		AST_Expression * expression = malloc(sizeof(AST_Expression));
+		expression->type = AST_EXPRESSION_OPERATOR_BIN;
+
+		expression->expr_op_bin.token = *parser_advance(parser);
+		expression->expr_op_bin.expr_left  = lhs;
+		expression->expr_op_bin.expr_right = parser_parse_expression_multiplicative(parser);
+
+		expression->height = max(
+			expression->expr_op_bin.expr_left->height,
+			expression->expr_op_bin.expr_right->height
+		) + 1;
+
+		lhs = expression;
+	}
+
+	return lhs;
+}
+
+static AST_Expression * parser_parse_expression_bitshift(Parser * parser) {
+	AST_Expression * lhs = parser_parse_expression_additive(parser);
+	
+	// Left Associative
+	while (
+		parser_match(parser, TOKEN_OPERATOR_SHIFT_LEFT) ||
+		parser_match(parser, TOKEN_OPERATOR_SHIFT_RIGHT)
+	) {
+		AST_Expression * expression = malloc(sizeof(AST_Expression));
+		expression->type = AST_EXPRESSION_OPERATOR_BIN;
+
+		expression->expr_op_bin.token = *parser_advance(parser);
+		expression->expr_op_bin.expr_left  = lhs;
+		expression->expr_op_bin.expr_right = parser_parse_expression_additive(parser);
+
+		expression->height = max(
+			expression->expr_op_bin.expr_left->height,
+			expression->expr_op_bin.expr_right->height
+		) + 1;
+
+		lhs = expression;
+	}
+
+	return lhs;
+}
+
+static AST_Expression * parser_parse_expression_relational(Parser * parser) {
+	AST_Expression * lhs = parser_parse_expression_bitshift(parser);
+	
+	// Left Associative
+	while (
+		parser_match(parser, TOKEN_OPERATOR_LT)    ||
+		parser_match(parser, TOKEN_OPERATOR_LT_EQ) ||
+		parser_match(parser, TOKEN_OPERATOR_GT)    ||
+		parser_match(parser, TOKEN_OPERATOR_GT_EQ)
+	) {
+		AST_Expression * expression = malloc(sizeof(AST_Expression));
+		expression->type = AST_EXPRESSION_OPERATOR_BIN;
+
+		expression->expr_op_bin.token = *parser_advance(parser);
+		expression->expr_op_bin.expr_left  = lhs;
+		expression->expr_op_bin.expr_right = parser_parse_expression_bitshift(parser);
+
+		expression->height = max(
+			expression->expr_op_bin.expr_left->height,
+			expression->expr_op_bin.expr_right->height
+		) + 1;
+
+		lhs = expression;
+	}
+
+	return lhs;
+}
+
+static AST_Expression * parser_parse_expression_equality(Parser * parser) {
+	AST_Expression * lhs = parser_parse_expression_relational(parser);
+
+	// Left Associative
+	while (
+		parser_match(parser, TOKEN_OPERATOR_EQ) ||
+		parser_match(parser, TOKEN_OPERATOR_NE)
+	) {
+		AST_Expression * expression = malloc(sizeof(AST_Expression));
+		expression->type = AST_EXPRESSION_OPERATOR_BIN;
+
+		expression->expr_op_bin.token = *parser_advance(parser);
+		expression->expr_op_bin.expr_left  = lhs;
+		expression->expr_op_bin.expr_right = parser_parse_expression_relational(parser);
+
+		expression->height = max(
+			expression->expr_op_bin.expr_left->height,
+			expression->expr_op_bin.expr_right->height
+		) + 1;
+
+		lhs = expression;
+	}
+
+	return lhs;
+}
+
+static AST_Expression * parser_parse_expression_assign(Parser * parser) {
+	AST_Expression * lhs = parser_parse_expression_equality(parser);
+
+	// Right Associative
+	if (parser_match(parser, TOKEN_ASSIGN)) {
+		if (lhs->type != AST_EXPRESSION_VAR) {
+			printf("ERROR: Left hand operand of '=' operator must be a variable!\n");
+			abort();
+		}
+
+		AST_Expression * expression = malloc(sizeof(AST_Expression));
+		expression->type = AST_EXPRESSION_OPERATOR_BIN;
+
+		expression->expr_op_bin.token = *parser_advance(parser);
+		expression->expr_op_bin.expr_left  = lhs;
+		expression->expr_op_bin.expr_right = parser_parse_expression(parser);
+
+		expression->height = max(
+			expression->expr_op_bin.expr_left->height,
+			expression->expr_op_bin.expr_right->height
+		) + 1;
+
+		lhs = expression;
+	}
+
+	return lhs;
+}
+
+static AST_Expression * parser_parse_expression(Parser * parser) {
+	return parser_parse_expression_assign(parser);
+}
+
+static AST_Statement * parser_parse_statement      (Parser * parser); 
+static AST_Statement * parser_parse_statements     (Parser * parser); 
+static AST_Statement * parser_parse_statement_block(Parser * parser); 
+
+static AST_Statement * parser_parse_statement_expr(Parser * parser) {
 	AST_Statement * stat = malloc(sizeof(AST_Statement));
 
 	stat->type = AST_STATEMENT_EXPR;
@@ -201,7 +404,7 @@ AST_Statement * parser_parse_statement_expr(Parser * parser) {
 	return stat;
 }
 
-AST_Statement * parser_parse_statement_decl_var(Parser * parser) {
+static AST_Statement * parser_parse_statement_decl_var(Parser * parser) {
 	parser_match_and_advance(parser, TOKEN_KEYWORD_LET);
 
 	AST_Statement * decl = malloc(sizeof(AST_Statement));
@@ -251,7 +454,7 @@ static AST_Decl_Arg * parser_parse_decl_args(Parser * parser) {
 	return args_head;
 }
 
-AST_Statement * parser_parse_statement_decl_func(Parser * parser) {
+static AST_Statement * parser_parse_statement_decl_func(Parser * parser) {
 	parser_match_and_advance(parser, TOKEN_KEYWORD_FUNC);
 
 	AST_Statement * func = malloc(sizeof(AST_Statement));
@@ -272,7 +475,7 @@ AST_Statement * parser_parse_statement_decl_func(Parser * parser) {
 	return func;
 }
 
-AST_Statement * parser_parse_statement_if(Parser * parser) {
+static AST_Statement * parser_parse_statement_if(Parser * parser) {
 	AST_Statement * branch = malloc(sizeof(AST_Statement));
 	branch->type = AST_STATEMENT_IF;
 
@@ -296,7 +499,7 @@ AST_Statement * parser_parse_statement_if(Parser * parser) {
 	return branch;
 }
 
-AST_Statement * parser_parse_statement_while(Parser * parser) {
+static AST_Statement * parser_parse_statement_while(Parser * parser) {
 	AST_Statement * while_loop = malloc(sizeof(AST_Statement));
 	while_loop->type = AST_STATEMENT_WHILE;
 	
@@ -312,7 +515,7 @@ AST_Statement * parser_parse_statement_while(Parser * parser) {
 	return while_loop;
 }
 
-AST_Statement * parser_parse_statement_break(Parser * parser) {
+static AST_Statement * parser_parse_statement_break(Parser * parser) {
 	AST_Statement * ret = malloc(sizeof(AST_Statement));
 	ret->type = AST_STATEMENT_BREAK;
 	
@@ -322,7 +525,7 @@ AST_Statement * parser_parse_statement_break(Parser * parser) {
 	return ret;
 }
 
-AST_Statement * parser_parse_statement_continue(Parser * parser) {
+static AST_Statement * parser_parse_statement_continue(Parser * parser) {
 	AST_Statement * ret = malloc(sizeof(AST_Statement));
 	ret->type = AST_STATEMENT_CONTINUE;
 	
@@ -332,7 +535,7 @@ AST_Statement * parser_parse_statement_continue(Parser * parser) {
 	return ret;
 }
 
-AST_Statement * parser_parse_statement_return(Parser * parser) {
+static AST_Statement * parser_parse_statement_return(Parser * parser) {
 	AST_Statement * ret = malloc(sizeof(AST_Statement));
 	ret->type = AST_STATEMENT_RETURN;
 	
@@ -349,7 +552,7 @@ AST_Statement * parser_parse_statement_return(Parser * parser) {
 	return ret;
 }
 
-AST_Statement * parser_parse_statement_block(Parser * parser) {
+static AST_Statement * parser_parse_statement_block(Parser * parser) {
 	parser_match_and_advance(parser, TOKEN_BRACES_OPEN);
 
 	AST_Statement * block;
@@ -366,249 +569,50 @@ AST_Statement * parser_parse_statement_block(Parser * parser) {
 	return block;
 }
 
-AST_Expression * parser_parse_expression(Parser * parser) {
-	return parser_parse_expression_assign(parser);
-}
-
-AST_Expression * parser_parse_expression_assign(Parser * parser) {
-	AST_Expression * lhs = parser_parse_expression_equality(parser);
-
-	// Right Associative
-	if (parser_match(parser, TOKEN_ASSIGN)) {
-		if (lhs->type != AST_EXPRESSION_VAR) {
-			printf("ERROR: Left hand operand of '=' operator must be a variable!\n");
-			abort();
-		}
-
-		AST_Expression * expression = malloc(sizeof(AST_Expression));
-		expression->type = AST_EXPRESSION_OPERATOR_BIN;
-
-		expression->expr_op_bin.token = *parser_advance(parser);
-		expression->expr_op_bin.expr_left  = lhs;
-		expression->expr_op_bin.expr_right = parser_parse_expression(parser);
-
-		expression->height = max(
-			expression->expr_op_bin.expr_left->height,
-			expression->expr_op_bin.expr_right->height
-		) + 1;
-
-		lhs = expression;
-	}
-
-	return lhs;
-}
-
-AST_Expression * parser_parse_expression_equality(Parser * parser) {
-	AST_Expression * lhs = parser_parse_expression_relational(parser);
-
-	// Left Associative
-	while (
-		parser_match(parser, TOKEN_OPERATOR_EQ) ||
-		parser_match(parser, TOKEN_OPERATOR_NE)
-	) {
-		AST_Expression * expression = malloc(sizeof(AST_Expression));
-		expression->type = AST_EXPRESSION_OPERATOR_BIN;
-
-		expression->expr_op_bin.token = *parser_advance(parser);
-		expression->expr_op_bin.expr_left  = lhs;
-		expression->expr_op_bin.expr_right = parser_parse_expression_relational(parser);
-
-		expression->height = max(
-			expression->expr_op_bin.expr_left->height,
-			expression->expr_op_bin.expr_right->height
-		) + 1;
-
-		lhs = expression;
-	}
-
-	return lhs;
-}
-
-AST_Expression * parser_parse_expression_relational(Parser * parser) {
-	AST_Expression * lhs = parser_parse_expression_bitshift(parser);
-	
-	// Left Associative
-	while (
-		parser_match(parser, TOKEN_OPERATOR_LT)    ||
-		parser_match(parser, TOKEN_OPERATOR_LT_EQ) ||
-		parser_match(parser, TOKEN_OPERATOR_GT)    ||
-		parser_match(parser, TOKEN_OPERATOR_GT_EQ)
-	) {
-		AST_Expression * expression = malloc(sizeof(AST_Expression));
-		expression->type = AST_EXPRESSION_OPERATOR_BIN;
-
-		expression->expr_op_bin.token = *parser_advance(parser);
-		expression->expr_op_bin.expr_left  = lhs;
-		expression->expr_op_bin.expr_right = parser_parse_expression_bitshift(parser);
-
-		expression->height = max(
-			expression->expr_op_bin.expr_left->height,
-			expression->expr_op_bin.expr_right->height
-		) + 1;
-
-		lhs = expression;
-	}
-
-	return lhs;
-}
-
-AST_Expression * parser_parse_expression_bitshift(Parser * parser) {
-	AST_Expression * lhs = parser_parse_expression_additive(parser);
-	
-	// Left Associative
-	while (
-		parser_match(parser, TOKEN_OPERATOR_SHIFT_LEFT) ||
-		parser_match(parser, TOKEN_OPERATOR_SHIFT_RIGHT)
-	) {
-		AST_Expression * expression = malloc(sizeof(AST_Expression));
-		expression->type = AST_EXPRESSION_OPERATOR_BIN;
-
-		expression->expr_op_bin.token = *parser_advance(parser);
-		expression->expr_op_bin.expr_left  = lhs;
-		expression->expr_op_bin.expr_right = parser_parse_expression_additive(parser);
-
-		expression->height = max(
-			expression->expr_op_bin.expr_left->height,
-			expression->expr_op_bin.expr_right->height
-		) + 1;
-
-		lhs = expression;
-	}
-
-	return lhs;
-}
-
-AST_Expression * parser_parse_expression_additive(Parser * parser) {
-	AST_Expression * lhs = parser_parse_expression_multiplicative(parser);
-	
-	// Left Associative
-	while (
-		parser_match(parser, TOKEN_OPERATOR_PLUS) ||
-		parser_match(parser, TOKEN_OPERATOR_MINUS)
-	) {
-		AST_Expression * expression = malloc(sizeof(AST_Expression));
-		expression->type = AST_EXPRESSION_OPERATOR_BIN;
-
-		expression->expr_op_bin.token = *parser_advance(parser);
-		expression->expr_op_bin.expr_left  = lhs;
-		expression->expr_op_bin.expr_right = parser_parse_expression_multiplicative(parser);
-
-		expression->height = max(
-			expression->expr_op_bin.expr_left->height,
-			expression->expr_op_bin.expr_right->height
-		) + 1;
-
-		lhs = expression;
-	}
-
-	return lhs;
-}
-
-AST_Expression * parser_parse_expression_multiplicative(Parser * parser) {
-	AST_Expression * lhs = parser_parse_expression_prefix(parser);
-	
-	// Left Associative
-	while (
-		parser_match(parser, TOKEN_OPERATOR_MULTIPLY) ||
-		parser_match(parser, TOKEN_OPERATOR_DIVIDE)
-	) {
-		AST_Expression * expression = malloc(sizeof(AST_Expression));
-		expression->type = AST_EXPRESSION_OPERATOR_BIN;
-
-		expression->expr_op_bin.token = *parser_advance(parser);
-		expression->expr_op_bin.expr_left  = lhs;
-		expression->expr_op_bin.expr_right = parser_parse_expression_prefix(parser);
-
-		expression->height = max(
-			expression->expr_op_bin.expr_left->height,
-			expression->expr_op_bin.expr_right->height
-		) + 1;
-
-		lhs = expression;
-	}
-
-	return lhs;
-}
-
-AST_Expression * parser_parse_expression_prefix(Parser * parser) {
-	if (parser_match(parser, TOKEN_OPERATOR_INC) ||
-		parser_match(parser, TOKEN_OPERATOR_DEC) ||
-		parser_match(parser, TOKEN_OPERATOR_PLUS) ||
-		parser_match(parser, TOKEN_OPERATOR_MINUS)
-	) {
-		AST_Expression * prefix = malloc(sizeof(AST_Expression));
-		prefix->type = AST_EXPRESSION_OPERATOR_PRE;
-		prefix->expr_op_pre.token = *parser_advance(parser);
-		prefix->expr_op_pre.expr  = parser_parse_expression_postfix(parser);
-		prefix->height = prefix->expr_op_pre.expr->height + 1;
-
-		return prefix;
-	}
-
-	return parser_parse_expression_postfix(parser);
-}
-
-AST_Expression * parser_parse_expression_postfix(Parser * parser) {
-	AST_Expression * operand =  parser_parse_expression_elementary(parser);
-
-	if (parser_match(parser, TOKEN_OPERATOR_INC) ||
-		parser_match(parser, TOKEN_OPERATOR_DEC)
-	) {
-		AST_Expression * postfix = malloc(sizeof(AST_Expression));
-		postfix->type = AST_EXPRESSION_OPERATOR_POST;
-		postfix->height = operand->height + 1;
-		postfix->expr_op_post.token = *parser_advance(parser);
-		postfix->expr_op_post.expr  = operand;
-
-		return postfix;
-	}
-
-	return operand;
-}
-
-AST_Expression * parser_parse_expression_elementary(Parser * parser) {
-	if (parser_match(parser, TOKEN_IDENTIFIER)) {
-		Token const * identifier = parser_advance(parser);
-
-		if (parser_match(parser, TOKEN_PARENTESES_OPEN)) {
-			AST_Expression * factor = malloc(sizeof(AST_Expression));
-
-			factor->type = AST_EXPRESSION_CALL_FUNC;
-			factor->height = 0;
-			factor->expr_call.function = identifier->value_str;
-			factor->expr_call.args = parser_parse_call_args(parser);
-
-			return factor;
-		} else {
-			AST_Expression * factor = malloc(sizeof(AST_Expression));
-
-			factor->type = AST_EXPRESSION_VAR;
-			factor->height = 0;
-			factor->expr_var.token = *identifier;
-
-			return factor;
-		}
-	} else if (
-		parser_match(parser, TOKEN_LITERAL_INT)  ||
-		parser_match(parser, TOKEN_LITERAL_BOOL) ||
-		parser_match(parser, TOKEN_LITERAL_STRING)
-	) {
-		AST_Expression * factor = malloc(sizeof(AST_Expression));
-
-		factor->type = AST_EXPRESSION_CONST;
-		factor->height = 0;
-		factor->expr_var.token = *parser_advance(parser);
-
-		return factor;
-	} else if (parser_match(parser, TOKEN_PARENTESES_OPEN)) {
-		parser_advance(parser);
-
-		AST_Expression * expr = parser_parse_expression(parser);
-
-		parser_match_and_advance(parser, TOKEN_PARENTESES_CLOSE);
-
-		return expr;
+static AST_Statement * parser_parse_statement(Parser * parser) {
+	if (parser_match_expression(parser)) {
+		return parser_parse_statement_expr(parser);
+	} else if (parser_match_statement_decl_var(parser)) {
+		return parser_parse_statement_decl_var(parser);
+	} else if (parser_match_statement_decl_func(parser)) {
+		return parser_parse_statement_decl_func(parser);
+	} else if (parser_match_statement_if(parser)) {
+		return parser_parse_statement_if(parser);
+	} else if (parser_match_statement_while(parser)) {
+		return parser_parse_statement_while(parser);
+	} else if (parser_match_statement_break(parser)) {
+		return parser_parse_statement_break(parser);
+	} else if (parser_match_statement_continue(parser)) {
+		return parser_parse_statement_continue(parser);
+	} else if (parser_match_statement_return(parser)) {
+		return parser_parse_statement_return(parser);
+	} else if (parser_match_statement_block(parser)) {
+		return parser_parse_statement_block(parser);
 	} else {
 		parser_error(parser);
 	}
+}
+
+static AST_Statement * parser_parse_statements(Parser * parser) {
+	AST_Statement * statement_head = parser_parse_statement(parser);
+
+	if (parser_match_statement(parser)) {
+		AST_Statement * statement_cons = parser_parse_statements(parser);
+		
+		AST_Statement * statements = malloc(sizeof(AST_Statement));
+		statements->type = AST_STATEMENTS;
+		statements->stat_statements.head = statement_head;
+		statements->stat_statements.cons = statement_cons;
+
+		return statements;
+	}
+
+	return statement_head;
+}
+
+AST_Statement * parser_parse_program(Parser * parser) {
+	AST_Statement * program = parser_parse_statements(parser);
+	parser_match_and_advance(parser, TOKEN_EOF);
+
+	return program;
 }
