@@ -10,31 +10,31 @@ info_msg  db "Info", 0
 SECTION .bss
 alignb 8
 a resd 1
-b resd 1
-c resd 1
-d resd 1
-i resd 1
-j resd 1
+b resq 1
+c resq 1
+d resq 1
+i resq 1
+j resq 1
 
 SECTION .text
 
 main:
-    mov DWORD [REL a], 0
-    mov eax, DWORD [REL a]
-    mov ebx, 0
-    cmp eax, ebx
+    mov QWORD [REL a], 1
+    mov rax, QWORD [REL a]
+    mov rbx, 0
+    cmp rax, rbx
     jle L0
-    mov eax, 1
+    mov rax, 1
     jmp L1
     L0:
-    mov eax, 0
+    mov rax, 0
     L1:
-    cmp eax, 0
+    cmp rax, 0
     je L_else2
-        mov DWORD [REL b], 3
+        mov QWORD [REL b], 3
     jmp L_exit2
     L_else2:
-        mov DWORD [REL b], 2
+        mov QWORD [REL b], 2
     L_exit2:
-    mov eax, DWORD [REL b]
+    mov rax, QWORD [REL b]
     ret

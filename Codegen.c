@@ -8,10 +8,10 @@
 #include <stdarg.h>
 #include <stdbool.h>
 
-#define EAX 0
-#define EBX 1
-#define ECX 2
-#define EDX 3
+#define RAX 0
+#define RBX 1
+#define RCX 2
+#define RDX 3
 #define R8  4
 #define R9  5
 #define R10 6
@@ -24,18 +24,18 @@
 #define REGISTER_COUNT 12
 
 static char const * reg_names[REGISTER_COUNT] = {
-	[EAX] = "eax",
-	[EBX] = "ebx",
-	[ECX] = "ecx",
-	[EDX] = "edx",
-	[R8 ] = "r8d",
-	[R9 ] = "r9d",
-	[R10] = "r10d",
-	[R11] = "r11d",
-	[R12] = "r12d",
-	[R13] = "r13d",
-	[R14] = "r14d",
-	[R15] = "r15d",
+	[RAX] = "rax",
+	[RBX] = "rbx",
+	[RCX] = "rcx",
+	[RDX] = "rdx",
+	[R8 ] = "r8",
+	[R9 ] = "r9",
+	[R10] = "r10",
+	[R11] = "r11",
+	[R12] = "r12",
+	[R13] = "r13",
+	[R14] = "r14",
+	[R15] = "r15",
 };
 
 typedef struct Context {
@@ -150,7 +150,7 @@ static int codegen_expression_var(Context * ctx, AST_Expression const * expr) {
 	assert(expr->type == AST_EXPRESSION_VAR);
 
 	int reg = context_reg_request(ctx);
-	code_append(ctx, "mov %s, DWORD [REL %s]\n", reg_names[reg], expr->expr_var.token.value_str);
+	code_append(ctx, "mov %s, QWORD [REL %s]\n", reg_names[reg], expr->expr_var.token.value_str);
 
 	return reg;
 }
@@ -178,12 +178,12 @@ static int codegen_expression_op_bin(Context * ctx, AST_Expression const * expr)
 		AST_Expression const * expr_right = expr->expr_op_bin.expr_right;
 
 		if (expr_right->type == AST_EXPRESSION_CONST) {
-			code_append(ctx, "mov DWORD [REL %s], %i\n", var, expr_right->expr_const.token.value_int);
+			code_append(ctx, "mov QWORD [REL %s], %i\n", var, expr_right->expr_const.token.value_int);
 
 			return -1;
 		} else {
 			int reg = codegen_expression(ctx, expr_right);
-			code_append(ctx, "mov DWORD [REL %s], %s\n", var, reg_names[reg]);
+			code_append(ctx, "mov QWORD [REL %s], %s\n", var, reg_names[reg]);
 
 			return reg;
 		}
@@ -251,14 +251,14 @@ static int codegen_expression_call_func(Context * ctx, AST_Expression * expr) {
 	int reg = context_reg_request(ctx);
 	int tmp;
 
-	if (reg != EAX) {
+	if (reg != RAX) {
 		tmp = context_reg_request(ctx);
 		code_append(ctx, "mov %s, eax ; save eax\n", reg_names[tmp]);
 	}
 
 	code_append(ctx, "call %s\n", expr->expr_call.function);
 
-	if (reg != EAX) {
+	if (reg != RAX) {
 		code_append(ctx, "mov %s, eax\n", reg_names[reg]);
 		code_append(ctx, "mov eax, %s ; restore eax\n", reg_names[tmp]);
 
@@ -309,13 +309,10 @@ static void codegen_statement_decl_func(Context * ctx, AST_Statement const * sta
 	assert(stat->type == AST_STATEMENT_DECL_FUNC);
 
 	code_append(ctx, "%s:\n", stat->stat_func.name);
-	//code_append(ctx, "sub rsp, 8; align stack to multiple of 16 bytes\n");
 
 	ctx->indent++;
 	codegen_statement(ctx, stat->stat_func.body);
 	ctx->indent--;
-
-	//code_append(ctx, "add rsp, 8; align stack to multiple of 16 bytes\n");
 }
 
 static void codegen_statement_if(Context * ctx, AST_Statement const * stat) {
@@ -395,7 +392,7 @@ static void codegen_statement_return(Context * ctx, AST_Statement const * stat) 
 	if (stat->stat_return.expr) {
 		int reg_return = codegen_expression(ctx, stat->stat_return.expr);
 
-		if (reg_return != EAX) {
+		if (reg_return != RAX) {
 			code_append(ctx, "mov eax, %s ; Return via eax\n", reg_names[reg_return]);
 		}
 
@@ -443,11 +440,11 @@ char const * codegen_program(AST_Statement const * program) {
 		"SECTION .bss\n"
 		"alignb 8\n"
 		"a resd 1\n"
-		"b resd 1\n"
-		"c resd 1\n"
-		"d resd 1\n"
-		"i resd 1\n"
-		"j resd 1\n\n"
+		"b resq 1\n"
+		"c resq 1\n"
+		"d resq 1\n"
+		"i resq 1\n"
+		"j resq 1\n\n"
 
 		"SECTION .text\n\n";
 
