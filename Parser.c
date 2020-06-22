@@ -41,10 +41,10 @@ static bool parser_match(Parser const * parser, Token_Type token_type) {
 }
 
 static Token const * parser_advance(Parser * parser) {
-	char string[128];
-	token_to_string(&parser->tokens[parser->index], string, sizeof(string));
-	
-	printf("%s\n", string);
+	//char string[128];
+	//token_to_string(&parser->tokens[parser->index], string, sizeof(string));
+	//
+	//printf("%s\n", string);
 
 	return &parser->tokens[parser->index++];
 }

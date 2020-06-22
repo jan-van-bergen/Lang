@@ -2,17 +2,51 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="Main.c" />
-    <ClCompile Include="Lexer.c" />
-    <ClCompile Include="Token.c" />
-    <ClCompile Include="AST.c" />
-    <ClCompile Include="Parser.c" />
-    <ClCompile Include="Codegen.c" />
+    <ClCompile Include="Test.c" />
+    <ClCompile Include="AST.c">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Codegen.c">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler.c">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Lexer.c">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Parser.c">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Token.c">
+      <Filter>Compiler</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Lexer.h" />
-    <ClInclude Include="Parser.h" />
-    <ClInclude Include="AST.h" />
-    <ClInclude Include="Token.h" />
-    <ClInclude Include="Godegen.h" />
+    <ClInclude Include="Test.h" />
+    <ClInclude Include="Util.h" />
+    <ClInclude Include="AST.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Godegen.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Lexer.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Parser.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Token.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Compiler">
+      <UniqueIdentifier>{87757a00-70b0-4d9b-b215-90e299ffafdf}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

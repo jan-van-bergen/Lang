@@ -1,6 +1,7 @@
 #include "AST.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 
 static void print_indent(int level) {
 	for (int i = 0; i < level; i++) {
@@ -225,4 +226,128 @@ static void print_statement(AST_Statement const * stat, int indent) {
 
 void ast_pretty_print(AST_Statement const * program) {
 	print_statement(program, 0);
+}
+
+
+static void ast_free_expression(AST_Expression * expr);
+
+static void ast_free_decl_args(AST_Decl_Arg * arg) {
+	if (arg == NULL) return;
+
+	ast_free_decl_args(arg->next);
+
+	free(arg->name);
+	free(arg->type);
+	free(arg);
+}
+
+static void ast_free_call_args(AST_Call_Arg * arg) {
+	if (arg == NULL) return;
+	
+	ast_free_call_args(arg->next);
+
+	ast_free_expression(arg->expr);
+	free(arg);
+}
+
+static void ast_free_expression(AST_Expression * expr) {
+	if (expr == NULL) return;
+
+	switch (expr->type) {
+		case AST_EXPRESSION_CONST: break;
+		case AST_EXPRESSION_VAR:   break;
+
+		case AST_EXPRESSION_OPERATOR_BIN: {
+			ast_free_expression(expr->expr_op_bin.expr_left);
+			ast_free_expression(expr->expr_op_bin.expr_right);
+
+			break;
+		}
+
+		case AST_EXPRESSION_OPERATOR_PRE: {
+			ast_free_expression(expr->expr_op_pre.expr);
+
+			break;
+		}
+
+		case AST_EXPRESSION_OPERATOR_POST: {
+			ast_free_expression(expr->expr_op_post.expr);
+
+			break;
+		}
+
+		case AST_EXPRESSION_CALL_FUNC: {
+			free(expr->expr_call.function);
+
+			ast_free_call_args(expr->expr_call.args);
+
+			break;
+		}
+	}
+}
+
+void ast_free_statement(AST_Statement * stat) {
+	if (stat == NULL) return;
+
+	switch (stat->type) {
+		case AST_STATEMENTS: {
+			if (stat->stat_stats.head) ast_free_statement(stat->stat_stats.head);
+			if (stat->stat_stats.cons) ast_free_statement(stat->stat_stats.cons);
+
+			break;
+		}
+
+		case AST_STATEMENT_EXPR: ast_free_expression(stat->stat_expr.expr); break;
+
+		case AST_STATEMENT_DECL_VAR: {
+			free(stat->stat_decl_var.name);
+			free(stat->stat_decl_var.type);
+
+			break;
+		}
+
+		case AST_STATEMENT_DECL_FUNC: {
+			free(stat->stat_decl_func.name);
+			free(stat->stat_decl_func.return_type);
+
+			ast_free_decl_args(stat->stat_decl_func.args);
+			ast_free_statement(stat->stat_decl_func.body);
+
+			break;
+		}
+
+		case AST_STATEMENT_EXTERN: {
+			free(stat->stat_extern.name);
+
+			break;
+		}
+
+		case AST_STATEMENT_IF: {
+			ast_free_expression(stat->stat_if.condition);
+
+			ast_free_statement(stat->stat_if.case_true);
+			ast_free_statement(stat->stat_if.case_false);
+
+			break;
+		}
+
+		case AST_STATEMENT_WHILE: {
+			ast_free_expression(stat->stat_while.condition);
+
+			ast_free_statement(stat->stat_while.body);
+			ast_free_statement(stat->stat_if.case_false);
+
+			break;
+		}
+
+		case AST_STATEMENT_RETURN: {
+			ast_free_expression(stat->stat_return.expr);
+
+			break;
+		}
+
+		default: abort();
+	}
+
+	free(stat);
 }

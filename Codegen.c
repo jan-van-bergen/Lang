@@ -43,12 +43,14 @@ static char const * function_call_reg_names[] = { "rcx", "rdx", "r8", "r9" };
 typedef struct Scope {
 	struct Scope * prev;
 
-	//int arg_count;
+	int arg_count;
+	int var_count;
 
-	int           var_count;
+	int           vars_declared;
 	char const ** vars;
 
-	int offset;
+	int local_count;
+	int current_offset;
 } Scope;
 
 typedef struct Context {
@@ -117,12 +119,20 @@ int context_new_label(Context * ctx) {
 	return ctx->label++;
 }
 
-Scope * context_scope_push(Context * ctx, int var_count) {
+Scope * context_scope_push(Context * ctx, int arg_count, int var_count) {
+	int local_count = arg_count + var_count;
+	
 	Scope * scope = malloc(sizeof(Scope));
 	scope->prev = ctx->current_scope;
+
+	scope->arg_count = arg_count;
 	scope->var_count = var_count;
-	scope->vars      = malloc(var_count * sizeof(char const *));
-	scope->offset = 0;
+
+	scope->vars_declared = 0;
+	scope->vars = malloc(local_count * sizeof(char const *));
+
+	scope->local_count = local_count;
+	scope->current_offset = 0;
 
 	ctx->current_scope = scope;
 
@@ -140,16 +150,16 @@ void context_scope_pop(Context * ctx) {
 void context_decl_var(Context * ctx, const char * name) {
 	assert(ctx->current_scope);
 
-	int offset = ctx->current_scope->offset++;
-	if (offset > ctx->current_scope->var_count) abort();
+	int offset = ctx->current_scope->current_offset++;
+	if (offset > ctx->current_scope->local_count) abort();
 
 	ctx->current_scope->vars[offset] = name;
 }
 
 int context_get_var_offset(Context * ctx, const char * name) {
-	for (int i = 0; i < ctx->current_scope->offset; i++) {
+	for (int i = 0; i < ctx->current_scope->current_offset; i++) {
 		if (strcmp(ctx->current_scope->vars[i], name) == 0) {
-			return ctx->stack_offset + ctx->current_scope->var_count - i - 1;
+			return ctx->stack_offset + i;
 		}
 	}
 	
@@ -418,7 +428,7 @@ static int codegen_expression_call_func(Context * ctx, AST_Expression * expr) {
 		if (arg_index < 4) {
 			code_append(ctx, "mov %s, %s ; arg %i\n", function_call_reg_names[arg_index], reg_names[arg_reg], arg_index);
 		} else {
-			code_append(ctx, "mov QWORD [RSP + 4 * 8], %s ; arg %i\n", reg_names[arg_reg], arg_index);
+			code_append(ctx, "mov QWORD [RSP + %i * 8], %s ; arg %i\n", arg_index, reg_names[arg_reg], arg_index);
 		}
 		context_reg_free(ctx, arg_reg);
 
@@ -536,7 +546,7 @@ static void codegen_statement_decl_func(Context * ctx, AST_Statement const * sta
 	int var_count = count_vars_in_function(stat->stat_decl_func.body);
 
 	// Create new scope
-	context_scope_push(ctx, arg_count + var_count);
+	context_scope_push(ctx, arg_count, var_count);
 
 	// Push arguments on stack
 	int arg_offset = 0;
@@ -546,19 +556,28 @@ static void codegen_statement_decl_func(Context * ctx, AST_Statement const * sta
 		context_decl_var(ctx, arg->name);
 
 		if (arg_offset < 4) {
-			code_append(ctx, "push %s\n", function_call_reg_names[arg_offset++]);
+			code_append(ctx, "mov QWORD [rsp + %i * 8], %s\n", arg_offset + 1, function_call_reg_names[arg_offset]);
 		}
+
+		arg_offset++;
 		arg = arg->next;
 	}
 
 	// Reserve space on stack for local variables
-	if (var_count > 0) code_append(ctx, "sub rsp, %i\n", var_count * 8);
+	if (var_count > 0) {
+		if ((var_count & 1) == 0) {
+			var_count++;
+		}
+		//code_append(ctx, "sub rsp, %i\n", var_count * 8);
+	}
 
 	// Function body
+	ctx->stack_offset++;
 	codegen_statement(ctx, stat->stat_decl_func.body);
+	ctx->stack_offset--;
 
 	code_append(ctx, "; Default return\n");
-	code_append(ctx, "add rsp, %i\n", ctx->current_scope->var_count * 8);
+	//code_append(ctx, "add rsp, %i\n", var_count * 8);
 	code_append(ctx, "xor rax, rax\n");
 	code_append(ctx, "ret\n");
 	code_append(ctx, "\n");
@@ -660,7 +679,9 @@ static void codegen_statement_return(Context * ctx, AST_Statement const * stat) 
 		code_append(ctx, "mov rax, 0\n");
 	}
 	
-	code_append(ctx, "add rsp, %i\n", ctx->current_scope->var_count * 8);
+	int var_count = ctx->current_scope->var_count;
+	if (var_count > 0 && (var_count & 1) == 0) var_count++;
+	//code_append(ctx, "add rsp, %i\n", var_count * 8);
 	code_append(ctx, "ret\n");
 }
 

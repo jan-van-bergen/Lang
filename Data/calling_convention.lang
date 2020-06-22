@@ -1,0 +1,8 @@
+// First four arguments are passed via registers, later ones via stack
+func calling_convention(rcx: int, rdx: int, r8: int, r9: int, stack0: int, stack1: int) -> int {
+	return rcx + rdx + r8 + r9 + stack0 + stack1;
+}
+
+func main() -> int {
+	return calling_convention(1, 2, 3, 4, 5, 6);
+}

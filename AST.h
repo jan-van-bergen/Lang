@@ -134,3 +134,5 @@ typedef struct AST_Statement {
 } AST_Statement;
 
 void ast_pretty_print(AST_Statement const * program);
+
+void ast_free_statement(AST_Statement * stat);

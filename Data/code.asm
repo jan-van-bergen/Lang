@@ -1,20 +1,9 @@
-EXTERN MessageBoxA: PROC
-EXTERN GetForegroundWindow: PROC
-
 GLOBAL main
 
-SECTION .data
-hello_msg db "Hello world", 0
-info_msg  db "Info", 0
-
-SECTION .bss
-alignb 8
-SECTION .text
-
+SECTION .code
 main:
-    sub rsp, 16
-    mov QWORD [rsp + 0 * 8], 1
-    mov rax, QWORD [rsp + 0 * 8]
+    mov QWORD [rsp + 1 * 8], 1 ; set a
+    mov rax, QWORD [rsp + 1 * 8] ; get a
     mov rbx, 0
     cmp rax, rbx
     jle L0
@@ -25,11 +14,15 @@ main:
     L1:
     cmp rax, 0
     je L_else2
-        mov QWORD [rsp + 1 * 8], 3
+        mov QWORD [rsp + 2 * 8], 3 ; set b
     jmp L_exit2
     L_else2:
-        mov QWORD [rsp + 1 * 8], 2
+        mov QWORD [rsp + 2 * 8], 2 ; set b
     L_exit2:
-    mov rax, QWORD [rsp + 1 * 8]
-    add rsp, 16
+    mov rax, QWORD [rsp + 2 * 8] ; get b
     ret
+    ; Default return
+    xor rax, rax
+    ret
+    
+SECTION .data

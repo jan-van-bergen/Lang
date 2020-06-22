@@ -19,5 +19,5 @@ func main() -> int {
 	let bla: int;
 	bla = two(1, 2); // 5
 	
-	return recursive(one(bla), 0); // 10
+	return recursive(one(bla), 0); // 12
 }
