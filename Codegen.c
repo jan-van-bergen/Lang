@@ -51,23 +51,6 @@ typedef struct Scope {
 	int offset;
 } Scope;
 
-void scope_decl_var(Scope * scope, const char * name) {
-	int offset = scope->offset++;
-	if (offset > scope->var_count) abort();
-
-	scope->vars[offset] = name;
-}
-
-int scope_get_var_offset(Scope * scope, const char * name) {
-	for (int i = 0; i < scope->offset; i++) {
-		if (strcmp(scope->vars[i], name) == 0) {
-			return scope->var_count - i - 1;
-		}
-	}
-	
-	abort(); // Undeclared variable used
-}
-
 typedef struct Context {
 	bool regs_occupied[12];
 
@@ -77,6 +60,7 @@ typedef struct Context {
 	int current_loop_label;
 
 	Scope * current_scope;
+	int stack_offset;
 
 	char * code;
 	int    code_len;
@@ -90,6 +74,9 @@ void context_init(Context * ctx) {
 
 	ctx->label = 0;
 	ctx->current_loop_label = -1;
+
+	ctx->current_scope = NULL;
+	ctx->stack_offset = 0;
 
 	const int initial_capacity = 512;
 
@@ -144,6 +131,25 @@ void context_scope_pop(Context * ctx) {
 	free(scope);
 }
 
+void context_decl_var(Context * ctx, const char * name) {
+	assert(ctx->current_scope);
+
+	int offset = ctx->current_scope->offset++;
+	if (offset > ctx->current_scope->var_count) abort();
+
+	ctx->current_scope->vars[offset] = name;
+}
+
+int context_get_var_offset(Context * ctx, const char * name) {
+	for (int i = 0; i < ctx->current_scope->offset; i++) {
+		if (strcmp(ctx->current_scope->vars[i], name) == 0) {
+			return ctx->stack_offset + ctx->current_scope->var_count - i - 1;
+		}
+	}
+	
+	abort(); // Undeclared variable used
+}
+
 static void code_append(Context * ctx, char const * fmt, ...) {
 	va_list args;
     va_start(args, fmt);
@@ -184,6 +190,13 @@ static int codegen_expression_const(Context * ctx, AST_Expression const * expr) 
 		case TOKEN_LITERAL_INT:  val = expr->expr_const.token.value_int;  break;
 		case TOKEN_LITERAL_BOOL: val = expr->expr_const.token.value_char; break;
 		//case TOKEN_LITERAL_STRING: code_append(ctx, "mov %s, %i\n", reg_names[reg], expr->expr_const.token.value_int); break;
+		
+		case TOKEN_LITERAL_STRING: {
+			int reg = context_reg_request(ctx);
+			code_append(ctx, "lea %s, [REL hello_msg]\n", reg_names[reg]);
+
+			return reg;
+		}
 
 		default: abort();
 	}
@@ -198,7 +211,7 @@ static int codegen_expression_var(Context * ctx, AST_Expression const * expr) {
 	assert(expr->type == AST_EXPRESSION_VAR);
 
 	char const * var_name = expr->expr_var.token.value_str;
-	int offset = scope_get_var_offset(ctx->current_scope, var_name);
+	int offset = context_get_var_offset(ctx, var_name);
 
 	int reg = context_reg_request(ctx);
 	code_append(ctx, "mov %s, QWORD [rsp + %i * 8] ; get %s\n", reg_names[reg], offset, var_name);
@@ -225,7 +238,7 @@ static int codegen_expression_op_bin(Context * ctx, AST_Expression const * expr)
 
 	if (expr->expr_op_bin.token.type == TOKEN_ASSIGN) {
 		char const * var_name = expr->expr_op_bin.expr_left->expr_var.token.value_str;
-		int          var_offset = scope_get_var_offset(ctx->current_scope, var_name);
+		int          var_offset = context_get_var_offset(ctx, var_name);
 
 		AST_Expression const * expr_right = expr->expr_op_bin.expr_right;
 
@@ -297,6 +310,44 @@ static int codegen_expression_op_bin(Context * ctx, AST_Expression const * expr)
 	return reg_left;
 }
 
+static int codegen_expression_op_pre(Context * ctx, AST_Expression const * expr) {
+	assert(expr->type == AST_EXPRESSION_OPERATOR_PRE);
+
+	Token_Type operator = expr->expr_op_pre.token.type;
+
+	// Check if this is a pointer operator
+	if (operator == TOKEN_OPERATOR_BITWISE_AND || operator == TOKEN_OPERATOR_MULTIPLY) {
+		AST_Expression * operand = expr->expr_op_pre.expr;
+		if (operand->type != AST_EXPRESSION_VAR) abort(); // Pointer operators only work on identifiers
+
+		const char * var_name = operand->expr_var.token.value_str;
+		int          var_offset = context_get_var_offset(ctx, var_name);
+
+		int result_reg = context_reg_request(ctx);
+
+		if (operator == TOKEN_OPERATOR_BITWISE_AND) {
+			code_append(ctx, "lea %s, QWORD [RSP + %i * 8] ; addrof %s\n", reg_names[result_reg], var_offset, var_name);
+		} else {
+			code_append(ctx, "mov %s, QWORD [RSP + %i * 8] ; deref %s\n", reg_names[result_reg], var_offset, var_name);
+			code_append(ctx, "mov %s, QWORD [%s]\n",                      reg_names[result_reg], reg_names[result_reg]);
+		}
+
+		return result_reg;
+	}
+
+	int reg = codegen_expression(ctx, expr->expr_op_pre.expr);
+
+	switch (operator) {
+		case TOKEN_OPERATOR_PLUS: break; // Do nothing
+		case TOKEN_OPERATOR_MINUS: code_append(ctx, "neg %s\n", reg_names[reg]); break;
+
+
+		default: abort();
+	}
+
+	return reg;
+}
+
 static int codegen_expression_call_func(Context * ctx, AST_Expression * expr) {
 	assert(expr->type == AST_EXPRESSION_CALL_FUNC);
 	
@@ -304,11 +355,27 @@ static int codegen_expression_call_func(Context * ctx, AST_Expression * expr) {
 	AST_Call_Arg * arg = expr->expr_call.args;
 
 	while (arg) {
+		arg_count++;
+		arg = arg->next;
+	}
+
+	arg = expr->expr_call.args;
+
+	int arg_count_aligned = (arg_count - 4 + 15) & ~15;
+	code_append(ctx, "sub rsp, 32 + %i\n", arg_count_aligned);
+	ctx->stack_offset += 4 + arg_count_aligned / 8;
+
+	int arg_index = 0;
+	while (arg) {
 		int arg_reg = codegen_expression(ctx, arg->expr);
-		code_append(ctx, "mov %s, %s ; arg %i\n", function_call_reg_names[arg_count], reg_names[arg_reg], arg_count);
+		if (arg_index < 4) {
+			code_append(ctx, "mov %s, %s ; arg %i\n", function_call_reg_names[arg_index], reg_names[arg_reg], arg_index);
+		} else {
+			code_append(ctx, "mov QWORD [RSP + 4 * 8], %s ; arg %i\n", reg_names[arg_reg], arg_index);
+		}
 		context_reg_free(ctx, arg_reg);
 
-		arg_count++;
+		arg_index++;
 		arg = arg->next;
 	}
 
@@ -321,6 +388,9 @@ static int codegen_expression_call_func(Context * ctx, AST_Expression * expr) {
 	}
 
 	code_append(ctx, "call %s\n", expr->expr_call.function);
+	
+	ctx->stack_offset -= 4 + arg_count_aligned / 8;
+	code_append(ctx, "add rsp, 32 + %i\n", arg_count_aligned);
 
 	if (reg != RAX) {
 		code_append(ctx, "mov %s, rax\n", reg_names[reg]);
@@ -338,10 +408,13 @@ static int codegen_expression(Context * ctx, AST_Expression const * expr) {
 		case AST_EXPRESSION_VAR:   return codegen_expression_var  (ctx, expr);
 
 		//case AST_EXPRESSION_ASSIGN:
-		case AST_EXPRESSION_OPERATOR_BIN: return codegen_expression_op_bin(ctx, expr);
-		//case AST_EXPRESSION_OPERATOR_PRE:
-		//case AST_EXPRESSION_OPERATOR_POST:
+		case AST_EXPRESSION_OPERATOR_BIN:  return codegen_expression_op_bin (ctx, expr);
+		case AST_EXPRESSION_OPERATOR_PRE:  return codegen_expression_op_pre (ctx, expr);
+		//case AST_EXPRESSION_OPERATOR_POST: return codegen_expression_op_post(ctx, expr);
+
 		case AST_EXPRESSION_CALL_FUNC: return codegen_expression_call_func(ctx, expr);
+
+		default: abort();
 	}
 }
 
@@ -368,7 +441,7 @@ static void codegen_statement_expression(Context * ctx, AST_Statement const * st
 static void codegen_statement_decl_var(Context * ctx, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_DECL_VAR);
 
-	scope_decl_var(ctx->current_scope, stat->stat_decl_var.name);
+	context_decl_var(ctx, stat->stat_decl_var.name);
 }
 
 static int count_vars_in_function(AST_Statement const * stat) {
@@ -423,7 +496,7 @@ static void codegen_statement_decl_func(Context * ctx, AST_Statement const * sta
 	arg = stat->stat_decl_func.args;
 
 	while (arg) {
-		scope_decl_var(ctx->current_scope, arg->name);
+		context_decl_var(ctx, arg->name);
 
 		code_append(ctx, "push %s\n", function_call_reg_names[arg_offset++]);
 		arg = arg->next;
@@ -438,6 +511,14 @@ static void codegen_statement_decl_func(Context * ctx, AST_Statement const * sta
 	ctx->indent--;
 
 	context_scope_pop(ctx);
+
+	code_append(ctx, "\n");
+}
+
+static void codegen_statement_extern(Context * ctx, AST_Statement const * stat) {
+	assert(stat->type == AST_STATEMENT_EXTERN);
+
+	code_append(ctx, "EXTERN %s\n\n", stat->stat_extern.name);
 }
 
 static void codegen_statement_if(Context * ctx, AST_Statement const * stat) {
@@ -539,6 +620,7 @@ static void codegen_statement(Context * ctx, AST_Statement const * stat) {
 
 		case AST_STATEMENT_DECL_VAR:  codegen_statement_decl_var (ctx, stat); break;
 		case AST_STATEMENT_DECL_FUNC: codegen_statement_decl_func(ctx, stat); break;
+		case AST_STATEMENT_EXTERN:    codegen_statement_extern   (ctx, stat); break;
 
 		case AST_STATEMENT_IF:    codegen_statement_if   (ctx, stat); break;
 		case AST_STATEMENT_WHILE: codegen_statement_while(ctx, stat); break;
@@ -546,6 +628,8 @@ static void codegen_statement(Context * ctx, AST_Statement const * stat) {
 		case AST_STATEMENT_BREAK:    codegen_statement_break   (ctx, stat); break;
 		case AST_STATEMENT_CONTINUE: codegen_statement_continue(ctx, stat); break;
 		case AST_STATEMENT_RETURN:   codegen_statement_return  (ctx, stat); break;
+
+		default: abort();
 	}
 }
 
@@ -564,9 +648,9 @@ char const * codegen_program(AST_Statement const * program) {
 		"info_msg  db \"Info\", 0\n\n"
 
 		"SECTION .bss\n"
-		"alignb 8\n"
+		"alignb 8\n\n"
 
-		"SECTION .text\n\n";
+		"SECTION .code\n";
 
 	code_append(&ctx, asm_init);
 

@@ -147,6 +147,7 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 	
 	// Keywords
 	if (match_length = lexer_match(lexer, "let"))      { token->type = TOKEN_KEYWORD_LET;      lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "extern"))   { token->type = TOKEN_KEYWORD_EXTERN;   lexer->index += match_length; return; }
 	if (match_length = lexer_match(lexer, "if"))       { token->type = TOKEN_KEYWORD_IF;       lexer->index += match_length; return; }
 	if (match_length = lexer_match(lexer, "else"))     { token->type = TOKEN_KEYWORD_ELSE;     lexer->index += match_length; return; }
 	//if (match_length = lexer_match(lexer, "for"))    { token->type = TOKEN_KEYWORD_FOR;    lexer->index += match_length; return; }
@@ -194,6 +195,8 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 		case '-': token->type = TOKEN_OPERATOR_MINUS; 	 lexer_next(lexer); return;
 		case '*': token->type = TOKEN_OPERATOR_MULTIPLY; lexer_next(lexer); return; 
 		case '/': token->type = TOKEN_OPERATOR_DIVIDE;   lexer_next(lexer); return;
+
+		case '&': token->type = TOKEN_OPERATOR_BITWISE_AND; lexer_next(lexer); return;
 
 		case '=': token->type = TOKEN_ASSIGN; lexer_next(lexer); return;
 

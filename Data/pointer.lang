@@ -1,0 +1,10 @@
+func use_ptr(ptr: int) -> int {
+	return *ptr;
+}
+
+func main() -> int {
+	let a: int;
+	a = 42;
+	
+	return use_ptr(&a);
+}

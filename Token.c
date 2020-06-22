@@ -8,6 +8,7 @@ void token_to_string(Token const * token, char * string, int string_size) {
 		case TOKEN_LITERAL_STRING: sprintf_s(string, string_size, "\"%s\"", token->value_str);                     return;
 
 		case TOKEN_KEYWORD_LET:      strcpy_s(string, string_size, "let");      return;
+		case TOKEN_KEYWORD_EXTERN:   strcpy_s(string, string_size, "extern");   return;
 		case TOKEN_KEYWORD_IF:	     strcpy_s(string, string_size, "if");       return;
 		case TOKEN_KEYWORD_ELSE:     strcpy_s(string, string_size, "else");     return;
 		//case TOKEN_KEYWORD_FOR:	   strcpy_s(string, string_size, "for");    return;

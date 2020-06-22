@@ -75,7 +75,9 @@ int main(int arg_count, char const * args[]) {
 	ast_pretty_print(program);
 
 	char const * code = codegen_program(program);
-	
+
+	printf("Completed in %i ms\n", (clock() - clock_start) * 1000 / CLOCKS_PER_SEC);
+
 	char const * file_extension = strstr(filename, ".lang");
 	int filename_len;
 	if (file_extension) {
@@ -119,12 +121,6 @@ int main(int arg_count, char const * args[]) {
 
 	int ret = system(file_exe);
 	printf("Program returned: %i\n", ret);
-	
-	clock_t clock_end = clock();
-
-	int time = (clock_end - clock_start) * 1000 / CLOCKS_PER_SEC;
-
-	printf("Completed in %i ms\n", time);
 	getchar();
 
 	return EXIT_SUCCESS;

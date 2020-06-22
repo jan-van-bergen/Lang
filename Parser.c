@@ -28,7 +28,7 @@ static void parser_error_expected(Parser * parser, Token_Type expected) {
 	
 	Token expected_token;
 	expected_token.type = expected;
-	expected_token.value_str = NULL;
+	expected_token.value_str = "identifier";
 	char expected_token_string[128];
 	token_to_string(&expected_token, expected_token_string, sizeof(expected_token_string));
 
@@ -36,7 +36,7 @@ static void parser_error_expected(Parser * parser, Token_Type expected) {
 	abort();
 }
 
-static bool parser_match(Parser * parser, Token_Type token_type) {
+static bool parser_match(Parser const * parser, Token_Type token_type) {
 	return parser->tokens[parser->index].type == token_type;
 }
 
@@ -61,10 +61,12 @@ static Token const * parser_match_and_advance(Parser * parser, Token_Type token_
 static bool parser_match_expression(Parser const * parser) {
 	return
 		parser_match(parser, TOKEN_IDENTIFIER) || // Variable
-		parser_match(parser, TOKEN_OPERATOR_PLUS)  || // Unary operations
-		parser_match(parser, TOKEN_OPERATOR_MINUS) ||
-		parser_match(parser, TOKEN_OPERATOR_INC)   ||
-		parser_match(parser, TOKEN_OPERATOR_DEC)   ||
+		parser_match(parser, TOKEN_OPERATOR_PLUS)        || // Unary operations
+		parser_match(parser, TOKEN_OPERATOR_MINUS)       ||
+		parser_match(parser, TOKEN_OPERATOR_INC)         ||
+		parser_match(parser, TOKEN_OPERATOR_DEC)         ||
+		parser_match(parser, TOKEN_OPERATOR_BITWISE_AND) ||
+		parser_match(parser, TOKEN_OPERATOR_MULTIPLY)    ||
 		parser_match(parser, TOKEN_LITERAL_INT)    || // Constant values
 		parser_match(parser, TOKEN_LITERAL_BOOL)   ||
 		parser_match(parser, TOKEN_LITERAL_STRING) ||
@@ -81,6 +83,10 @@ static bool parser_match_statement_decl_var(Parser const * parser) {
 
 static bool parser_match_statement_decl_func(Parser const * parser) {
 	return parser_match(parser, TOKEN_KEYWORD_FUNC);
+}
+
+static bool parser_match_statement_extern(Parser const * parser) {
+	return parser_match(parser, TOKEN_KEYWORD_EXTERN);
 }
 
 static bool parser_match_statement_if(Parser const * parser) {
@@ -112,6 +118,7 @@ static bool parser_match_statement(Parser const * parser) {
 		parser_match_statement_expr(parser) ||
 		parser_match_statement_decl_var (parser) ||
 		parser_match_statement_decl_func(parser) ||
+		parser_match_statement_extern   (parser) ||
 		parser_match_statement_if   (parser) ||
 		parser_match_statement_while(parser) ||
 		parser_match_statement_break   (parser) ||
@@ -226,8 +233,10 @@ static AST_Expression * parser_parse_expression_postfix(Parser * parser) {
 static AST_Expression * parser_parse_expression_prefix(Parser * parser) {
 	if (parser_match(parser, TOKEN_OPERATOR_INC) ||
 		parser_match(parser, TOKEN_OPERATOR_DEC) ||
-		parser_match(parser, TOKEN_OPERATOR_PLUS) ||
-		parser_match(parser, TOKEN_OPERATOR_MINUS)
+		parser_match(parser, TOKEN_OPERATOR_PLUS)  ||
+		parser_match(parser, TOKEN_OPERATOR_MINUS) ||
+		parser_match(parser, TOKEN_OPERATOR_BITWISE_AND) || // address of
+		parser_match(parser, TOKEN_OPERATOR_MULTIPLY)       // dereference
 	) {
 		AST_Expression * prefix = malloc(sizeof(AST_Expression));
 		prefix->type = AST_EXPRESSION_OPERATOR_PRE;
@@ -491,6 +500,18 @@ static AST_Statement * parser_parse_statement_decl_func(Parser * parser) {
 	return func;
 }
 
+static AST_Statement * parser_parse_statement_extern(Parser * parser) {
+	AST_Statement * decl_extern = malloc(sizeof(AST_Statement));
+	decl_extern->type = AST_STATEMENT_EXTERN;
+
+	parser_match_and_advance(parser, TOKEN_KEYWORD_EXTERN);
+	decl_extern->stat_extern.name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
+
+	parser_match_and_advance(parser, TOKEN_SEMICOLON);
+
+	return decl_extern;
+}
+
 static AST_Statement * parser_parse_statement_if(Parser * parser) {
 	AST_Statement * branch = malloc(sizeof(AST_Statement));
 	branch->type = AST_STATEMENT_IF;
@@ -592,6 +613,8 @@ static AST_Statement * parser_parse_statement(Parser * parser) {
 		return parser_parse_statement_decl_var(parser);
 	} else if (parser_match_statement_decl_func(parser)) {
 		return parser_parse_statement_decl_func(parser);
+	} else if (parser_match_statement_extern(parser)) {
+		return parser_parse_statement_extern(parser);
 	} else if (parser_match_statement_if(parser)) {
 		return parser_parse_statement_if(parser);
 	} else if (parser_match_statement_while(parser)) {

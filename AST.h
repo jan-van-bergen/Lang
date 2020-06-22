@@ -18,6 +18,7 @@ typedef enum AST_Statement_Type {
 	AST_STATEMENT_EXPR,
 	AST_STATEMENT_DECL_VAR,
 	AST_STATEMENT_DECL_FUNC,
+	AST_STATEMENT_EXTERN,
 	AST_STATEMENT_IF,
 	AST_STATEMENT_WHILE,
 	AST_STATEMENT_BREAK,
@@ -85,27 +86,26 @@ typedef struct AST_Statement {
 			struct AST_Statement * head;
 			struct AST_Statement * cons;
 		} stat_stats;
+		
+		struct Expr {
+			struct AST_Expression * expr;
+		} stat_expr;
 
 		struct Decl_Var {
 			char const * name;
 			char const * type;
 		} stat_decl_var;
-
-		struct Assign {
-			char const * name;
-			struct AST_Expression * expr;
-		} stat_assign;
-
-		struct Expr {
-			struct AST_Expression * expr;
-		} stat_expr;
-
+		
 		struct Decl_Func {
 			char const * name;
 			char const * return_type;
-			struct AST_Decl_Args * args;
+			struct AST_Decl_Arg  * args;
 			struct AST_Statement * body;
 		} stat_decl_func;
+
+		struct Extern {
+			char const * name;
+		} stat_extern;
 
 		struct If {
 			struct AST_Expression * condition;

@@ -1,0 +1,12 @@
+extern GetStdHandle;
+extern WriteFile;
+
+func main() -> int {
+	let std_handle: int;
+	std_handle = GetStdHandle(-11);
+	
+	let bytes_written: int;
+	WriteFile(std_handle, "", 12, &bytes_written, 0);
+	
+	return 0;
+}

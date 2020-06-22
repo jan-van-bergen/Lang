@@ -151,6 +151,13 @@ static void print_statement(AST_Statement const * stat, int indent) {
 			break;
 		}
 
+		case AST_STATEMENT_EXTERN: {
+			print_indent(indent);
+			printf("extern %s\n", stat->stat_extern.name);
+
+			break;
+		}
+
 		case AST_STATEMENT_IF: {
 			print_indent(indent);
 			printf("if (");
