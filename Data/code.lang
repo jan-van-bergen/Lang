@@ -1,9 +1,9 @@
-a = 0;
-b = 0;
-
-while (a < 7) {
-	b = b + 1;
-	a = a + 1;
+func main() -> int {
+	a = 0;
+	if (a > 0) {
+		b = 3;
+	} else {
+		b = 2;
+	}
+	return b;
 }
-
-return b;

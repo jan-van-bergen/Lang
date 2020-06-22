@@ -1,0 +1,21 @@
+func one() -> int {
+	return 1;
+}
+
+func two() -> int {
+	return 2;
+}
+
+func rec() -> int {
+	if (a == 0) return b;
+	
+	b = b + 2;
+	a = a - 1;
+	
+	return rec();
+}
+
+func main() -> int {
+	a = 5;
+	return rec();
+}

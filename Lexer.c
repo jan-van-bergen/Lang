@@ -101,10 +101,19 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 	token->line = lexer->line;
 
 	if (isdigit(curr)) {
-		token->type      = TOKEN_LITERAL_INT;
-		token->value_int = curr - '0';
+		int value = 0;
 
-		lexer_next(lexer);
+		while (isdigit(curr)) {
+			value *= 10;
+			value += curr - '0';
+
+			curr = lexer_next(lexer);
+		}
+
+		token->type      = TOKEN_LITERAL_INT;
+		token->value_int = value;
+
+		//lexer_next(lexer);
 
 		return;
 	}

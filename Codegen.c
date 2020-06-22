@@ -41,6 +41,8 @@ static char const * reg_names[REGISTER_COUNT] = {
 typedef struct Context {
 	bool regs_occupied[12];
 
+	int indent;
+
 	int label;
 	int current_loop_label;
 
@@ -54,6 +56,8 @@ typedef struct Context {
 
 void context_init(Context * context) {
 	memset(context->regs_occupied, 0, sizeof(context->regs_occupied));
+
+	context->indent = 0;
 
 	context->label = 0;
 	context->current_loop_label = -1;
@@ -81,6 +85,8 @@ int context_reg_request(Context * context) {
 }
 
 void context_reg_free(Context * context, int reg) {
+	if (reg == -1) return;
+
 	assert(context->regs_occupied[reg]);
 
 	context->regs_occupied[reg] = false;
@@ -95,7 +101,15 @@ static void code_append(Context * ctx, char const * fmt, ...) {
     va_start(args, fmt);
 
 	char new_code[1024];
-	vsprintf_s(new_code, sizeof(new_code), fmt, args);
+
+	char const * indent = "    ";
+	int  const   indent_len = strlen(indent);
+
+	for (int i = 0; i < ctx->indent; i++) {
+		memcpy(new_code + i * indent_len, indent, indent_len);
+	}
+	
+	vsprintf_s(new_code + ctx->indent * indent_len, sizeof(new_code) - ctx->indent * indent_len, fmt, args);
 	
 	va_end(args);
 	
@@ -136,11 +150,12 @@ static int codegen_expression_var(Context * ctx, AST_Expression const * expr) {
 	assert(expr->type == AST_EXPRESSION_VAR);
 
 	int reg = context_reg_request(ctx);
-	code_append(ctx, "mov %s, %s\n", reg_names[reg], expr->expr_var.token.value_str);
+	code_append(ctx, "mov %s, DWORD [REL %s]\n", reg_names[reg], expr->expr_var.token.value_str);
 
 	return reg;
 }
 
+// Helper function used by relational and equality operators
 static void codegen_compare_branch(Context * ctx, char const * jump_instruction, char const * reg_name_left, char const * reg_name_right) {
 	int label_else = context_new_label(ctx);
 	int label_exit = context_new_label(ctx);
@@ -160,10 +175,18 @@ static int codegen_expression_op_bin(Context * ctx, AST_Expression const * expr)
 	if (expr->expr_op_bin.token.type == TOKEN_ASSIGN) {
 		char const * var = expr->expr_op_bin.expr_left->expr_var.token.value_str;
 
-		int reg = codegen_expression(ctx, expr->expr_op_bin.expr_right);
-		code_append(ctx, "mov %s, %s\n", var, reg_names[reg]);
+		AST_Expression const * expr_right = expr->expr_op_bin.expr_right;
 
-		return reg;
+		if (expr_right->type == AST_EXPRESSION_CONST) {
+			code_append(ctx, "mov DWORD [REL %s], %i\n", var, expr_right->expr_const.token.value_int);
+
+			return -1;
+		} else {
+			int reg = codegen_expression(ctx, expr_right);
+			code_append(ctx, "mov DWORD [REL %s], %s\n", var, reg_names[reg]);
+
+			return reg;
+		}
 	}
 
 	int reg_left, reg_right;
@@ -222,6 +245,29 @@ static int codegen_expression_op_bin(Context * ctx, AST_Expression const * expr)
 	return reg_left;
 }
 
+static int codegen_expression_call_func(Context * ctx, AST_Expression * expr) {
+	assert(expr->type == AST_EXPRESSION_CALL_FUNC);
+
+	int reg = context_reg_request(ctx);
+	int tmp;
+
+	if (reg != EAX) {
+		tmp = context_reg_request(ctx);
+		code_append(ctx, "mov %s, eax ; save eax\n", reg_names[tmp]);
+	}
+
+	code_append(ctx, "call %s\n", expr->expr_call.function);
+
+	if (reg != EAX) {
+		code_append(ctx, "mov %s, eax\n", reg_names[reg]);
+		code_append(ctx, "mov eax, %s ; restore eax\n", reg_names[tmp]);
+
+		context_reg_free(ctx, tmp);
+	}
+
+	return reg;
+}
+
 static int codegen_expression(Context * ctx, AST_Expression const * expr) {
 	switch (expr->type) {
 		case AST_EXPRESSION_CONST: return codegen_expression_const(ctx, expr);
@@ -231,7 +277,7 @@ static int codegen_expression(Context * ctx, AST_Expression const * expr) {
 		case AST_EXPRESSION_OPERATOR_BIN: return codegen_expression_op_bin(ctx, expr);
 		//case AST_EXPRESSION_OPERATOR_PRE:
 		//case AST_EXPRESSION_OPERATOR_POST:
-		//case AST_EXPRESSION_CALL_FUNC:
+		case AST_EXPRESSION_CALL_FUNC: return codegen_expression_call_func(ctx, expr);
 	}
 }
 
@@ -261,6 +307,15 @@ static void codegen_statement_decl_var(Context * ctx, AST_Statement const * stat
 
 static void codegen_statement_decl_func(Context * ctx, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_DECL_FUNC);
+
+	code_append(ctx, "%s:\n", stat->stat_func.name);
+	//code_append(ctx, "sub rsp, 8; align stack to multiple of 16 bytes\n");
+
+	ctx->indent++;
+	codegen_statement(ctx, stat->stat_func.body);
+	ctx->indent--;
+
+	//code_append(ctx, "add rsp, 8; align stack to multiple of 16 bytes\n");
 }
 
 static void codegen_statement_if(Context * ctx, AST_Statement const * stat) {
@@ -270,27 +325,30 @@ static void codegen_statement_if(Context * ctx, AST_Statement const * stat) {
 	context_reg_free(ctx, reg);
 
 	int label = context_new_label(ctx);
+	code_append(ctx, "cmp %s, 0\n", reg_names[reg]);
 
 	if (stat->stat_if.case_false == NULL) {
-		code_append(ctx, "cmp %s, 0\n", reg_names[reg]);
 		code_append(ctx, "je L_exit%i\n", label);
-
+		
+		ctx->indent++;
 		codegen_statement(ctx, stat->stat_if.case_true);
-
-		code_append(ctx, "L_exit%i:\n", label);
+		ctx->indent--;
 	} else {
-		code_append(ctx, "cmp %s, 0\n", reg_names[reg]);
 		code_append(ctx, "je L_else%i\n", label);
 
+		ctx->indent++;
 		codegen_statement(ctx, stat->stat_if.case_true);
+		ctx->indent--;
 
 		code_append(ctx, "jmp L_exit%i\n", label);
-		code_append(ctx, "L_else%i:\n",   label);
+		code_append(ctx, "L_else%i:\n",    label);
 		
+		ctx->indent++;
 		codegen_statement(ctx, stat->stat_if.case_false);
-
-		code_append(ctx, "L_exit%i:\n", label);
+		ctx->indent--;
 	}
+	
+	code_append(ctx, "L_exit%i:\n", label);
 }
 
 static void codegen_statement_while(Context * ctx, AST_Statement const * stat) {
@@ -306,7 +364,9 @@ static void codegen_statement_while(Context * ctx, AST_Statement const * stat) {
 	code_append(ctx, "je L_exit%i\n", label);
 
 	ctx->current_loop_label = label;
+	ctx->indent++;
 	codegen_statement(ctx, stat->stat_while.body);
+	ctx->indent--;
 	ctx->current_loop_label = -1;
 
 	code_append(ctx, "jmp L_loop%i\n", label);
@@ -338,6 +398,8 @@ static void codegen_statement_return(Context * ctx, AST_Statement const * stat) 
 		if (reg_return != EAX) {
 			code_append(ctx, "mov eax, %s ; Return via eax\n", reg_names[reg_return]);
 		}
+
+		context_reg_free(ctx, reg_return);
 	} else {
 		code_append(ctx, "mov eax, 0\n");
 	}
@@ -364,57 +426,36 @@ static void codegen_statement(Context * ctx, AST_Statement const * stat) {
 	}
 }
 
-void codegen_program(AST_Statement const * program) {
+char const * codegen_program(AST_Statement const * program) {
 	Context ctx;
 	context_init(&ctx);
 
-	char const pre[] =
+	char const asm_init[] =
 		"EXTERN MessageBoxA: PROC\n"
-		"EXTERN GetForegroundWindow: PROC\n"
+		"EXTERN GetForegroundWindow: PROC\n\n"
 
-		".data\n"
+		"GLOBAL main\n\n"
+
+		"SECTION .data\n"
 		"hello_msg db \"Hello world\", 0\n"
-		"info_msg  db \"Info\", 0\n"
+		"info_msg  db \"Info\", 0\n\n"
 
-		"a dd 0\n"
-		"b dd 0\n"
-		"c dd 0\n"
-		"d dd 0\n"
-		"i dd 0\n"
-		"j dd 0\n"
+		"SECTION .bss\n"
+		"alignb 8\n"
+		"a resd 1\n"
+		"b resd 1\n"
+		"c resd 1\n"
+		"d resd 1\n"
+		"i resd 1\n"
+		"j resd 1\n\n"
 
-		".code\n"
-		"main PROC\n";
+		"SECTION .text\n\n";
 
-	code_append(&ctx, pre);
+	code_append(&ctx, asm_init);
 
 	codegen_statement(&ctx, program);
 
-	char const post[] = "main ENDP\nEND";
-
-	code_append(&ctx, post);
-	
-	char const * file_asm = "codegen.asm";
-	char const * file_exe = "codegen.exe";
-
-	FILE * file;
-	fopen_s(&file, file_asm, "wb");
-
-	if (file == NULL) abort();
-
-	fwrite(ctx.code, 1, strlen(ctx.code), file);
-	fclose(file);
-
-	char const * dir_kernel32 = "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.18362.0\\um\\x64\\kernel32.lib";
-	char const * dir_user32   = "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.18362.0\\um\\x64\\user32.lib";
-
-	char const cmd[1024];
-	sprintf_s(cmd, sizeof(cmd), "ml64.exe %s /link /subsystem:WINDOWS /defaultlib:\"%s\" /defaultlib:\"%s\" /entry:main", file_asm, dir_kernel32, dir_user32);
-
-	if (system(cmd) != EXIT_SUCCESS) abort();
-
-	int ret = system(file_exe);
-	printf("Program returned: %i\n", ret);
+	return ctx.code;
 }
 
 //static void test() {
