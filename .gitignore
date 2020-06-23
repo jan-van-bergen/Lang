@@ -338,3 +338,8 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
+
+# Compiler output
+Data/*.asm
+Data/*.obj
+Data/*.exe
