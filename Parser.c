@@ -137,6 +137,7 @@ static AST_Call_Arg * parser_parse_call_arg(Parser * parser) {
 	AST_Call_Arg * arg = malloc(sizeof(AST_Call_Arg));
 	arg->expr = parser_parse_expression(parser);
 	arg->next = NULL;
+	arg->height = arg->expr->height;
 
 	return arg;
 }
@@ -158,6 +159,8 @@ static AST_Call_Arg * parser_parse_call_args(Parser * parser) {
 		AST_Call_Arg * arg = parser_parse_call_arg(parser);
 		args_curr->next = arg;
 		args_curr       = arg;
+
+		args_head->height = max(args_head->height, arg->height);
 	}
 		
 	parser_match_and_advance(parser, TOKEN_PARENTESES_CLOSE);
@@ -170,22 +173,22 @@ static AST_Expression * parser_parse_expression_elementary(Parser * parser) {
 		Token const * identifier = parser_advance(parser);
 
 		if (parser_match(parser, TOKEN_PARENTESES_OPEN)) {
-			AST_Expression * factor = malloc(sizeof(AST_Expression));
+			AST_Expression * expr = malloc(sizeof(AST_Expression));
 
-			factor->type = AST_EXPRESSION_CALL_FUNC;
-			factor->height = 0;
-			factor->expr_call.function = identifier->value_str;
-			factor->expr_call.args = parser_parse_call_args(parser);
+			expr->type = AST_EXPRESSION_CALL_FUNC;
+			expr->expr_call.function = identifier->value_str;
+			expr->expr_call.args = parser_parse_call_args(parser);
+			expr->height = expr->expr_call.args->height;
 
-			return factor;
+			return expr;
 		} else {
-			AST_Expression * factor = malloc(sizeof(AST_Expression));
+			AST_Expression * expr = malloc(sizeof(AST_Expression));
 
-			factor->type = AST_EXPRESSION_VAR;
-			factor->height = 0;
-			factor->expr_var.token = *identifier;
+			expr->type = AST_EXPRESSION_VAR;
+			expr->height = 0;
+			expr->expr_var.token = *identifier;
 
-			return factor;
+			return expr;
 		}
 	} else if (
 		parser_match(parser, TOKEN_LITERAL_INT)  ||

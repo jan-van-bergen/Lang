@@ -1,7 +1,7 @@
 func factorial_recursive(n: int) -> int {
 	if (n == 0) return 1;
 	
-	return factorial_recursive(n - 1) * n;
+	return n * factorial_recursive(n - 1);
 }
 
 func factorial_loop(n: int) -> int {

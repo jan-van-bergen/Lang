@@ -35,6 +35,8 @@ typedef struct AST_Decl_Arg {
 typedef struct AST_Call_Arg {
 	struct AST_Expression * expr;
 	struct AST_Call_Arg   * next;
+
+	int height;
 } AST_Call_Arg;
 
 typedef struct AST_Expression {
