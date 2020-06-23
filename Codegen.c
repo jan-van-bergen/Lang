@@ -316,27 +316,14 @@ static int codegen_expression_op_bin(Context * ctx, AST_Expression const * expr)
 		case TOKEN_OPERATOR_MINUS: code_append(ctx, "sub %s, %s\n", reg_name_left, reg_name_right); break;
 
 		case TOKEN_OPERATOR_MULTIPLY: code_append(ctx, "imul %s, %s\n", reg_name_left, reg_name_right); break;
-		//case TOKEN_OPERATOR_DIVIDE: {
-		//	int reg_temp;
+		case TOKEN_OPERATOR_DIVIDE: {
+			code_append(ctx, "mov rax, %s\n", reg_name_left);
+			code_append(ctx, "cdq\n");
+			code_append(ctx, "idiv %s\n", reg_name_right);
+			code_append(ctx, "mov %s, rax\n", reg_name_left);
 
-		//	if (reg_left != EAX) {
-		//		reg_temp = context_reg_request(ctx);
-
-		//		code_append(ctx, "mov %s, rax\n", reg_names_scratch[reg_temp]);
-		//		code_append(ctx, "mov rax, %s\n", reg_name_left);
-		//	}
-
-		//	code_append(ctx, "cdq\nidiv %s\n", reg_name_right);
-
-		//	if (reg_left != EAX) {
-		//		code_append(ctx, "mov %s, rax\n", reg_name_left);
-		//		code_append(ctx, "mov rax, %s\n", reg_names_scratch[reg_temp]);
-
-		//		context_reg_free(ctx, reg_temp);
-		//	}
-
-		//	break;
-		//}
+			break;
+		}
 
 		case TOKEN_OPERATOR_LT:    codegen_compare_branch(ctx, "jge", reg_name_left, reg_name_right); break;
 		case TOKEN_OPERATOR_LT_EQ: codegen_compare_branch(ctx, "jg",  reg_name_left, reg_name_right); break;

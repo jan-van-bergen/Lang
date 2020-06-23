@@ -1,0 +1,20 @@
+func main() -> int {
+	let a: int;
+	let b: int;
+	let c: int;
+	
+	a = 48;
+	b = 3;
+	c = a / b;
+	
+	if (c != 16) return 0;
+	
+	b = 4;
+	c = c / b;
+
+	if (c != 4) return 0;
+	
+	c = c / c;
+	
+	return c;
+}
