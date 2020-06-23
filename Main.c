@@ -9,7 +9,7 @@
 #define RUN_TESTS 1
 
 int main(int arg_count, char const * args[]) {
-	char const * filename = "Data\\factorial.lang";
+	char const * filename = "Data\\functions.lang";
 	if (arg_count > 1) {
 		filename = args[1];
 	}
