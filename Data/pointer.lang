@@ -1,5 +1,14 @@
+func bla(ptr: int) -> int {
+	*ptr = 4321;
+}
+
 func deref(ptr: int) -> int {
+	let local: int;
+	
 	*ptr = 21;
+	
+	local = 1234;
+	bla(&local);
 }
 
 func main() -> int {

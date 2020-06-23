@@ -1,6 +1,6 @@
 extern GetStdHandle;
 extern WriteFile;
-extern lstrlenA;
+extern strlen;
 
 func main() -> int {
 	let STD_OUTPUT_HANDLE: int;
@@ -9,14 +9,14 @@ func main() -> int {
 	let std_handle: int;
 	std_handle = GetStdHandle(STD_OUTPUT_HANDLE);
 	
-	// let str: string;
-	// str = ;
+	let str: string;
+	str = "Hallo wereld!";
 	
-	// let str_len: int;
-	// str_len = lstrlenA(str);
+	let str_len: int;
+	str_len = strlen(str);
 	
 	let bytes_written: int;
-	WriteFile(std_handle, "Hallo wereld!", 13, &bytes_written, 0);
+	WriteFile(std_handle, str, str_len, &bytes_written, 0);
 	
 	return bytes_written;
 }

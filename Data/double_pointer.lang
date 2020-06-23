@@ -1,0 +1,21 @@
+func abc(a: int, b: int) -> int {
+	let ptr_a: int;
+	let ptr_b: int;
+	
+	ptr_a = &a;
+	ptr_b = &b;
+	
+	let ptr_ptr: int;
+	ptr_ptr = &ptr_a;
+	
+	*ptr_ptr = ptr_b;
+	
+	let deref: int;
+	deref = *ptr_ptr;
+	
+	return *deref;
+}
+
+func main() -> int {
+	return abc(1, 2);
+}

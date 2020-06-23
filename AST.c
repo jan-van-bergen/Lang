@@ -335,7 +335,6 @@ void ast_free_statement(AST_Statement * stat) {
 			ast_free_expression(stat->stat_while.condition);
 
 			ast_free_statement(stat->stat_while.body);
-			ast_free_statement(stat->stat_if.case_false);
 
 			break;
 		}

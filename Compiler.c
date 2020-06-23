@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <time.h>
 #include <assert.h>
 #include <string.h>
 
@@ -36,8 +35,6 @@ static char const * read_file(char const * filename) {
 }
 
 void compile_file(char const * filename) {
-	clock_t clock_start = clock();
-
 	char const * source = read_file(filename);
 
 	Lexer lexer;
@@ -63,12 +60,10 @@ void compile_file(char const * filename) {
 	
 	free(tokens);
 
-	printf("\n\nPretty Print:\n\n");
-	ast_pretty_print(program);
+	//printf("\n\nPretty Print:\n\n");
+	//ast_pretty_print(program);
 
 	char const * code = codegen_program(program);
-
-	printf("Completed in %i ms\n", (clock() - clock_start) * 1000 / CLOCKS_PER_SEC);
 
 	ast_free_statement(program);
 
@@ -86,15 +81,24 @@ void compile_file(char const * filename) {
 
 	char const * dir_kernel32 = "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.18362.0\\um\\x64\\kernel32.lib";
 	char const * dir_user32   = "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.18362.0\\um\\x64\\user32.lib";
+	char const * dir_liburcrt = "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.18362.0\\ucrt\\x64\\libucrt.lib";
 
 	char const cmd[1024];
+	bool hide_output = false;
 
 	// Assemble
-	sprintf_s(cmd, sizeof(cmd), "nasm -f win64 %s -o \"%s\"", file_asm, file_obj);
+	sprintf_s(cmd, sizeof(cmd), "nasm -f win64 %s -o \"%s\" %s", file_asm, file_obj, hide_output ? "> nul" : "");
 	if (system(cmd) != EXIT_SUCCESS) abort();
 
 	// Link
-	sprintf_s(cmd, sizeof(cmd), "link \"%s\" /out:\"%s\" /subsystem:CONSOLE /defaultlib:\"%s\" /defaultlib:\"%s\" /entry:main", file_obj, file_exe, dir_kernel32, dir_user32);
+	sprintf_s(cmd, sizeof(cmd), "link \"%s\" /out:\"%s\" /subsystem:CONSOLE /defaultlib:\"%s\" /defaultlib:\"%s\" /defaultlib:\"%s\" /entry:main %s",
+		file_obj,
+		file_exe,
+		dir_kernel32,
+		dir_user32,
+		dir_liburcrt,
+		hide_output ? "> nul" : ""
+	);
 	if (system(cmd) != EXIT_SUCCESS) abort();
 
 	free(file_asm);

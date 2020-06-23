@@ -31,4 +31,6 @@ void run_tests() {
 	run_test("Data\\extern.lang",             13);
 	run_test("Data\\functions.lang",          12);
 	run_test("Data\\pointer.lang",            21);
+	run_test("Data\\double_pointer.lang",      2);
+	run_test("Data\\factorial.lang",           1);
 }

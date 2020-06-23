@@ -3,7 +3,10 @@ func one(arg: int) -> int {
 }
 
 func two(a: int, b: int) -> int {
-	return one(a) + one(b);
+	let local: int;
+	local = one(a);
+
+	return local + one(b);
 }
 
 func recursive(a: int, b: int) -> int {
