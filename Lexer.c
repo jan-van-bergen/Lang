@@ -196,6 +196,7 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 		case '-': token->type = TOKEN_OPERATOR_MINUS; 	 lexer_next(lexer); return;
 		case '*': token->type = TOKEN_OPERATOR_MULTIPLY; lexer_next(lexer); return; 
 		case '/': token->type = TOKEN_OPERATOR_DIVIDE;   lexer_next(lexer); return;
+		case '%': token->type = TOKEN_OPERATOR_MODULO;   lexer_next(lexer); return;
 
 		case '&': token->type = TOKEN_OPERATOR_BITWISE_AND; lexer_next(lexer); return;
 

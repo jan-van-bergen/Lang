@@ -15,9 +15,9 @@ static void run_test(char const * filename, int expected_exit_code) {
 	int exit_code = system(filename_exe);
 
 	if (exit_code == expected_exit_code) {
-		printf("Testcase '%s' succeeded with exit code %i\n", filename, exit_code);
+		printf("Testcase SUCCESS: '%s' Exit code was %i\n", filename, exit_code);
 	} else {
-		printf("Testcase '%s' FAILED! Exit code was %i, expected %i.\n", filename, exit_code, expected_exit_code);
+		printf("Testcase FAILED:  '%s' Exit code was %i, expected %i.\n", filename, exit_code, expected_exit_code);
 
 		__debugbreak();
 	}
@@ -34,4 +34,5 @@ void run_tests() {
 	run_test("Data\\double_pointer.lang",      2);
 	run_test("Data\\factorial.lang",           1);
 	run_test("Data\\div.lang",                 1);
+	run_test("Data\\mod.lang",                 2);
 }

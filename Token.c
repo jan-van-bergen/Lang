@@ -40,6 +40,7 @@ void token_to_string(Token const * token, char * string, int string_size) {
 		case TOKEN_OPERATOR_MINUS:	  strcpy_s(string, string_size, "-"); return;
 		case TOKEN_OPERATOR_MULTIPLY: strcpy_s(string, string_size, "*"); return;
 		case TOKEN_OPERATOR_DIVIDE:   strcpy_s(string, string_size, "/"); return;
+		case TOKEN_OPERATOR_MODULO:   strcpy_s(string, string_size, "%"); return;
 
 		case TOKEN_OPERATOR_SHIFT_LEFT:  strcpy_s(string, string_size, "<<"); return;
 		case TOKEN_OPERATOR_SHIFT_RIGHT: strcpy_s(string, string_size, ">>"); return;

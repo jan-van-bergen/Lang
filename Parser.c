@@ -259,7 +259,8 @@ static AST_Expression * parser_parse_expression_multiplicative(Parser * parser) 
 	// Left Associative
 	while (
 		parser_match(parser, TOKEN_OPERATOR_MULTIPLY) ||
-		parser_match(parser, TOKEN_OPERATOR_DIVIDE)
+		parser_match(parser, TOKEN_OPERATOR_DIVIDE) ||
+		parser_match(parser, TOKEN_OPERATOR_MODULO)
 	) {
 		AST_Expression * expression = malloc(sizeof(AST_Expression));
 		expression->type = AST_EXPRESSION_OPERATOR_BIN;

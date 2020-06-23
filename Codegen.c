@@ -324,6 +324,14 @@ static int codegen_expression_op_bin(Context * ctx, AST_Expression const * expr)
 
 			break;
 		}
+		case TOKEN_OPERATOR_MODULO: {
+			code_append(ctx, "mov rax, %s\n", reg_name_left);
+			code_append(ctx, "cdq\n");
+			code_append(ctx, "idiv %s\n", reg_name_right);
+			code_append(ctx, "mov %s, rdx\n", reg_name_left);
+
+			break;
+		}
 
 		case TOKEN_OPERATOR_LT:    codegen_compare_branch(ctx, "jge", reg_name_left, reg_name_right); break;
 		case TOKEN_OPERATOR_LT_EQ: codegen_compare_branch(ctx, "jg",  reg_name_left, reg_name_right); break;

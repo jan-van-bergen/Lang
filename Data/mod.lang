@@ -1,0 +1,9 @@
+func main() -> int {
+	let a: int;
+	let b: int;
+	
+	a = 321 % 43; // 20
+	b = 3 % 5;    // 3
+	
+	return a % b; // 2
+}
