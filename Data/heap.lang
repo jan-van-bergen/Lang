@@ -1,0 +1,69 @@
+extern GetProcessHeap;
+extern HeapAlloc;
+extern HeapFree;
+
+extern GetStdHandle;
+extern WriteFile;
+
+extern ExitProcess;
+
+let heap: heap;
+
+func malloc(size: int) -> ptr {
+	if (heap == 0) {
+		heap = GetProcessHeap();
+	}
+	
+	return HeapAlloc(heap, 0, size);
+}
+
+func free(ptr: ptr) -> void {
+	assert(ptr  != 0);
+	assert(heap != 0);
+	
+	HeapFree(heap, 0, ptr);
+}
+
+func assert(expression: bool) -> void {
+	if (!expression) {
+		ExitProcess(1);
+	}
+}
+
+let STD_OUTPUT_HANDLE: int = -11;
+
+func print(str: string, str_len: int) -> void {
+	let std_handle: int = GetStdHandle(STD_OUTPUT_HANDLE);
+
+	let bytes_written: int;
+	WriteFile(std_handle, str, str_len, &bytes_written, 0);
+}
+
+func main() -> int {
+	let mem: ptr = malloc(8);
+	
+	*(mem + 0) = 'B';
+	*(mem + 1) = 'r';
+	*(mem + 2) = 'u';
+	*(mem + 3) = 'h';
+	*(mem + 4) = 'T';
+	*(mem + 5) = 'e';
+	*(mem + 6) = 's';
+	*(mem + 7) = 't';
+
+	print(mem, 8);
+	free(mem);
+	
+	let mem2: ptr = malloc(8);
+
+	*(mem2 + 0) = 1;
+	*(mem2 + 1) = 2;
+	*(mem2 + 2) = 3;
+	*(mem2 + 3) = 4;
+	*(mem2 + 4) = 0;
+	*(mem2 + 5) = 0;
+	*(mem2 + 6) = 0;
+	*(mem2 + 7) = 0;
+
+	return *mem2; // 0x04030201 (little endian) = 67305985
+}

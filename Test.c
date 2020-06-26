@@ -55,4 +55,5 @@ void run_tests() {
 	run_test("Data\\pointer_arith.lang",       5, "");
 	run_test("Data\\fizzbuzz.lang",            0, "1 2 buzz 4 fizz buzz 7 8 buzz fizz 11 buzz 13 14 fizzbuzz 16 17 buzz 19 fizz ");
 	run_test("Data\\logic.lang",               0, "");
+	run_test("Data\\heap.lang",         67305985, "BruhTest");
 }

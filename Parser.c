@@ -181,7 +181,12 @@ static AST_Expression * parser_parse_expression_elementary(Parser * parser) {
 			expr->type = AST_EXPRESSION_CALL_FUNC;
 			expr->expr_call.function = identifier->value_str;
 			expr->expr_call.args = parser_parse_call_args(parser);
-			expr->height = expr->expr_call.args->height;
+
+			if (expr->expr_call.args == NULL) {
+				expr->height = 0;
+			} else {
+				expr->height = expr->expr_call.args->height;
+			}
 
 			return expr;
 		} else {

@@ -171,6 +171,17 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 		lexer_next(lexer);
 
 		return;
+	} else if (curr == '\'') {
+		char c = lexer_next(lexer);
+
+		lexer_next(lexer); // Consume '
+
+		token->type      = TOKEN_LITERAL_INT; // Treat as int literal
+		token->value_int = c;
+
+		lexer_next(lexer);
+
+		return;
 	}
 	
 	// Keywords
