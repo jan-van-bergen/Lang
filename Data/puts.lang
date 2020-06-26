@@ -1,0 +1,5 @@
+extern puts;
+
+func main() {
+	puts("bla");
+}

@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <string.h>
+
 void parser_init(Parser * parser, Token const * tokens, int token_count) {
 	parser->token_count = token_count;
 	parser->tokens      = tokens;
@@ -496,7 +498,11 @@ static AST_Statement * parser_parse_statement_decl_func(Parser * parser) {
 
 		func->stat_decl_func.return_type = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
 	} else {
-		func->stat_decl_func.return_type = "void";
+		char const * void_str     = "void";
+		int          void_str_len = strlen(void_str);
+
+		func->stat_decl_func.return_type = malloc(void_str_len + 1);
+		strcpy_s(func->stat_decl_func.return_type, void_str_len + 1, void_str);
 	}
 
 	func->stat_decl_func.body = parser_parse_statement_block(parser);

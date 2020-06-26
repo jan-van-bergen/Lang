@@ -25,6 +25,18 @@ static char lexer_next(Lexer * lexer) {
 	return lexer->source[++lexer->index];
 }
 
+static int lexer_match(Lexer const * lexer, char const * target) {
+	int index = 0;
+
+	while (lexer->source[lexer->index + index] == target[index]) {
+		index++;
+
+		if (target[index] == '\0') return index; // Return length of target string
+	}
+
+	return 0;
+}
+
 static bool lexer_is_whitespace(Lexer * lexer) {
 	char curr = lexer_peek(lexer);
 
@@ -80,18 +92,6 @@ bool lexer_reached_end(Lexer const * lexer) {
 	lexer_skip(lexer);
 
 	return lexer_peek(lexer) == '\0' || lexer->index == lexer->source_len;
-}
-
-static int lexer_match(Lexer const * lexer, char const * target) {
-	int index = 0;
-
-	while (lexer->source[lexer->index + index] == target[index]) {
-		index++;
-
-		if (target[index] == '\0') return index;
-	}
-
-	return 0;
 }
 
 void lexer_get_token(Lexer * lexer, Token * token) {

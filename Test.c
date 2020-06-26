@@ -8,7 +8,7 @@
 #include "Util.h"
 
 static void run_test(char const * filename, int expected_exit_code) {
-	compile_file(filename);
+	compile_file(filename, false);
 
 	char const * filename_exe = replace_file_extension(filename, "exe");
 
@@ -26,6 +26,8 @@ static void run_test(char const * filename, int expected_exit_code) {
 }
 
 void run_tests() {
+	puts("Starting tests...");
+
 	run_test("Data\\calling_convention.lang", 21);
 	run_test("Data\\code.lang",                3);
 	run_test("Data\\extern.lang",             13);

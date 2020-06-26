@@ -34,7 +34,7 @@ static char const * read_file(char const * filename) {
 	return string;
 }
 
-void compile_file(char const * filename) {
+void compile_file(char const * filename, bool show_output) {
 	char const * source = read_file(filename);
 
 	Lexer lexer;
@@ -84,10 +84,9 @@ void compile_file(char const * filename) {
 	char const * dir_liburcrt = "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.18362.0\\ucrt\\x64\\libucrt.lib";
 
 	char const cmd[1024];
-	bool hide_output = false;
 
 	// Assemble
-	sprintf_s(cmd, sizeof(cmd), "nasm -f win64 %s -o \"%s\" %s", file_asm, file_obj, hide_output ? "> nul" : "");
+	sprintf_s(cmd, sizeof(cmd), "nasm -f win64 %s -o \"%s\" %s", file_asm, file_obj, show_output ? "" : "> nul");
 	if (system(cmd) != EXIT_SUCCESS) abort();
 
 	// Link
@@ -97,7 +96,7 @@ void compile_file(char const * filename) {
 		dir_kernel32,
 		dir_user32,
 		dir_liburcrt,
-		hide_output ? "> nul" : ""
+		show_output ? "" : "> nul"
 	);
 	if (system(cmd) != EXIT_SUCCESS) abort();
 

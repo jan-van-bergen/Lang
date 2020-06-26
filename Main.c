@@ -9,12 +9,12 @@
 #define RUN_TESTS 1
 
 int main(int arg_count, char const * args[]) {
-	char const * filename = "Data\\mod.lang";
+	char const * filename = "Data\\puts.lang";
 	if (arg_count > 1) {
 		filename = args[1];
 	}
 
-	compile_file(filename);
+	compile_file(filename, true);
 
 	char const * file_exe = replace_file_extension(filename, "exe");
 

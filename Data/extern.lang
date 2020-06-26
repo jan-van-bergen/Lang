@@ -3,8 +3,7 @@ extern WriteFile;
 extern strlen;
 
 func main() -> int {
-	let STD_OUTPUT_HANDLE: int;
-	STD_OUTPUT_HANDLE = -11;
+	let STD_OUTPUT_HANDLE: int; STD_OUTPUT_HANDLE = -11;
 	
 	let std_handle: int;
 	std_handle = GetStdHandle(STD_OUTPUT_HANDLE);
