@@ -9,7 +9,7 @@
 #define RUN_TESTS 1
 
 int main(int arg_count, char const * args[]) {
-	char const * filename = "Data\\fizzbuzz.lang";
+	char const * filename = "Data\\logic.lang";
 	if (arg_count > 1) {
 		filename = args[1];
 	}
@@ -26,6 +26,9 @@ int main(int arg_count, char const * args[]) {
 #if RUN_TESTS
 	run_tests();
 #endif
+
+	puts("Press any key to continue...");
+	getchar();
 
 	return EXIT_SUCCESS;
 }

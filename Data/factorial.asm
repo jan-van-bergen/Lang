@@ -41,10 +41,8 @@ factorial_recursive:
 factorial_loop:
     mov QWORD [rsp + 1 * 8], rcx
     sub rsp, 1 * 8; 1 vars
-    mov QWORD [rsp + 0 * 8], 0 ; zero initialize result
     mov rbx, 1
-    lea r10, QWORD [rsp + 0 * 8] ; addr of result
-    mov QWORD [r10], rbx
+    mov QWORD [rsp + 0 * 8], rbx; initialize result
     L_loop3:
     mov rbx, QWORD [rsp + 2 * 8] ; get n
     mov r10, 0
@@ -80,28 +78,22 @@ factorial_loop:
     
 main:
     sub rsp, 3 * 8; 3 vars
-    mov QWORD [rsp + 0 * 8], 0 ; zero initialize arg
     mov rbx, 5
-    lea r10, QWORD [rsp + 0 * 8] ; addr of arg
-    mov QWORD [r10], rbx
-    mov QWORD [rsp + 1 * 8], 0 ; zero initialize a
-    mov QWORD [rsp + 2 * 8], 0 ; zero initialize b
+    mov QWORD [rsp + 0 * 8], rbx; initialize arg
     sub rsp, 32 ; shadow space
     mov rbx, QWORD [rsp + 4 * 8] ; get arg
     mov rcx, rbx ; arg 0
     call factorial_recursive
     add rsp, 4 * 8
     mov rbx, rax ; get return value
-    lea r10, QWORD [rsp + 1 * 8] ; addr of a
-    mov QWORD [r10], rbx
+    mov QWORD [rsp + 1 * 8], rbx; initialize a
     sub rsp, 32 ; shadow space
     mov rbx, QWORD [rsp + 4 * 8] ; get arg
     mov rcx, rbx ; arg 0
     call factorial_loop
     add rsp, 4 * 8
     mov rbx, rax ; get return value
-    lea r10, QWORD [rsp + 2 * 8] ; addr of b
-    mov QWORD [r10], rbx
+    mov QWORD [rsp + 2 * 8], rbx; initialize b
     mov rbx, QWORD [rsp + 1 * 8] ; get a
     mov r10, QWORD [rsp + 2 * 8] ; get b
     cmp rbx, r10

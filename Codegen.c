@@ -47,9 +47,9 @@ typedef struct Context {
 	int    code_len;
 	int    code_cap;
 
-	char const ** string_lits; // String Literals
-	int           string_lit_len;
-	int           string_lit_cap;
+	char const ** data_seg_vals;
+	int           data_seg_len;
+	int           data_seg_cap;
 } Context;
 
 static void context_init(Context * ctx) {
@@ -69,9 +69,9 @@ static void context_init(Context * ctx) {
 	ctx->code_cap = 512;
 	ctx->code     = malloc(ctx->code_cap);
 
-	ctx->string_lit_len = 0;
-	ctx->string_lit_cap = 16;
-	ctx->string_lits    = malloc(ctx->string_lit_cap * sizeof(char const *));
+	ctx->data_seg_len  = 0;
+	ctx->data_seg_cap  = 16;
+	ctx->data_seg_vals = malloc(ctx->data_seg_cap * sizeof(char const *));
 }
 
 static int context_reg_request(Context * ctx) {
@@ -156,20 +156,24 @@ static void context_decl_var(Context * ctx, const char * name) {
 	ctx->current_scope->vars[offset] = name;
 }
 
-static int context_get_local_offset(Context * ctx, const char * name) {
+static void context_get_variable(Context * ctx, const char * name, char * address, int address_size) {
 	for (int i = 0; i < ctx->current_scope->var_count; i++) {
 		if (ctx->current_scope->vars[i] && strcmp(ctx->current_scope->vars[i], name) == 0) {
-			return ctx->stack_offset + i;
+			sprintf_s(address, address_size, "rsp + %i * 8", ctx->stack_offset + i);
+
+			return;
 		}
 	}
 	
 	for (int i = 0; i < ctx->current_scope->arg_count; i++) {
 		if (strcmp(ctx->current_scope->args[i], name) == 0) {
-			return ctx->stack_offset + ctx->current_scope->stack_frame_size + 1 + i;
+			sprintf_s(address, address_size, "rsp + %i * 8", ctx->stack_offset + ctx->current_scope->stack_frame_size + 1 + i);
+
+			return;
 		}
 	}
 
-	abort(); // Undeclared variable used
+	sprintf_s(address, address_size, "REL %s", name); // Globals by name
 }
 
 static void context_emit_code(Context * ctx, char const * fmt, ...) {
@@ -205,10 +209,29 @@ static void context_emit_code(Context * ctx, char const * fmt, ...) {
 	ctx->code_len = new_length;
 }
 
+static int context_add_global(Context * ctx, char const * var_name, int value) {
+	if (ctx->data_seg_len == ctx->data_seg_cap) {
+		ctx->data_seg_cap *= 2;
+		ctx->data_seg_vals = realloc(ctx->data_seg_vals, ctx->data_seg_cap * sizeof(char const *));
+	}
+
+	int var_name_len = strlen(var_name);
+
+	int    global_size = var_name_len + 5 + 32;
+	char * global = malloc(global_size);
+
+	sprintf_s(global, global_size, "%s dq %i", var_name, value);
+
+	int index = ctx->data_seg_len++;
+	ctx->data_seg_vals[index] = global;
+
+	return index;
+}
+
 static int context_add_string_literal(Context * ctx, char const * str_lit) {
-	if (ctx->string_lit_len == ctx->string_lit_cap) {
-		ctx->string_lit_cap *= 2;
-		ctx->string_lits = realloc(ctx->string_lits, ctx->string_lit_cap * sizeof(char const *));
+	if (ctx->data_seg_len == ctx->data_seg_cap) {
+		ctx->data_seg_cap *= 2;
+		ctx->data_seg_vals = realloc(ctx->data_seg_vals, ctx->data_seg_cap * sizeof(char const *));
 	}
 
 	int str_lit_len = strlen(str_lit);
@@ -216,7 +239,7 @@ static int context_add_string_literal(Context * ctx, char const * str_lit) {
 	int    str_lit_cpy_size = str_lit_len * 9 + 1;
 	char * str_lit_cpy      = malloc(str_lit_cpy_size);
 
-	int idx = 0;
+	int idx = sprintf_s(str_lit_cpy, str_lit_cpy_size, "str_lit_%i db ", ctx->data_seg_len);
 
 	str_lit_cpy[idx++] = '\"';
 
@@ -244,8 +267,10 @@ static int context_add_string_literal(Context * ctx, char const * str_lit) {
 	str_lit_cpy[idx++] = '\"';
 	str_lit_cpy[idx++] = '\0';
 
-	int index = ctx->string_lit_len++;
-	ctx->string_lits[index] = str_lit_cpy;
+	strcat_s(str_lit_cpy, str_lit_cpy_size - idx, ", 0");
+
+	int index = ctx->data_seg_len++;
+	ctx->data_seg_vals[index] = str_lit_cpy;
 
 	return index;
 }
@@ -284,15 +309,16 @@ static int codegen_expression_const(Context * ctx, AST_Expression const * expr) 
 static int codegen_expression_var(Context * ctx, AST_Expression const * expr) {
 	assert(expr->type == AST_EXPRESSION_VAR);
 
-	char const * var_name = expr->expr_var.token.value_str;
-	int offset = context_get_local_offset(ctx, var_name);
+	char const * var_name = expr->expr_var.name;
+	char         var_address[32];
+	context_get_variable(ctx, var_name, var_address, sizeof(var_address));
 
 	int reg = context_reg_request(ctx);
 
 	if (ctx->flags & CTX_FLAG_VAR_BY_ADDRESS) {
-		context_emit_code(ctx, "lea %s, QWORD [rsp + %i * 8] ; addr of %s\n", reg_names_scratch[reg], offset, var_name);
+		context_emit_code(ctx, "lea %s, QWORD [%s] ; addr of %s\n", reg_names_scratch[reg], var_address, var_name);
 	} else {
-		context_emit_code(ctx, "mov %s, QWORD [rsp + %i * 8] ; get %s\n", reg_names_scratch[reg], offset, var_name);
+		context_emit_code(ctx, "mov %s, QWORD [%s] ; get %s\n",     reg_names_scratch[reg], var_address, var_name);
 	}
 
 	return reg;
@@ -315,11 +341,13 @@ static void codegen_compare_branch(Context * ctx, char const * jump_instruction,
 static int codegen_expression_op_bin(Context * ctx, AST_Expression const * expr) {
 	assert(expr->type == AST_EXPRESSION_OPERATOR_BIN);
 
-	// Assignment operator is handled separately
-	if (expr->expr_op_bin.token.type == TOKEN_ASSIGN) {
-		AST_Expression const * expr_left  = expr->expr_op_bin.expr_left;
-		AST_Expression const * expr_right = expr->expr_op_bin.expr_right;
+	Token_Type operator = expr->expr_op_bin.token.type;
 		
+	AST_Expression const * expr_left  = expr->expr_op_bin.expr_left;
+	AST_Expression const * expr_right = expr->expr_op_bin.expr_right;
+
+	// Assignment operator is handled separately
+	if (operator == TOKEN_ASSIGN) {
 		// Evaluate rhs first
 		int reg_right = codegen_expression(ctx, expr_right);
 
@@ -335,22 +363,29 @@ static int codegen_expression_op_bin(Context * ctx, AST_Expression const * expr)
 		return reg_left;
 	}
 
+	// Logical And and Or ('&&' and '||') have short circuit evaluation
+	//if (expr->expr_op_bin.token.type == TOKEN_OPERATOR_LOGICAL_AND ||
+	//	expr->expr_op_bin.token.type == TOKEN_OPERATOR_LOGICAL_OR
+	//) {
+
+	//}
+
 	int reg_left, reg_right;
 
 	// Traverse tallest subtree first
 	if (expr->expr_op_bin.expr_left->height >= expr->expr_op_bin.expr_right->height) {
-		reg_left  = codegen_expression(ctx, expr->expr_op_bin.expr_left);
-		reg_right = codegen_expression(ctx, expr->expr_op_bin.expr_right);
+		reg_left  = codegen_expression(ctx, expr_left);
+		reg_right = codegen_expression(ctx, expr_right);
 	} else {
-		reg_right = codegen_expression(ctx, expr->expr_op_bin.expr_right);
-		reg_left  = codegen_expression(ctx, expr->expr_op_bin.expr_left);
+		reg_right = codegen_expression(ctx, expr_right);
+		reg_left  = codegen_expression(ctx, expr_left);
 	}
 
 	char const * reg_name_left  = reg_names_scratch[reg_left];
 	char const * reg_name_right = reg_names_scratch[reg_right];
 
 	// Emit correct instructions based on operator type
-	switch (expr->expr_op_bin.token.type) {
+	switch (operator) {
 		case TOKEN_OPERATOR_PLUS:  context_emit_code(ctx, "add %s, %s\n", reg_name_left, reg_name_right); break;
 		case TOKEN_OPERATOR_MINUS: context_emit_code(ctx, "sub %s, %s\n", reg_name_left, reg_name_right); break;
 
@@ -358,7 +393,7 @@ static int codegen_expression_op_bin(Context * ctx, AST_Expression const * expr)
 		case TOKEN_OPERATOR_DIVIDE: {
 			context_emit_code(ctx, "mov rax, %s\n", reg_name_left);
 			context_emit_code(ctx, "cdq\n");
-			context_emit_code(ctx, "idiv %s\n", reg_name_right);
+			context_emit_code(ctx, "idiv %s\n",     reg_name_right);
 			context_emit_code(ctx, "mov %s, rax\n", reg_name_left);
 
 			break;
@@ -366,8 +401,8 @@ static int codegen_expression_op_bin(Context * ctx, AST_Expression const * expr)
 		case TOKEN_OPERATOR_MODULO: {
 			context_emit_code(ctx, "mov rax, %s\n", reg_name_left);
 			context_emit_code(ctx, "cdq\n");
-			context_emit_code(ctx, "idiv %s\n", reg_name_right);
-			context_emit_code(ctx, "mov %s, rdx\n", reg_name_left);
+			context_emit_code(ctx, "idiv %s\n",     reg_name_right);
+			context_emit_code(ctx, "mov %s, rdx\n", reg_name_left); // RDX contains remainder after division
 
 			break;
 		}
@@ -379,6 +414,38 @@ static int codegen_expression_op_bin(Context * ctx, AST_Expression const * expr)
 
 		case TOKEN_OPERATOR_EQ: codegen_compare_branch(ctx, "jne", reg_name_left, reg_name_right); break;
 		case TOKEN_OPERATOR_NE: codegen_compare_branch(ctx, "je",  reg_name_left, reg_name_right); break;
+
+		case TOKEN_OPERATOR_LOGICAL_AND: {
+			int label = context_new_label(ctx);
+
+			context_emit_code(ctx, "test %s, %s\n", reg_name_left, reg_name_left);
+			context_emit_code(ctx, "je L_land_false_%i\n", label);
+			context_emit_code(ctx, "test %s, %s\n", reg_name_right, reg_name_right);
+			context_emit_code(ctx, "je L_land_false_%i\n", label);
+			context_emit_code(ctx, "mov %s, 1\n",   reg_name_left);
+			context_emit_code(ctx, "jmp L_land_exit_%i\n", label);
+			context_emit_code(ctx, "L_land_false_%i:\n", label);
+			context_emit_code(ctx, "mov %s, 0\n",   reg_name_left);
+			context_emit_code(ctx, "L_land_exit_%i:\n",  label);
+
+			break;
+		}
+
+		case TOKEN_OPERATOR_LOGICAL_OR: {
+			int label = context_new_label(ctx);
+
+			context_emit_code(ctx, "test %s, %s\n", reg_name_left, reg_name_left);
+			context_emit_code(ctx, "jne L_lor_true_%i\n", label);
+			context_emit_code(ctx, "test %s, %s\n", reg_name_right, reg_name_right);
+			context_emit_code(ctx, "jne L_lor_true_%i\n", label);
+			context_emit_code(ctx, "mov %s, 0\n",   reg_name_left);
+			context_emit_code(ctx, "jmp L_lor_exit_%i\n", label);
+			context_emit_code(ctx, "L_lor_true_%i:\n", label);
+			context_emit_code(ctx, "mov %s, 1\n",   reg_name_left);
+			context_emit_code(ctx, "L_lor_exit_%i:\n",  label);
+
+			break;
+		}
 
 		default: abort();
 	}
@@ -398,12 +465,13 @@ static int codegen_expression_op_pre(Context * ctx, AST_Expression const * expr)
 	if (operator == TOKEN_OPERATOR_BITWISE_AND) {
 		if (operand->type != AST_EXPRESSION_VAR) abort(); // Can only take address of variable
 		
-		const char * var_name   = operand->expr_var.token.value_str;
-		int          var_offset = context_get_local_offset(ctx, var_name);
+		const char * var_name   = operand->expr_var.name;
+		char         var_address[32];
+		context_get_variable(ctx, var_name, var_address, sizeof(var_address));
 
 		int reg = context_reg_request(ctx);
 
-		context_emit_code(ctx, "lea %s, QWORD [RSP + %i * 8] ; addrof %s\n", reg_names_scratch[reg], var_offset, var_name);
+		context_emit_code(ctx, "lea %s, QWORD [%s] ; addrof %s\n", reg_names_scratch[reg], var_address, var_name);
 
 		return reg;
 	} else if (operator == TOKEN_OPERATOR_MULTIPLY) {
@@ -421,11 +489,28 @@ static int codegen_expression_op_pre(Context * ctx, AST_Expression const * expr)
 		return reg;
 	}
 
-	int reg = codegen_expression(ctx, operand);
+	int          reg = codegen_expression(ctx, operand);
+	char const * reg_name = reg_names_scratch[reg];
 
 	switch (operator) {
 		case TOKEN_OPERATOR_PLUS: break; // Do nothing
-		case TOKEN_OPERATOR_MINUS: context_emit_code(ctx, "neg %s\n", reg_names_scratch[reg]); break;
+		case TOKEN_OPERATOR_MINUS: context_emit_code(ctx, "neg %s\n", reg_name); break;
+
+		case TOKEN_OPERATOR_LOGICAL_NOT: {
+			int label = context_new_label(ctx);
+
+			context_emit_code(ctx, "test %s, %s\n", reg_name, reg_name);
+			context_emit_code(ctx, "jne L_lnot_false_%i\n", label);
+			context_emit_code(ctx, "mov %s, 1\n",   reg_name);
+			context_emit_code(ctx, "jmp L_lnot_exit_%i\n", label);
+			context_emit_code(ctx, "L_lnot_false_%i:\n", label);
+			context_emit_code(ctx, "mov %s, 0\n",   reg_name);
+			context_emit_code(ctx, "L_lnot_exit_%i:\n",  label);
+
+			break;
+
+			break;
+		}
 
 		default: abort();
 	}
@@ -525,11 +610,29 @@ static void codegen_statement_decl_var(Context * ctx, AST_Statement const * stat
 	assert(stat->type == AST_STATEMENT_DECL_VAR);
 
 	char const * var_name = stat->stat_decl_var.name;
-	context_decl_var(ctx, var_name);
 
-	int var_offset = context_get_local_offset(ctx, var_name);
+	if (ctx->current_scope == NULL) {
+		if (stat->stat_decl_var.value->type != AST_EXPRESSION_CONST) abort(); // Globals can only be initialized to constant values
 
-	context_emit_code(ctx, "mov QWORD [rsp + %i * 8], 0 ; zero initialize %s\n", var_offset, var_name);
+		if (stat->stat_decl_var.value->expr_const.token.type == TOKEN_LITERAL_STRING) abort(); // TODO
+
+		context_add_global(ctx, var_name, stat->stat_decl_var.value->expr_const.token.value_int);
+	} else {
+		context_decl_var(ctx, var_name);
+
+		char var_address[32];
+		context_get_variable(ctx, var_name, var_address, sizeof(var_address));
+
+		if (stat->stat_decl_var.value) {
+			int reg = codegen_expression(ctx, stat->stat_decl_var.value);
+
+			context_emit_code(ctx, "mov QWORD [%s], %s; initialize %s\n", var_address, reg_names_scratch[reg], var_name);
+
+			context_reg_free(ctx, reg);
+		} else {
+			context_emit_code(ctx, "mov QWORD [%s], 0; zero initialize %s\n", var_address, var_name);
+		}
+	}
 }
 
 static int count_vars_in_function(AST_Statement const * stat) {
@@ -752,8 +855,8 @@ char const * codegen_program(AST_Statement const * program) {
 
 	context_emit_code(&ctx, "SECTION .data\n");
 
-	for (int i = 0; i < ctx.string_lit_len; i++) {
-		context_emit_code(&ctx, "str_lit_%i db %s, 0\n", i, ctx.string_lits[i]);
+	for (int i = 0; i < ctx.data_seg_len; i++) {
+		context_emit_code(&ctx, "%s\n", ctx.data_seg_vals[i]);
 	}
 
 	return ctx.code;

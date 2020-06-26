@@ -41,10 +41,7 @@ void token_to_string(Token const * token, char * string, int string_size) {
 		case TOKEN_OPERATOR_MULTIPLY: strcpy_s(string, string_size, "*"); return;
 		case TOKEN_OPERATOR_DIVIDE:   strcpy_s(string, string_size, "/"); return;
 		case TOKEN_OPERATOR_MODULO:   strcpy_s(string, string_size, "%"); return;
-
-		case TOKEN_OPERATOR_SHIFT_LEFT:  strcpy_s(string, string_size, "<<"); return;
-		case TOKEN_OPERATOR_SHIFT_RIGHT: strcpy_s(string, string_size, ">>"); return;
-
+			
 		case TOKEN_OPERATOR_LT_EQ: strcpy_s(string, string_size, "<="); return;
 		case TOKEN_OPERATOR_GT_EQ: strcpy_s(string, string_size, ">="); return; 
 		case TOKEN_OPERATOR_LT:    strcpy_s(string, string_size, "<");  return;
@@ -52,6 +49,15 @@ void token_to_string(Token const * token, char * string, int string_size) {
 
 		case TOKEN_OPERATOR_EQ:	strcpy_s(string, string_size, "=="); return;
 		case TOKEN_OPERATOR_NE: strcpy_s(string, string_size, "!="); return;
+
+		case TOKEN_OPERATOR_SHIFT_LEFT:  strcpy_s(string, string_size, "<<"); return;
+		case TOKEN_OPERATOR_SHIFT_RIGHT: strcpy_s(string, string_size, ">>"); return;
+
+		case TOKEN_OPERATOR_LOGICAL_AND: strcpy_s(string, string_size, "&&"); return;
+		case TOKEN_OPERATOR_LOGICAL_OR:	 strcpy_s(string, string_size, "||"); return;
+		case TOKEN_OPERATOR_LOGICAL_NOT: strcpy_s(string, string_size, "!");  return;
+			
+		case TOKEN_OPERATOR_BITWISE_AND: strcpy_s(string, string_size, "&"); return;
 
 		case TOKEN_OPERATOR_INC:  strcpy_s(string, string_size, "++"); return;  
 		case TOKEN_OPERATOR_DEC:  strcpy_s(string, string_size, "--"); return;  

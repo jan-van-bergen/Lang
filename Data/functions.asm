@@ -19,15 +19,13 @@ two:
     mov QWORD [rsp + 1 * 8], rcx
     mov QWORD [rsp + 2 * 8], rdx
     sub rsp, 1 * 8; 1 vars
-    mov QWORD [rsp + 0 * 8], 0 ; zero initialize local
     sub rsp, 32 ; shadow space
     mov rbx, QWORD [rsp + 6 * 8] ; get a
     mov rcx, rbx ; arg 0
     call one
     add rsp, 4 * 8
     mov rbx, rax ; get return value
-    lea r10, QWORD [rsp + 0 * 8] ; addr of local
-    mov QWORD [r10], rbx
+    mov QWORD [rsp + 0 * 8], rbx; initialize local
     sub rsp, 32 ; shadow space
     mov rbx, QWORD [rsp + 7 * 8] ; get b
     mov rcx, rbx ; arg 0
@@ -92,7 +90,6 @@ recursive:
     
 main:
     sub rsp, 2 * 8 + 8; 2 vars + alignment
-    mov QWORD [rsp + 0 * 8], 0 ; zero initialize bla
     sub rsp, 32 ; shadow space
     mov rbx, 1
     mov rcx, rbx ; arg 0
@@ -101,17 +98,14 @@ main:
     call two
     add rsp, 4 * 8
     mov rbx, rax ; get return value
-    lea r10, QWORD [rsp + 0 * 8] ; addr of bla
-    mov QWORD [r10], rbx
-    mov QWORD [rsp + 1 * 8], 0 ; zero initialize tmp
+    mov QWORD [rsp + 0 * 8], rbx; initialize bla
     sub rsp, 32 ; shadow space
     mov rbx, QWORD [rsp + 4 * 8] ; get bla
     mov rcx, rbx ; arg 0
     call one
     add rsp, 4 * 8
     mov rbx, rax ; get return value
-    lea r10, QWORD [rsp + 1 * 8] ; addr of tmp
-    mov QWORD [r10], rbx
+    mov QWORD [rsp + 1 * 8], rbx; initialize tmp
     sub rsp, 32 ; shadow space
     sub rsp, 32 ; shadow space
     mov rbx, QWORD [rsp + 8 * 8] ; get bla

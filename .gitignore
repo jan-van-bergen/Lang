@@ -342,3 +342,6 @@ healthchecksdb
 # Compiled binaries
 Data/*.obj
 Data/*.exe
+
+# Test Output
+test_out.txt

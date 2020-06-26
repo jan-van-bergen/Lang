@@ -50,7 +50,7 @@ typedef struct AST_Expression {
 		} expr_const;
 
 		struct Var {
-			Token token;
+			char const * name;
 		} expr_var;
 
 		struct Op_Bin {
@@ -96,8 +96,10 @@ typedef struct AST_Statement {
 		struct Decl_Var {
 			char const * name;
 			char const * type;
+
+			struct AST_Expression * value;
 		} stat_decl_var;
-		
+
 		struct Decl_Func {
 			char const * name;
 			char const * return_type;

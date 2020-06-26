@@ -1,6 +1,5 @@
 func main() -> int {
-	let a: int;
-	a = 1;
+	let a: int = 1;
 	
 	let b: int;
 	
@@ -9,5 +8,6 @@ func main() -> int {
 	} else {
 		b = 2;
 	}
+
 	return b;
 }

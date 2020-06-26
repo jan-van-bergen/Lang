@@ -2,14 +2,12 @@ func main() -> int {
 	let a: int;
 	let b: int;
 
-	let ptr: int_ptr;
-	
-	ptr = &a;
+	let ptr: int_ptr = &a;
 	*ptr = 3;
 	
 	if (a != 3) return -1;
 	
 	*(ptr + 8) = 5; // assign b, b is located 8 bytes after a
 
-	return b;
+	return b; // 5
 }

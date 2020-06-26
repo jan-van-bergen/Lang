@@ -94,6 +94,23 @@ bool lexer_reached_end(Lexer const * lexer) {
 	return lexer_peek(lexer) == '\0' || lexer->index == lexer->source_len;
 }
 
+bool lexer_match_int_literal(Lexer * lexer) {
+	char curr = lexer_peek(lexer);
+	
+	if (curr != '+' && curr != '-' && !isdigit(curr)) return false;
+
+	bool is_negative = curr == '-';
+
+	int value = 0;
+
+	while (isdigit(curr)) {
+		value *= 10;
+		value += curr - '0';
+
+		curr = lexer_next(lexer);
+	}
+}
+
 void lexer_get_token(Lexer * lexer, Token * token) {
 	lexer_skip(lexer);
 
@@ -101,7 +118,17 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 	
 	token->line = lexer->line;
 
-	if (isdigit(curr)) {
+	if (isdigit(curr) || ((curr == '+' || curr == '-') && isdigit(lexer->source[lexer->index + 1]))) {
+		bool is_negative = false;
+
+		if (curr == '+' || curr == '-') {
+			is_negative = curr == '-';
+
+			lexer_next(lexer);
+
+			curr = lexer_peek(lexer);
+		}
+
 		int value = 0;
 
 		while (isdigit(curr)) {
@@ -112,7 +139,7 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 		}
 
 		token->type      = TOKEN_LITERAL_INT;
-		token->value_int = value;
+		token->value_int = value * (is_negative ? -1 : 1);
 
 		//lexer_next(lexer);
 
@@ -169,6 +196,10 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 	if (match_length = lexer_match(lexer, "<"))  { token->type = TOKEN_OPERATOR_LT;    lexer->index += match_length; return; }
 	if (match_length = lexer_match(lexer, ">"))  { token->type = TOKEN_OPERATOR_GT;    lexer->index += match_length; return; }
 	
+	// Logical Operators
+	if (match_length = lexer_match(lexer, "&&")) { token->type = TOKEN_OPERATOR_LOGICAL_AND; lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "||")) { token->type = TOKEN_OPERATOR_LOGICAL_OR;  lexer->index += match_length; return; }
+	
 	// Equality Operators
 	if (match_length = lexer_match(lexer, "==")) { token->type = TOKEN_OPERATOR_EQ; lexer->index += match_length; return; }
 	if (match_length = lexer_match(lexer, "!=")) { token->type = TOKEN_OPERATOR_NE; lexer->index += match_length; return; }
@@ -197,6 +228,8 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 		case '*': token->type = TOKEN_OPERATOR_MULTIPLY; lexer_next(lexer); return; 
 		case '/': token->type = TOKEN_OPERATOR_DIVIDE;   lexer_next(lexer); return;
 		case '%': token->type = TOKEN_OPERATOR_MODULO;   lexer_next(lexer); return;
+
+		case '!': token->type = TOKEN_OPERATOR_LOGICAL_NOT; lexer_next(lexer); return;
 
 		case '&': token->type = TOKEN_OPERATOR_BITWISE_AND; lexer_next(lexer); return;
 

@@ -5,8 +5,7 @@ func factorial_recursive(n: int) -> int {
 }
 
 func factorial_loop(n: int) -> int {
-	let result: int;
-	result = 1;
+	let result: int = 1;
 
 	while (n > 0) {
 		result = result * n;
@@ -18,14 +17,10 @@ func factorial_loop(n: int) -> int {
 }
 
 func main() -> int {
-	let arg: int;
-	arg = 5;
+	let arg: int = 5;
 	
-	let a: int;
-	let b: int;
-	
-	a = factorial_recursive(arg);
-	b = factorial_loop     (arg);
+	let a: int = factorial_recursive(arg);
+	let b: int = factorial_loop     (arg);
 
 	return a == b;
 }

@@ -1,12 +1,8 @@
 func abc(a: int, b: int) -> int {
-	let ptr_a: int;
-	let ptr_b: int;
-	
-	ptr_a = &a;
-	ptr_b = &b;
-	
-	let ptr_ptr: int;
-	ptr_ptr = &ptr_a;
+	let ptr_a: int = &a;
+	let ptr_b: int = &b;
+
+	let ptr_ptr: int = &ptr_a;
 	
 	*ptr_ptr = ptr_b;
 

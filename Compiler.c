@@ -30,6 +30,8 @@ void compile_file(char const * filename, bool show_output) {
 
 	tokens[token_count++].type = TOKEN_EOF;
 
+	free(source);
+
 	// Parsing
 	Parser parser;
 	parser_init(&parser, tokens, token_count);

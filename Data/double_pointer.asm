@@ -5,18 +5,12 @@ abc:
     mov QWORD [rsp + 1 * 8], rcx
     mov QWORD [rsp + 2 * 8], rdx
     sub rsp, 3 * 8; 3 vars
-    mov QWORD [rsp + 0 * 8], 0 ; zero initialize ptr_a
-    mov QWORD [rsp + 1 * 8], 0 ; zero initialize ptr_b
-    lea rbx, QWORD [RSP + 4 * 8] ; addrof a
-    lea r10, QWORD [rsp + 0 * 8] ; addr of ptr_a
-    mov QWORD [r10], rbx
-    lea rbx, QWORD [RSP + 5 * 8] ; addrof b
-    lea r10, QWORD [rsp + 1 * 8] ; addr of ptr_b
-    mov QWORD [r10], rbx
-    mov QWORD [rsp + 2 * 8], 0 ; zero initialize ptr_ptr
-    lea rbx, QWORD [RSP + 0 * 8] ; addrof ptr_a
-    lea r10, QWORD [rsp + 2 * 8] ; addr of ptr_ptr
-    mov QWORD [r10], rbx
+    lea rbx, QWORD [rsp + 4 * 8] ; addrof a
+    mov QWORD [rsp + 0 * 8], rbx; initialize ptr_a
+    lea rbx, QWORD [rsp + 5 * 8] ; addrof b
+    mov QWORD [rsp + 1 * 8], rbx; initialize ptr_b
+    lea rbx, QWORD [rsp + 0 * 8] ; addrof ptr_a
+    mov QWORD [rsp + 2 * 8], rbx; initialize ptr_ptr
     mov rbx, QWORD [rsp + 1 * 8] ; get ptr_b
     mov r10, QWORD [rsp + 2 * 8] ; get ptr_ptr
     mov QWORD [r10], rbx

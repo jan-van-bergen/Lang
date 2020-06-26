@@ -3,12 +3,10 @@ GLOBAL main
 SECTION .code
 main:
     sub rsp, 3 * 8; 3 vars
-    mov QWORD [rsp + 0 * 8], 0 ; zero initialize a
-    mov QWORD [rsp + 1 * 8], 0 ; zero initialize b
-    mov QWORD [rsp + 2 * 8], 0 ; zero initialize ptr
-    lea rbx, QWORD [RSP + 0 * 8] ; addrof a
-    lea r10, QWORD [rsp + 2 * 8] ; addr of ptr
-    mov QWORD [r10], rbx
+    mov QWORD [rsp + 0 * 8], 0; zero initialize a
+    mov QWORD [rsp + 1 * 8], 0; zero initialize b
+    lea rbx, QWORD [rsp + 0 * 8] ; addrof a
+    mov QWORD [rsp + 2 * 8], rbx; initialize ptr
     mov rbx, 3
     mov r10, QWORD [rsp + 2 * 8] ; get ptr
     mov QWORD [r10], rbx
@@ -23,8 +21,7 @@ main:
     L1:
     cmp rbx, 0
     je L_exit2
-        mov rbx, 1
-        neg rbx
+        mov rbx, -1
         mov rax, rbx ; return via rax
         add rsp, 24
         ret

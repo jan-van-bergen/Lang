@@ -3,23 +3,17 @@ GLOBAL main
 SECTION .code
 main:
     sub rsp, 3 * 8; 3 vars
-    mov QWORD [rsp + 0 * 8], 0 ; zero initialize a
-    mov QWORD [rsp + 1 * 8], 0 ; zero initialize b
-    mov QWORD [rsp + 2 * 8], 0 ; zero initialize c
     mov rbx, 48
-    lea r10, QWORD [rsp + 0 * 8] ; addr of a
-    mov QWORD [r10], rbx
+    mov QWORD [rsp + 0 * 8], rbx; initialize a
     mov rbx, 3
-    lea r10, QWORD [rsp + 1 * 8] ; addr of b
-    mov QWORD [r10], rbx
+    mov QWORD [rsp + 1 * 8], rbx; initialize b
     mov rbx, QWORD [rsp + 0 * 8] ; get a
     mov r10, QWORD [rsp + 1 * 8] ; get b
     mov rax, rbx
     cdq
     idiv r10
     mov rbx, rax
-    lea r10, QWORD [rsp + 2 * 8] ; addr of c
-    mov QWORD [r10], rbx
+    mov QWORD [rsp + 2 * 8], rbx; initialize c
     mov rbx, QWORD [rsp + 2 * 8] ; get c
     mov r10, 16
     cmp rbx, r10

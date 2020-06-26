@@ -3,11 +3,9 @@ GLOBAL main
 SECTION .code
 main:
     sub rsp, 2 * 8 + 8; 2 vars + alignment
-    mov QWORD [rsp + 0 * 8], 0 ; zero initialize a
     mov rbx, 1
-    lea r10, QWORD [rsp + 0 * 8] ; addr of a
-    mov QWORD [r10], rbx
-    mov QWORD [rsp + 1 * 8], 0 ; zero initialize b
+    mov QWORD [rsp + 0 * 8], rbx; initialize a
+    mov QWORD [rsp + 1 * 8], 0; zero initialize b
     mov rbx, QWORD [rsp + 0 * 8] ; get a
     mov r10, 0
     cmp rbx, r10

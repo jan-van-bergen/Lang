@@ -2,17 +2,14 @@ extern GetStdHandle;
 extern WriteFile;
 extern strlen;
 
+let STD_OUTPUT_HANDLE: int = -11;
+	
 func main() -> int {
-	let STD_OUTPUT_HANDLE: int; STD_OUTPUT_HANDLE = -11;
+	let std_handle: int = GetStdHandle(STD_OUTPUT_HANDLE);
 	
-	let std_handle: int;
-	std_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+	let str: string = "Hallo wereld!";
 	
-	let str: string;
-	str = "Hallo wereld!";
-	
-	let str_len: int;
-	str_len = strlen(str);
+	let str_len: int = strlen(str);
 	
 	let bytes_written: int;
 	WriteFile(std_handle, str, str_len, &bytes_written, 0);

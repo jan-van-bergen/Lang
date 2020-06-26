@@ -15,7 +15,7 @@ bla:
 deref:
     mov QWORD [rsp + 1 * 8], rcx
     sub rsp, 1 * 8; 1 vars
-    mov QWORD [rsp + 0 * 8], 0 ; zero initialize local
+    mov QWORD [rsp + 0 * 8], 0; zero initialize local
     mov rbx, 21
     mov r10, QWORD [rsp + 2 * 8] ; get ptr
     mov QWORD [r10], rbx
@@ -23,7 +23,7 @@ deref:
     lea r10, QWORD [rsp + 0 * 8] ; addr of local
     mov QWORD [r10], rbx
     sub rsp, 32 ; shadow space
-    lea rbx, QWORD [RSP + 4 * 8] ; addrof local
+    lea rbx, QWORD [rsp + 4 * 8] ; addrof local
     mov rcx, rbx ; arg 0
     call bla
     add rsp, 4 * 8
@@ -35,12 +35,10 @@ deref:
     
 main:
     sub rsp, 1 * 8; 1 vars
-    mov QWORD [rsp + 0 * 8], 0 ; zero initialize a
     mov rbx, 42
-    lea r10, QWORD [rsp + 0 * 8] ; addr of a
-    mov QWORD [r10], rbx
+    mov QWORD [rsp + 0 * 8], rbx; initialize a
     sub rsp, 32 ; shadow space
-    lea rbx, QWORD [RSP + 4 * 8] ; addrof a
+    lea rbx, QWORD [rsp + 4 * 8] ; addrof a
     mov rcx, rbx ; arg 0
     call deref
     add rsp, 4 * 8

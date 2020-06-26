@@ -69,6 +69,7 @@ static bool parser_match_expression(Parser const * parser) {
 		parser_match(parser, TOKEN_OPERATOR_DEC)         ||
 		parser_match(parser, TOKEN_OPERATOR_BITWISE_AND) ||
 		parser_match(parser, TOKEN_OPERATOR_MULTIPLY)    ||
+		parser_match(parser, TOKEN_OPERATOR_LOGICAL_NOT) ||
 		parser_match(parser, TOKEN_LITERAL_INT)    || // Constant values
 		parser_match(parser, TOKEN_LITERAL_BOOL)   ||
 		parser_match(parser, TOKEN_LITERAL_STRING) ||
@@ -118,8 +119,8 @@ static bool parser_match_statement_block(Parser const * parser) {
 static bool parser_match_statement(Parser const * parser) {
 	return
 		parser_match_statement_expr(parser) ||
-		parser_match_statement_decl_var (parser) ||
-		parser_match_statement_decl_func(parser) ||
+		parser_match_statement_decl_var   (parser) ||
+		parser_match_statement_decl_func  (parser) ||
 		parser_match_statement_extern   (parser) ||
 		parser_match_statement_if   (parser) ||
 		parser_match_statement_while(parser) ||
@@ -188,7 +189,7 @@ static AST_Expression * parser_parse_expression_elementary(Parser * parser) {
 
 			expr->type = AST_EXPRESSION_VAR;
 			expr->height = 0;
-			expr->expr_var.token = *identifier;
+			expr->expr_var.name = identifier->value_str;
 
 			return expr;
 		}
@@ -201,7 +202,7 @@ static AST_Expression * parser_parse_expression_elementary(Parser * parser) {
 
 		factor->type = AST_EXPRESSION_CONST;
 		factor->height = 0;
-		factor->expr_var.token = *parser_advance(parser);
+		factor->expr_const.token = *parser_advance(parser);
 
 		return factor;
 	} else if (parser_match(parser, TOKEN_PARENTESES_OPEN)) {
@@ -241,7 +242,8 @@ static AST_Expression * parser_parse_expression_prefix(Parser * parser) {
 		parser_match(parser, TOKEN_OPERATOR_PLUS)  ||
 		parser_match(parser, TOKEN_OPERATOR_MINUS) ||
 		parser_match(parser, TOKEN_OPERATOR_BITWISE_AND) || // address of
-		parser_match(parser, TOKEN_OPERATOR_MULTIPLY)       // dereference
+		parser_match(parser, TOKEN_OPERATOR_MULTIPLY) ||    // dereference
+		parser_match(parser, TOKEN_OPERATOR_LOGICAL_NOT)
 	) {
 		AST_Expression * prefix = malloc(sizeof(AST_Expression));
 		prefix->type = AST_EXPRESSION_OPERATOR_PRE;
@@ -388,8 +390,54 @@ static AST_Expression * parser_parse_expression_equality(Parser * parser) {
 	return lhs;
 }
 
-static AST_Expression * parser_parse_expression_assign(Parser * parser) {
+static AST_Expression * parser_parse_expression_logical_and(Parser * parser) {
 	AST_Expression * lhs = parser_parse_expression_equality(parser);
+
+	// Left Associative
+	while (parser_match(parser, TOKEN_OPERATOR_LOGICAL_AND)) {
+		AST_Expression * expression = malloc(sizeof(AST_Expression));
+		expression->type = AST_EXPRESSION_OPERATOR_BIN;
+
+		expression->expr_op_bin.token = *parser_advance(parser);
+		expression->expr_op_bin.expr_left  = lhs;
+		expression->expr_op_bin.expr_right = parser_parse_expression_equality(parser);
+
+		expression->height = max(
+			expression->expr_op_bin.expr_left->height,
+			expression->expr_op_bin.expr_right->height
+		) + 1;
+
+		lhs = expression;
+	}
+
+	return lhs;
+}
+
+static AST_Expression * parser_parse_expression_logical_or(Parser * parser) {
+	AST_Expression * lhs = parser_parse_expression_logical_and(parser);
+
+	// Left Associative
+	while (parser_match(parser, TOKEN_OPERATOR_LOGICAL_OR)) {
+		AST_Expression * expression = malloc(sizeof(AST_Expression));
+		expression->type = AST_EXPRESSION_OPERATOR_BIN;
+
+		expression->expr_op_bin.token = *parser_advance(parser);
+		expression->expr_op_bin.expr_left  = lhs;
+		expression->expr_op_bin.expr_right = parser_parse_expression_logical_and(parser);
+
+		expression->height = max(
+			expression->expr_op_bin.expr_left->height,
+			expression->expr_op_bin.expr_right->height
+		) + 1;
+
+		lhs = expression;
+	}
+
+	return lhs;
+}
+
+static AST_Expression * parser_parse_expression_assign(Parser * parser) {
+	AST_Expression * lhs = parser_parse_expression_logical_or(parser);
 
 	// Right Associative
 	if (parser_match(parser, TOKEN_ASSIGN)) {
@@ -441,9 +489,19 @@ static AST_Statement * parser_parse_statement_decl_var(Parser * parser) {
 	AST_Statement * decl = malloc(sizeof(AST_Statement));
 	decl->type = AST_STATEMENT_DECL_VAR;
 
-	decl->stat_decl_var.name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
+	char const * var_name =  parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
+
+	decl->stat_decl_var.name = var_name;
 	parser_match_and_advance(parser, TOKEN_COLON);
 	decl->stat_decl_var.type = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
+
+	if (parser_match(parser, TOKEN_ASSIGN)) {
+		parser_advance(parser);
+
+		decl->stat_decl_var.value = parser_parse_expression(parser);
+	} else {
+		decl->stat_decl_var.value = NULL;
+	}
 
 	parser_match_and_advance(parser, TOKEN_SEMICOLON);
 

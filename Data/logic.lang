@@ -1,0 +1,22 @@
+extern ExitProcess;
+
+func assert(expression: bool) -> void {
+	if (!expression) {
+		ExitProcess(1);
+	}
+}
+
+func main() -> int {
+	let a: bool;
+	
+	a = true || false;
+	assert(a == true);
+	
+	a = false && true;
+	assert(a == false);
+	
+	a = a || !a;
+	assert(a == true);
+	
+	return 0;
+}

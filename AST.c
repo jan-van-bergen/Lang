@@ -44,9 +44,7 @@ static void print_expression(AST_Expression const * expr) {
 		}
 
 		case AST_EXPRESSION_VAR: {
-			char token_string[128];
-			token_to_string(&expr->expr_var.token, token_string, sizeof(token_string));	
-			printf("%s", token_string);
+			printf("%s", expr->expr_var.name);
 
 			break;
 		}
@@ -56,7 +54,7 @@ static void print_expression(AST_Expression const * expr) {
 			print_expression(expr->expr_op_bin.expr_left);
 
 			char token_string[128];
-			token_to_string(&expr->expr_var.token, token_string, sizeof(token_string));
+			token_to_string(&expr->expr_op_bin.token, token_string, sizeof(token_string));
 			printf(" %s ", token_string);
 			
 			print_expression(expr->expr_op_bin.expr_right);
@@ -69,7 +67,7 @@ static void print_expression(AST_Expression const * expr) {
 			printf("(");
 
 			char token_string[128];
-			token_to_string(&expr->expr_var.token, token_string, sizeof(token_string));
+			token_to_string(&expr->expr_op_pre.token, token_string, sizeof(token_string));
 			printf("%s", token_string);
 			
 			print_expression(expr->expr_op_pre.expr);
@@ -81,10 +79,10 @@ static void print_expression(AST_Expression const * expr) {
 		case AST_EXPRESSION_OPERATOR_POST: {
 			printf("(");
 
-			print_expression(expr->expr_op_pre.expr);
+			print_expression(expr->expr_op_post.expr);
 			
 			char token_string[128];
-			token_to_string(&expr->expr_var.token, token_string, sizeof(token_string));
+			token_to_string(&expr->expr_op_post.token, token_string, sizeof(token_string));
 			printf("%s", token_string);
 			printf(")");
 
