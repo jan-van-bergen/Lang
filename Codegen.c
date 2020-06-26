@@ -26,6 +26,10 @@ typedef struct Scope {
 	int stack_frame_size;
 } Scope;
 
+typedef enum Context_Flags {
+	CTX_FLAG_VAR_BY_ADDRESS = 1
+} Context_Flags;
+
 typedef struct Context {
 	int scratch_reg_mask;
 
@@ -33,6 +37,8 @@ typedef struct Context {
 
 	int label;
 	int current_loop_label;
+
+	unsigned flags;
 
 	Scope * current_scope;
 	int stack_offset;
@@ -46,13 +52,15 @@ typedef struct Context {
 	int           string_lit_cap;
 } Context;
 
-void context_init(Context * ctx) {
+static void context_init(Context * ctx) {
 	ctx->scratch_reg_mask = 0;
 
 	ctx->indent = 0;
 
 	ctx->label = 0;
 	ctx->current_loop_label = -1;
+
+	ctx->flags = 0;
 
 	ctx->current_scope = NULL;
 	ctx->stack_offset = 0;
@@ -66,7 +74,7 @@ void context_init(Context * ctx) {
 	ctx->string_lits    = malloc(ctx->string_lit_cap * sizeof(char const *));
 }
 
-int context_reg_request(Context * ctx) {
+static int context_reg_request(Context * ctx) {
 	int const reg_count = sizeof(reg_names_scratch) / sizeof(char const *);
 
 	for (int i = 0; i < reg_count; i++) {
@@ -80,7 +88,7 @@ int context_reg_request(Context * ctx) {
 	abort(); // No registers available!
 }
 
-void context_reg_free(Context * ctx, int reg) {
+static void context_reg_free(Context * ctx, int reg) {
 	if (reg == -1) return;
 
 	assert(ctx->scratch_reg_mask & (1 << reg));
@@ -88,11 +96,19 @@ void context_reg_free(Context * ctx, int reg) {
 	ctx->scratch_reg_mask &= ~(1 << reg);
 }
 
-int context_new_label(Context * ctx) {
+static int context_new_label(Context * ctx) {
 	return ctx->label++;
 }
 
-Scope * context_scope_push(Context * ctx, int arg_count, int var_count) {
+static void context_flag_set(Context * ctx, Context_Flags flag) {
+	ctx->flags |= flag;
+}
+
+static void context_flag_unset(Context * ctx, Context_Flags flag) {
+	ctx->flags &= ~flag;
+}
+
+static Scope * context_scope_push(Context * ctx, int arg_count, int var_count) {
 	Scope * scope = malloc(sizeof(Scope));
 	scope->prev = ctx->current_scope;
 
@@ -112,7 +128,7 @@ Scope * context_scope_push(Context * ctx, int arg_count, int var_count) {
 	return scope;
 }
 
-void context_scope_pop(Context * ctx) {
+static void context_scope_pop(Context * ctx) {
 	Scope * scope = ctx->current_scope;
 	ctx->current_scope = scope->prev;
 
@@ -121,7 +137,7 @@ void context_scope_pop(Context * ctx) {
 	free(scope);
 }
 
-void context_decl_arg(Context * ctx, const char * name) {
+static void context_decl_arg(Context * ctx, const char * name) {
 	assert(ctx->current_scope);
 
 	int offset = ctx->current_scope->curr_arg_offset++;
@@ -131,7 +147,7 @@ void context_decl_arg(Context * ctx, const char * name) {
 }
 
 
-void context_decl_var(Context * ctx, const char * name) {
+static void context_decl_var(Context * ctx, const char * name) {
 	assert(ctx->current_scope);
 
 	int offset = ctx->current_scope->curr_var_offset++;
@@ -140,7 +156,7 @@ void context_decl_var(Context * ctx, const char * name) {
 	ctx->current_scope->vars[offset] = name;
 }
 
-int context_get_local_offset(Context * ctx, const char * name) {
+static int context_get_local_offset(Context * ctx, const char * name) {
 	for (int i = 0; i < ctx->current_scope->var_count; i++) {
 		if (ctx->current_scope->vars[i] && strcmp(ctx->current_scope->vars[i], name) == 0) {
 			return ctx->stack_offset + i;
@@ -195,8 +211,41 @@ static int context_add_string_literal(Context * ctx, char const * str_lit) {
 		ctx->string_lits = realloc(ctx->string_lits, ctx->string_lit_cap * sizeof(char const *));
 	}
 
+	int str_lit_len = strlen(str_lit);
+
+	int    str_lit_cpy_size = str_lit_len * 9 + 1;
+	char * str_lit_cpy      = malloc(str_lit_cpy_size);
+
+	int idx = 0;
+
+	str_lit_cpy[idx++] = '\"';
+
+	char const * curr = str_lit;
+	while (*curr) {
+		if (*curr == '\\') {
+			switch (*(curr + 1)) {
+				case 'r':  strcpy_s(str_lit_cpy + idx, str_lit_cpy_size - idx, "\", 0Dh, \""); idx += 9; break;
+				case 'n':  strcpy_s(str_lit_cpy + idx, str_lit_cpy_size - idx, "\", 0Ah, \""); idx += 9; break;
+				case 't':  strcpy_s(str_lit_cpy + idx, str_lit_cpy_size - idx, "\", 09h, \""); idx += 9; break;
+
+				case '\\': str_lit_cpy[idx++] = '\\'; break;
+
+				default: abort();
+			}
+
+			curr += 2;
+		} else {	
+			str_lit_cpy[idx++] = *curr;
+
+			curr++;
+		}
+	}
+	
+	str_lit_cpy[idx++] = '\"';
+	str_lit_cpy[idx++] = '\0';
+
 	int index = ctx->string_lit_len++;
-	ctx->string_lits[index] = str_lit;
+	ctx->string_lits[index] = str_lit_cpy;
 
 	return index;
 }
@@ -239,7 +288,12 @@ static int codegen_expression_var(Context * ctx, AST_Expression const * expr) {
 	int offset = context_get_local_offset(ctx, var_name);
 
 	int reg = context_reg_request(ctx);
-	context_emit_code(ctx, "mov %s, QWORD [rsp + %i * 8] ; get %s\n", reg_names_scratch[reg], offset, var_name);
+
+	if (ctx->flags & CTX_FLAG_VAR_BY_ADDRESS) {
+		context_emit_code(ctx, "lea %s, QWORD [rsp + %i * 8] ; addr of %s\n", reg_names_scratch[reg], offset, var_name);
+	} else {
+		context_emit_code(ctx, "mov %s, QWORD [rsp + %i * 8] ; get %s\n", reg_names_scratch[reg], offset, var_name);
+	}
 
 	return reg;
 }
@@ -265,52 +319,25 @@ static int codegen_expression_op_bin(Context * ctx, AST_Expression const * expr)
 	if (expr->expr_op_bin.token.type == TOKEN_ASSIGN) {
 		AST_Expression const * expr_left  = expr->expr_op_bin.expr_left;
 		AST_Expression const * expr_right = expr->expr_op_bin.expr_right;
+		
+		// Evaluate rhs first
+		int reg_right = codegen_expression(ctx, expr_right);
 
-		switch (expr_left->type) {
-			case AST_EXPRESSION_VAR: {
-				char const * var_name = expr_left->expr_var.token.value_str;
-				int          var_offset = context_get_local_offset(ctx, var_name);
+		// Evaluate lhs by address
+		context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS);
+		int reg_left = codegen_expression(ctx, expr_left);
+		context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
 
-				if (expr_right->type == AST_EXPRESSION_CONST && expr_right->expr_const.token.type != TOKEN_LITERAL_STRING) {
-					context_emit_code(ctx, "mov QWORD [rsp + %i * 8], %i ; set %s\n", var_offset, expr_right->expr_const.token.value_int, var_name);
+		context_emit_code(ctx, "mov QWORD [%s], %s\n", reg_names_scratch[reg_left], reg_names_scratch[reg_right]);
 
-					return -1;
-				} else {
-					int reg = codegen_expression(ctx, expr_right);
-					context_emit_code(ctx, "mov QWORD [rsp + %i * 8], %s ; set %s\n", var_offset, reg_names_scratch[reg], var_name);
+		context_reg_free(ctx, reg_right);
 
-					return reg;
-				}
-			}
-
-			case AST_EXPRESSION_OPERATOR_PRE: {
-				char const * var_name = expr_left->expr_op_pre.expr->expr_var.token.value_str;
-				int          var_offset = context_get_local_offset(ctx, var_name);
-
-				int deref_reg = context_reg_request(ctx);
-				context_emit_code(ctx, "mov %s, QWORD [rsp + %i * 8]\n", reg_names_scratch[deref_reg], var_offset);
-
-				if (expr_right->type == AST_EXPRESSION_CONST && expr_right->expr_const.token.type != TOKEN_LITERAL_STRING) {
-					context_emit_code(ctx, "mov QWORD [%s], %i ; set ptr %s\n", reg_names_scratch[deref_reg], expr_right->expr_const.token.value_int, var_name);
-					context_reg_free(ctx, deref_reg);
-
-					return -1;
-				} else {
-					int reg = codegen_expression(ctx, expr_right);
-					context_emit_code(ctx, "mov QWORD [%s], %s ; set ptr %s\n", reg_names_scratch[deref_reg], reg_names_scratch[reg], var_name);
-					context_reg_free(ctx, deref_reg);
-
-					return reg;
-				}
-			}
-
-			default: abort(); // LHS of assignment must be variable
-		}
+		return reg_left;
 	}
 
 	int reg_left, reg_right;
 
-	// Traverse highest subtree first
+	// Traverse tallest subtree first
 	if (expr->expr_op_bin.expr_left->height >= expr->expr_op_bin.expr_right->height) {
 		reg_left  = codegen_expression(ctx, expr->expr_op_bin.expr_left);
 		reg_right = codegen_expression(ctx, expr->expr_op_bin.expr_right);
@@ -364,34 +391,41 @@ static int codegen_expression_op_bin(Context * ctx, AST_Expression const * expr)
 static int codegen_expression_op_pre(Context * ctx, AST_Expression const * expr) {
 	assert(expr->type == AST_EXPRESSION_OPERATOR_PRE);
 
-	Token_Type operator = expr->expr_op_pre.token.type;
+	AST_Expression * operand  = expr->expr_op_pre.expr;
+	Token_Type       operator = expr->expr_op_pre.token.type;
 
 	// Check if this is a pointer operator
-	if (operator == TOKEN_OPERATOR_BITWISE_AND || operator == TOKEN_OPERATOR_MULTIPLY) {
-		AST_Expression * operand = expr->expr_op_pre.expr;
-		if (operand->type != AST_EXPRESSION_VAR) abort(); // Pointer operators only work on identifiers
-
-		const char * var_name = operand->expr_var.token.value_str;
+	if (operator == TOKEN_OPERATOR_BITWISE_AND) {
+		if (operand->type != AST_EXPRESSION_VAR) abort(); // Can only take address of variable
+		
+		const char * var_name   = operand->expr_var.token.value_str;
 		int          var_offset = context_get_local_offset(ctx, var_name);
 
-		int result_reg = context_reg_request(ctx);
+		int reg = context_reg_request(ctx);
 
-		if (operator == TOKEN_OPERATOR_BITWISE_AND) {
-			context_emit_code(ctx, "lea %s, QWORD [RSP + %i * 8] ; addrof %s\n", reg_names_scratch[result_reg], var_offset, var_name);
+		context_emit_code(ctx, "lea %s, QWORD [RSP + %i * 8] ; addrof %s\n", reg_names_scratch[reg], var_offset, var_name);
+
+		return reg;
+	} else if (operator == TOKEN_OPERATOR_MULTIPLY) {
+		bool var_by_address = ctx->flags & CTX_FLAG_VAR_BY_ADDRESS;
+
+		context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
+		int reg = codegen_expression(ctx, operand);
+
+		if (var_by_address) {
+			context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS);
 		} else {
-			context_emit_code(ctx, "mov %s, QWORD [RSP + %i * 8] ; deref %s\n", reg_names_scratch[result_reg], var_offset, var_name);
-			context_emit_code(ctx, "mov %s, QWORD [%s]\n",                      reg_names_scratch[result_reg], reg_names_scratch[result_reg]);
+			context_emit_code(ctx, "mov %s, QWORD [%s]\n", reg_names_scratch[reg], reg_names_scratch[reg]);
 		}
 
-		return result_reg;
+		return reg;
 	}
 
-	int reg = codegen_expression(ctx, expr->expr_op_pre.expr);
+	int reg = codegen_expression(ctx, operand);
 
 	switch (operator) {
 		case TOKEN_OPERATOR_PLUS: break; // Do nothing
 		case TOKEN_OPERATOR_MINUS: context_emit_code(ctx, "neg %s\n", reg_names_scratch[reg]); break;
-
 
 		default: abort();
 	}
@@ -491,7 +525,7 @@ static void codegen_statement_decl_var(Context * ctx, AST_Statement const * stat
 	assert(stat->type == AST_STATEMENT_DECL_VAR);
 
 	char const * var_name = stat->stat_decl_var.name;
-	context_decl_var(ctx,var_name);
+	context_decl_var(ctx, var_name);
 
 	int var_offset = context_get_local_offset(ctx, var_name);
 
@@ -499,27 +533,28 @@ static void codegen_statement_decl_var(Context * ctx, AST_Statement const * stat
 }
 
 static int count_vars_in_function(AST_Statement const * stat) {
-	if (stat->type != AST_STATEMENTS) return 0;
-
 	int count = 0;
 
-	if (stat->stat_stats.head) {
-		AST_Statement * head = stat->stat_stats.head;
-		if (head->type == AST_STATEMENT_DECL_VAR) {
-			count = 1;
-		} else if (head->type == AST_STATEMENT_IF) {
-			count += count_vars_in_function(head->stat_if.case_true);
+	if (stat == NULL) return count;
 
-			if (head->stat_if.case_false) {
-				count += count_vars_in_function(head->stat_if.case_false);
+	if (stat->type != AST_STATEMENTS) {
+		if (stat->type == AST_STATEMENT_DECL_VAR) {
+			count = 1;
+		} else if (stat->type == AST_STATEMENT_IF) {
+			count += count_vars_in_function(stat->stat_if.case_true);
+
+			if (stat->stat_if.case_false) {
+				count += count_vars_in_function(stat->stat_if.case_false);
 			}
-		} else if (head->type == AST_STATEMENT_WHILE) {
-			count += count_vars_in_function(head->stat_while.body);
+		} else if (stat->type == AST_STATEMENT_WHILE) {
+			count += count_vars_in_function(stat->stat_while.body);
 		}
+
+		return count;
 	}
-	if (stat->stat_stats.cons) {
-		count += count_vars_in_function(stat->stat_stats.cons);
-	}
+
+	if (stat->stat_stats.head) count += count_vars_in_function(stat->stat_stats.head);
+	if (stat->stat_stats.cons) count += count_vars_in_function(stat->stat_stats.cons);
 
 	return count;
 }
@@ -718,7 +753,7 @@ char const * codegen_program(AST_Statement const * program) {
 	context_emit_code(&ctx, "SECTION .data\n");
 
 	for (int i = 0; i < ctx.string_lit_len; i++) {
-		context_emit_code(&ctx, "str_lit_%i db \"%s\", 0\n", i, ctx.string_lits[i]);
+		context_emit_code(&ctx, "str_lit_%i db %s, 0\n", i, ctx.string_lits[i]);
 	}
 
 	return ctx.code;

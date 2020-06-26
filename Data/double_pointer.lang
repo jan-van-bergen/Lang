@@ -9,11 +9,8 @@ func abc(a: int, b: int) -> int {
 	ptr_ptr = &ptr_a;
 	
 	*ptr_ptr = ptr_b;
-	
-	let deref: int;
-	deref = *ptr_ptr;
-	
-	return *deref;
+
+	return **ptr_ptr;
 }
 
 func main() -> int {

@@ -246,7 +246,7 @@ static AST_Expression * parser_parse_expression_prefix(Parser * parser) {
 		AST_Expression * prefix = malloc(sizeof(AST_Expression));
 		prefix->type = AST_EXPRESSION_OPERATOR_PRE;
 		prefix->expr_op_pre.token = *parser_advance(parser);
-		prefix->expr_op_pre.expr  = parser_parse_expression_postfix(parser);
+		prefix->expr_op_pre.expr  = parser_parse_expression_prefix(parser);
 		prefix->height = prefix->expr_op_pre.expr->height + 1;
 
 		return prefix;

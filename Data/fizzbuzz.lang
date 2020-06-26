@@ -1,0 +1,70 @@
+extern GetStdHandle;
+extern WriteFile;
+extern strlen;
+
+func print(str: string, str_len: int) -> void {
+	let STD_OUTPUT_HANDLE: int; STD_OUTPUT_HANDLE = -11;
+	
+	let std_handle: int;
+	std_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+
+	let bytes_written: int;
+	WriteFile(std_handle, str, str_len, &bytes_written, 0);
+}
+
+func print_num(num: int) -> void {
+	let num_str: string; num_str = "         ";
+	let idx: int; idx = 0;
+
+	while (num > 0) {
+		let digit: int;
+		digit = num % 10;
+		
+		*(num_str + idx) = digit + 48;
+		
+		num = num / 10;
+		idx = idx + 1;
+	}
+	
+	let i: int; i = 0;
+
+	while (i < idx / 2) {
+		let tmp: char; tmp = *(num_str + i);
+		*(num_str + i) = *(num_str + idx - i - 1);
+		*(num_str + idx - i - 1) = tmp;
+
+		i = i + 1;
+	}
+	
+	*(num_str + idx) = 32; // space
+	
+	print(num_str, idx + 1);
+}
+
+func fizzbuzz(n: int) -> void {
+	let i: int;
+	i = 1;
+	
+	while (i <= n) {
+		let divisible_by_3: bool; divisible_by_3 = i % 3 == 0;
+		let divisible_by_5: bool; divisible_by_5 = i % 5 == 0;
+
+		if (divisible_by_3) {
+			if (divisible_by_5) {
+				print("fizzbuzz ", 9);
+			} else {
+				print("buzz ", 5);
+			}
+		} else if (divisible_by_5) {
+			print("fizz ", 5);
+		} else {
+			print_num(i);
+		}
+
+		i = i + 1;
+	}
+}
+
+func main() -> void {
+	fizzbuzz(20);
+}

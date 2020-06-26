@@ -290,6 +290,8 @@ void ast_free_statement(AST_Statement * stat) {
 	if (stat == NULL) return;
 
 	switch (stat->type) {
+		case AST_STATEMENT_NOOP: break;
+
 		case AST_STATEMENTS: {
 			if (stat->stat_stats.head) ast_free_statement(stat->stat_stats.head);
 			if (stat->stat_stats.cons) ast_free_statement(stat->stat_stats.cons);

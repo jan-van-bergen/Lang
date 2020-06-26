@@ -2,6 +2,29 @@
 #include <string.h>
 #include <stdlib.h>
 
+inline char const * read_file(char const * filename) {
+	FILE * f;
+	fopen_s(&f, filename, "rb");
+
+	if (f == NULL) {
+		printf("Unable to open file %s!\n", filename);
+		abort();
+	}
+
+	fseek(f, 0, SEEK_END);
+	int file_length = ftell(f);
+	fseek(f, 0, SEEK_SET);
+
+	char * string = malloc(file_length + 1);
+	fread(string, 1, file_length, f);
+	string[file_length] = '\0';
+
+	fclose(f);
+
+	return string;
+}
+
+
 inline char const * replace_file_extension(char const * filename, char const * file_extension) {
 	char const * extension_curr = strchr(filename, '.');
 	char const * extension_last = NULL;

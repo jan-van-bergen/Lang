@@ -7,13 +7,20 @@
 
 #include "Util.h"
 
-static void run_test(char const * filename, int expected_exit_code) {
+static void run_test(char const * filename, int expected_exit_code, char const * expected_output) {
 	compile_file(filename, false);
 
 	char const * filename_exe = replace_file_extension(filename, "exe");
+	char const * file_out = "test_out.txt";
 
-	int exit_code = system(filename_exe);
+	char cmd[1024];
+	sprintf_s(cmd, sizeof(cmd), "%s > %s", filename_exe, file_out);
+	
+	free(filename_exe);
 
+	int exit_code = system(cmd);
+
+	// Check exit code
 	if (exit_code == expected_exit_code) {
 		printf("Testcase SUCCESS: '%s' Exit code was %i\n", filename, exit_code);
 	} else {
@@ -22,19 +29,29 @@ static void run_test(char const * filename, int expected_exit_code) {
 		__debugbreak();
 	}
 
-	free(filename_exe);
+	// Check output
+	char const * output = read_file(file_out);
+
+	if (strcmp(output, expected_output) != 0) {
+	
+		__debugbreak();
+	}
+
+	free(output);
 }
 
 void run_tests() {
 	puts("Starting tests...");
 
-	run_test("Data\\calling_convention.lang", 21);
-	run_test("Data\\code.lang",                3);
-	run_test("Data\\extern.lang",             13);
-	run_test("Data\\functions.lang",          14);
-	run_test("Data\\pointer.lang",            21);
-	run_test("Data\\double_pointer.lang",      2);
-	run_test("Data\\factorial.lang",           1);
-	run_test("Data\\div.lang",                 1);
-	run_test("Data\\mod.lang",                 2);
+	run_test("Data\\calling_convention.lang", 21, "");
+	run_test("Data\\code.lang",                3, "");
+	run_test("Data\\extern.lang",             13, "Hallo wereld!");
+	run_test("Data\\functions.lang",          12, "");
+	run_test("Data\\pointer.lang",            21, "");
+	run_test("Data\\double_pointer.lang",      2, "");
+	run_test("Data\\factorial.lang",           1, "");
+	run_test("Data\\div.lang",                 1, "");
+	run_test("Data\\mod.lang",                 2, "");
+	run_test("Data\\pointer_arith.lang",       5, "");
+	run_test("Data\\fizzbuzz.lang",            0, "1 2 buzz 4 fizz buzz 7 8 buzz fizz 11 buzz 13 14 fizzbuzz 16 17 buzz 19 fizz ");
 }

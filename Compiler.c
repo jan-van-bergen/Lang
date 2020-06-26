@@ -12,28 +12,6 @@
 
 #include "Util.h"
 
-static char const * read_file(char const * filename) {
-	FILE * f;
-	fopen_s(&f, filename, "rb");
-
-	if (f == NULL) {
-		printf("Unable to open file %s!\n", filename);
-		abort();
-	}
-
-	fseek(f, 0, SEEK_END);
-	int file_length = ftell(f);
-	fseek(f, 0, SEEK_SET);
-
-	char * string = malloc(file_length + 1);
-	fread(string, 1, file_length, f);
-	string[file_length] = '\0';
-
-	fclose(f);
-
-	return string;
-}
-
 void compile_file(char const * filename, bool show_output) {
 	char const * source = read_file(filename);
 
