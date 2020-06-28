@@ -7,19 +7,21 @@ extern WriteFile;
 
 extern ExitProcess;
 
-let heap: heap;
+let NULL: int = 0;
 
-func malloc(size: int) -> ptr {
-	if (heap == 0) {
+let heap: void *;
+
+func malloc(size: int) -> void * {
+	if (heap == NULL) {
 		heap = GetProcessHeap();
 	}
 	
 	return HeapAlloc(heap, 0, size);
 }
 
-func free(ptr: ptr) -> void {
-	assert(ptr  != 0);
-	assert(heap != 0);
+func free(ptr: int *) -> void {
+	assert(ptr  != NULL);
+	assert(heap != NULL);
 	
 	HeapFree(heap, 0, ptr);
 }
@@ -32,15 +34,23 @@ func assert(expression: bool) -> void {
 
 let STD_OUTPUT_HANDLE: int = -11;
 
-func print(str: string, str_len: int) -> void {
-	let std_handle: int = GetStdHandle(STD_OUTPUT_HANDLE);
+func print(str: char *, str_len: int) -> void {
+	let std_handle: void * = GetStdHandle(STD_OUTPUT_HANDLE);
 
 	let bytes_written: int;
-	WriteFile(std_handle, str, str_len, &bytes_written, 0);
+	WriteFile(std_handle, str, str_len, &bytes_written, NULL);
+}
+
+func strlen(str: char *) -> int {
+	let len: int = 0;
+	
+	while (*(str + len) != NULL) len = len + 1;
+	
+	return len;
 }
 
 func main() -> int {
-	let mem: ptr = malloc(8);
+	let mem: void * = malloc(16);
 	
 	*(mem + 0) = 'B';
 	*(mem + 1) = 'r';
@@ -50,11 +60,14 @@ func main() -> int {
 	*(mem + 5) = 'e';
 	*(mem + 6) = 's';
 	*(mem + 7) = 't';
+	*(mem + 8) = 0;
 
-	print(mem, 8);
+	let str_len: int = strlen(mem);
+
+	print(mem, str_len);
 	free(mem);
-	
-	let mem2: ptr = malloc(8);
+
+	let mem2: void * = malloc(16);
 
 	*(mem2 + 0) = 1;
 	*(mem2 + 1) = 2;

@@ -8,6 +8,9 @@ typedef struct Parser {
 	Token const * tokens;
 
 	int index;
+
+	Stack_Frame * current_stack_frame;
+	Scope       * current_scope;
 } Parser;
 
 void parser_init(Parser * parser, Token const * tokens, int token_count);

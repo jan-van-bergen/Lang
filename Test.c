@@ -33,7 +33,6 @@ static void run_test(char const * filename, int expected_exit_code, char const *
 	char const * output = read_file(file_out);
 
 	if (strcmp(output, expected_output) != 0) {
-	
 		__debugbreak();
 	}
 
@@ -52,8 +51,8 @@ void run_tests() {
 	run_test("Data\\factorial.lang",           1, "");
 	run_test("Data\\div.lang",                 1, "");
 	run_test("Data\\mod.lang",                 2, "");
-	run_test("Data\\pointer_arith.lang",       5, "");
 	run_test("Data\\fizzbuzz.lang",            0, "1 2 buzz 4 fizz buzz 7 8 buzz fizz 11 buzz 13 14 fizzbuzz 16 17 buzz 19 fizz ");
 	run_test("Data\\logic.lang",               0, "");
 	run_test("Data\\heap.lang",         67305985, "BruhTest");
+	run_test("Data\\scope.lang",               3, "");
 }

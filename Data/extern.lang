@@ -7,7 +7,7 @@ let STD_OUTPUT_HANDLE: int = -11;
 func main() -> int {
 	let std_handle: int = GetStdHandle(STD_OUTPUT_HANDLE);
 	
-	let str: string = "Hallo wereld!";
+	let str: char * = "Hallo wereld!";
 	
 	let str_len: int = strlen(str);
 	

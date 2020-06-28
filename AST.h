@@ -1,6 +1,9 @@
 #pragma once
 #include "Token.h"
 
+#include "Type.h"
+#include "Scope.h"
+
 typedef enum AST_Expression_Type {
 	AST_EXPRESSION_CONST,
 	AST_EXPRESSION_VAR,
@@ -11,24 +14,9 @@ typedef enum AST_Expression_Type {
 	AST_EXPRESSION_CALL_FUNC
 } AST_Expression_Type;
 
-typedef enum AST_Statement_Type {
-	AST_STATEMENT_NOOP,
-	AST_STATEMENTS,
-
-	AST_STATEMENT_EXPR,
-	AST_STATEMENT_DECL_VAR,
-	AST_STATEMENT_DECL_FUNC,
-	AST_STATEMENT_EXTERN,
-	AST_STATEMENT_IF,
-	AST_STATEMENT_WHILE,
-	AST_STATEMENT_BREAK,
-	AST_STATEMENT_CONTINUE,
-	AST_STATEMENT_RETURN
-} AST_Statement_Type;
-
 typedef struct AST_Decl_Arg {
 	char const * name;
-	char const * type;
+	Type       * type;
 	struct AST_Decl_Arg * next;
 } AST_Decl_Arg;
 
@@ -40,8 +28,10 @@ typedef struct AST_Call_Arg {
 } AST_Call_Arg;
 
 typedef struct AST_Expression {
-	AST_Expression_Type type;
+	AST_Expression_Type expr_type;
 	
+	Type type;
+
 	int height;
 
 	union {
@@ -80,8 +70,23 @@ typedef struct AST_Expression {
 	};
 } AST_Expression;
 
+typedef enum AST_Statement_Type {
+	AST_STATEMENTS,
+	AST_STATEMENT_BLOCK,
+
+	AST_STATEMENT_EXPR,
+	AST_STATEMENT_DECL_VAR,
+	AST_STATEMENT_DECL_FUNC,
+	AST_STATEMENT_EXTERN,
+	AST_STATEMENT_IF,
+	AST_STATEMENT_WHILE,
+	AST_STATEMENT_BREAK,
+	AST_STATEMENT_CONTINUE,
+	AST_STATEMENT_RETURN
+} AST_Statement_Type;
+
 typedef struct AST_Statement {
-	AST_Statement_Type type;
+	AST_Statement_Type stat_type;
 
 	union {
 		struct Statements {
@@ -89,20 +94,27 @@ typedef struct AST_Statement {
 			struct AST_Statement * cons;
 		} stat_stats;
 		
+		struct Block {
+			Scope * scope;
+
+			struct AST_Statement * stat;
+		} stat_block;
+
 		struct Expr {
 			struct AST_Expression * expr;
 		} stat_expr;
 
 		struct Decl_Var {
 			char const * name;
-			char const * type;
+			Type       * type;
 
 			struct AST_Expression * value;
 		} stat_decl_var;
 
 		struct Decl_Func {
 			char const * name;
-			char const * return_type;
+			Type       * return_type;
+
 			struct AST_Decl_Arg  * args;
 			struct AST_Statement * body;
 		} stat_decl_func;
@@ -122,14 +134,6 @@ typedef struct AST_Statement {
 			struct AST_Expression * condition;
 			struct AST_Statement  * body;
 		} stat_while;
-
-		//struct Break {
-		//	
-		//} stat_break;
-
-		//struct Continue {
-		//	
-		//} stat_continue;
 
 		struct Return {
 			struct AST_Expression * expr;

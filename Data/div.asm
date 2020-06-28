@@ -4,19 +4,21 @@ GLOBAL main
 
 SECTION .code
 main:
-    sub rsp, 3 * 8; 3 vars
+    push rbp ; save RBP
+    mov rbp, rsp ; stack frame
+    sub rsp, 32 ; reserve stack space for locals
     mov rbx, 48
-    mov QWORD [rsp + 0 * 8], rbx; initialize a
+    mov QWORD [rbp + -8], rbx; initialize a
     mov rbx, 3
-    mov QWORD [rsp + 1 * 8], rbx; initialize b
-    mov rbx, QWORD [rsp + 0 * 8] ; get a
-    mov r10, QWORD [rsp + 1 * 8] ; get b
+    mov QWORD [rbp + -16], rbx; initialize b
+    mov rbx, QWORD [rbp + -8] ; get value of a
+    mov r10, QWORD [rbp + -16] ; get value of b
     mov rax, rbx
     cdq
     idiv r10
     mov rbx, rax
-    mov QWORD [rsp + 2 * 8], rbx; initialize c
-    mov rbx, QWORD [rsp + 2 * 8] ; get c
+    mov QWORD [rbp + -24], rbx; initialize c
+    mov rbx, QWORD [rbp + -24] ; get value of c
     mov r10, 16
     cmp rbx, r10
     je L0
@@ -29,21 +31,20 @@ main:
     je L_exit2
         mov rbx, 0
         mov rax, rbx ; return via rax
-        add rsp, 24
-        ret
+        jmp L_function_main_exit
     L_exit2:
-    mov rbx, 4
-    lea r10, QWORD [rsp + 1 * 8] ; addr of b
-    mov QWORD [r10], rbx
-    mov rbx, QWORD [rsp + 2 * 8] ; get c
-    mov r10, QWORD [rsp + 1 * 8] ; get b
+    lea rbx, QWORD [rbp + -16] ; get address of b
+    mov r10, 4
+    mov QWORD [rbx], r10
+    mov rbx, QWORD [rbp + -24] ; get value of c
+    mov r10, QWORD [rbp + -16] ; get value of b
     mov rax, rbx
     cdq
     idiv r10
     mov rbx, rax
-    lea r10, QWORD [rsp + 2 * 8] ; addr of c
+    lea r10, QWORD [rbp + -24] ; get address of c
     mov QWORD [r10], rbx
-    mov rbx, QWORD [rsp + 2 * 8] ; get c
+    mov rbx, QWORD [rbp + -24] ; get value of c
     mov r10, 4
     cmp rbx, r10
     je L3
@@ -56,24 +57,23 @@ main:
     je L_exit5
         mov rbx, 0
         mov rax, rbx ; return via rax
-        add rsp, 24
-        ret
+        jmp L_function_main_exit
     L_exit5:
-    mov rbx, QWORD [rsp + 2 * 8] ; get c
-    mov r10, QWORD [rsp + 2 * 8] ; get c
+    mov rbx, QWORD [rbp + -24] ; get value of c
+    mov r10, QWORD [rbp + -24] ; get value of c
     mov rax, rbx
     cdq
     idiv r10
     mov rbx, rax
-    lea r10, QWORD [rsp + 2 * 8] ; addr of c
+    lea r10, QWORD [rbp + -24] ; get address of c
     mov QWORD [r10], rbx
-    mov rbx, QWORD [rsp + 2 * 8] ; get c
+    mov rbx, QWORD [rbp + -24] ; get value of c
     mov rax, rbx ; return via rax
-    add rsp, 24
-    ret
-    ; Default return
-    add rsp, 24
-    xor rax, rax
+    jmp L_function_main_exit
+    xor rax, rax ; Default return value 0
+    L_function_main_exit:
+    mov rsp, rbp
+    pop rbp
     ret
     
 SECTION .data

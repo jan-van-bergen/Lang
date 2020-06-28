@@ -10,45 +10,48 @@ EXTERN WriteFile
 EXTERN strlen
 
 print:
-    mov QWORD [rsp + 1 * 8], rcx
-    mov QWORD [rsp + 2 * 8], rdx
-    sub rsp, 2 * 8 + 8; 2 vars + alignment
+    push rbp ; save RBP
+    mov rbp, rsp ; stack frame
+    mov QWORD [rbp + 16], rcx ; push arg 0 
+    mov QWORD [rbp + 24], rdx ; push arg 1 
+    sub rsp, 16 ; reserve stack space for locals
     sub rsp, 32 ; shadow space
-    mov rbx, QWORD [REL STD_OUTPUT_HANDLE] ; get STD_OUTPUT_HANDLE
+    mov rbx, QWORD [REL STD_OUTPUT_HANDLE] ; get value of STD_OUTPUT_HANDLE
     mov rcx, rbx ; arg 0
     call GetStdHandle
-    add rsp, 4 * 8
     mov rbx, rax ; get return value
-    mov QWORD [rsp + 0 * 8], rbx; initialize std_handle
-    mov QWORD [rsp + 1 * 8], 0; zero initialize bytes_written
+    mov QWORD [rbp + -8], rbx; initialize std_handle
+    mov QWORD [rbp + -16], 0; zero initialize bytes_written
     sub rsp, 32 + 1 * 8 + 8 ; shadow space + spill arguments + alignment
-    mov rbx, QWORD [rsp + 6 * 8] ; get std_handle
+    mov rbx, QWORD [rbp + -8] ; get value of std_handle
     mov rcx, rbx ; arg 0
-    mov rbx, QWORD [rsp + 10 * 8] ; get str
+    mov rbx, QWORD [rbp + 16] ; get value of str
     mov rdx, rbx ; arg 1
-    mov rbx, QWORD [rsp + 11 * 8] ; get str_len
+    mov rbx, QWORD [rbp + 24] ; get value of str_len
     mov r8, rbx ; arg 2
-    lea rbx, QWORD [rsp + 7 * 8] ; addrof bytes_written
+    lea rbx, QWORD [rbp + -16] ; addrof bytes_written
     mov r9, rbx ; arg 3
     mov rbx, 0
-    mov QWORD [RSP + 4 * 8], rbx ; arg 4
+    mov QWORD [rsp + 4 * 8], rbx ; arg 4
     call WriteFile
-    add rsp, 6 * 8
     mov rbx, rax ; get return value
-    ; Default return
-    add rsp, 24
-    xor rax, rax
+    xor rax, rax ; Default return value 0
+    L_function_print_exit:
+    mov rsp, rbp
+    pop rbp
     ret
     
 print_num:
-    mov QWORD [rsp + 1 * 8], rcx
-    sub rsp, 5 * 8; 5 vars
+    push rbp ; save RBP
+    mov rbp, rsp ; stack frame
+    mov QWORD [rbp + 16], rcx ; push arg 0 
+    sub rsp, 48 ; reserve stack space for locals
     lea rbx, [REL str_lit_1]
-    mov QWORD [rsp + 0 * 8], rbx; initialize num_str
+    mov QWORD [rbp + -8], rbx; initialize num_str
     mov rbx, 0
-    mov QWORD [rsp + 1 * 8], rbx; initialize idx
+    mov QWORD [rbp + -16], rbx; initialize idx
     L_loop0:
-    mov rbx, QWORD [rsp + 6 * 8] ; get num
+    mov rbx, QWORD [rbp + 16] ; get value of num
     mov r10, 0
     cmp rbx, r10
     jle L1
@@ -59,45 +62,45 @@ print_num:
     L2:
     cmp rbx, 0
     je L_exit0
-        mov rbx, QWORD [rsp + 6 * 8] ; get num
+        mov rbx, QWORD [rbp + 16] ; get value of num
         mov r10, 10
         mov rax, rbx
         cdq
         idiv r10
         mov rbx, rdx
-        mov QWORD [rsp + 2 * 8], rbx; initialize digit
-        mov rbx, QWORD [rsp + 2 * 8] ; get digit
-        mov r10, 48
+        mov QWORD [rbp + -24], rbx; initialize digit
+        mov rbx, QWORD [rbp + -8] ; get value of num_str
+        mov r10, QWORD [rbp + -16] ; get value of idx
         add rbx, r10
-        mov r10, QWORD [rsp + 0 * 8] ; get num_str
-        mov r11, QWORD [rsp + 1 * 8] ; get idx
+        mov r10, QWORD [rbp + -24] ; get value of digit
+        mov r11, 48
         add r10, r11
-        mov QWORD [r10], rbx
-        mov rbx, QWORD [rsp + 6 * 8] ; get num
+        mov QWORD [rbx], r10
+        mov rbx, QWORD [rbp + 16] ; get value of num
         mov r10, 10
         mov rax, rbx
         cdq
         idiv r10
         mov rbx, rax
-        lea r10, QWORD [rsp + 6 * 8] ; addr of num
+        lea r10, QWORD [rbp + 16] ; get address of num
         mov QWORD [r10], rbx
-        mov rbx, QWORD [rsp + 1 * 8] ; get idx
+        mov rbx, QWORD [rbp + -16] ; get value of idx
         mov r10, 1
         add rbx, r10
-        lea r10, QWORD [rsp + 1 * 8] ; addr of idx
+        lea r10, QWORD [rbp + -16] ; get address of idx
         mov QWORD [r10], rbx
     jmp L_loop0
     L_exit0:
     mov rbx, 0
-    mov QWORD [rsp + 3 * 8], rbx; initialize i
+    mov QWORD [rbp + -32], rbx; initialize i
     L_loop3:
-    mov rbx, QWORD [rsp + 1 * 8] ; get idx
+    mov rbx, QWORD [rbp + -16] ; get value of idx
     mov r10, 2
     mov rax, rbx
     cdq
     idiv r10
     mov rbx, rax
-    mov r10, QWORD [rsp + 3 * 8] ; get i
+    mov r10, QWORD [rbp + -32] ; get value of i
     cmp r10, rbx
     jge L4
     mov r10, 1
@@ -107,67 +110,69 @@ print_num:
     L5:
     cmp r10, 0
     je L_exit3
-        mov rbx, QWORD [rsp + 0 * 8] ; get num_str
-        mov r10, QWORD [rsp + 3 * 8] ; get i
+        mov rbx, QWORD [rbp + -8] ; get value of num_str
+        mov r10, QWORD [rbp + -32] ; get value of i
         add rbx, r10
         mov rbx, QWORD [rbx]
-        mov QWORD [rsp + 4 * 8], rbx; initialize tmp
-        mov rbx, QWORD [rsp + 0 * 8] ; get num_str
-        mov r10, QWORD [rsp + 1 * 8] ; get idx
+        mov QWORD [rbp + -40], rbx; initialize tmp
+        mov rbx, QWORD [rbp + -8] ; get value of num_str
+        mov r10, QWORD [rbp + -16] ; get value of idx
         add rbx, r10
-        mov r10, QWORD [rsp + 3 * 8] ; get i
+        mov r10, QWORD [rbp + -32] ; get value of i
         sub rbx, r10
         mov r10, 1
         sub rbx, r10
         mov rbx, QWORD [rbx]
-        mov r10, QWORD [rsp + 0 * 8] ; get num_str
-        mov r11, QWORD [rsp + 3 * 8] ; get i
+        mov r10, QWORD [rbp + -8] ; get value of num_str
+        mov r11, QWORD [rbp + -32] ; get value of i
         add r10, r11
         mov QWORD [r10], rbx
-        mov rbx, QWORD [rsp + 4 * 8] ; get tmp
-        mov r10, QWORD [rsp + 0 * 8] ; get num_str
-        mov r11, QWORD [rsp + 1 * 8] ; get idx
-        add r10, r11
-        mov r11, QWORD [rsp + 3 * 8] ; get i
-        sub r10, r11
-        mov r11, 1
-        sub r10, r11
-        mov QWORD [r10], rbx
-        mov rbx, QWORD [rsp + 3 * 8] ; get i
+        mov rbx, QWORD [rbp + -8] ; get value of num_str
+        mov r10, QWORD [rbp + -16] ; get value of idx
+        add rbx, r10
+        mov r10, QWORD [rbp + -32] ; get value of i
+        sub rbx, r10
+        mov r10, 1
+        sub rbx, r10
+        mov r10, QWORD [rbp + -40] ; get value of tmp
+        mov QWORD [rbx], r10
+        mov rbx, QWORD [rbp + -32] ; get value of i
         mov r10, 1
         add rbx, r10
-        lea r10, QWORD [rsp + 3 * 8] ; addr of i
+        lea r10, QWORD [rbp + -32] ; get address of i
         mov QWORD [r10], rbx
     jmp L_loop3
     L_exit3:
-    mov rbx, 32
-    mov r10, QWORD [rsp + 0 * 8] ; get num_str
-    mov r11, QWORD [rsp + 1 * 8] ; get idx
-    add r10, r11
-    mov QWORD [r10], rbx
+    mov rbx, QWORD [rbp + -8] ; get value of num_str
+    mov r10, QWORD [rbp + -16] ; get value of idx
+    add rbx, r10
+    mov r10, 32
+    mov QWORD [rbx], r10
     sub rsp, 32 ; shadow space
-    mov rbx, QWORD [rsp + 4 * 8] ; get num_str
+    mov rbx, QWORD [rbp + -8] ; get value of num_str
     mov rcx, rbx ; arg 0
-    mov rbx, QWORD [rsp + 5 * 8] ; get idx
+    mov rbx, QWORD [rbp + -16] ; get value of idx
     mov r10, 1
     add rbx, r10
     mov rdx, rbx ; arg 1
     call print
-    add rsp, 4 * 8
     mov rbx, rax ; get return value
-    ; Default return
-    add rsp, 40
-    xor rax, rax
+    xor rax, rax ; Default return value 0
+    L_function_print_num_exit:
+    mov rsp, rbp
+    pop rbp
     ret
     
 fizzbuzz:
-    mov QWORD [rsp + 1 * 8], rcx
-    sub rsp, 3 * 8; 3 vars
+    push rbp ; save RBP
+    mov rbp, rsp ; stack frame
+    mov QWORD [rbp + 16], rcx ; push arg 0 
+    sub rsp, 32 ; reserve stack space for locals
     mov rbx, 1
-    mov QWORD [rsp + 0 * 8], rbx; initialize i
+    mov QWORD [rbp + -8], rbx; initialize i
     L_loop6:
-    mov rbx, QWORD [rsp + 0 * 8] ; get i
-    mov r10, QWORD [rsp + 4 * 8] ; get n
+    mov rbx, QWORD [rbp + -8] ; get value of i
+    mov r10, QWORD [rbp + 16] ; get value of n
     cmp rbx, r10
     jg L7
     mov rbx, 1
@@ -177,7 +182,7 @@ fizzbuzz:
     L8:
     cmp rbx, 0
     je L_exit6
-        mov rbx, QWORD [rsp + 0 * 8] ; get i
+        mov rbx, QWORD [rbp + -8] ; get value of i
         mov r10, 3
         mov rax, rbx
         cdq
@@ -191,8 +196,8 @@ fizzbuzz:
         L9:
         mov rbx, 0
         L10:
-        mov QWORD [rsp + 1 * 8], rbx; initialize divisible_by_3
-        mov rbx, QWORD [rsp + 0 * 8] ; get i
+        mov QWORD [rbp + -16], rbx; initialize divisible_by_3
+        mov rbx, QWORD [rbp + -8] ; get value of i
         mov r10, 5
         mov rax, rbx
         cdq
@@ -206,9 +211,9 @@ fizzbuzz:
         L11:
         mov rbx, 0
         L12:
-        mov QWORD [rsp + 2 * 8], rbx; initialize divisible_by_5
-        mov rbx, QWORD [rsp + 2 * 8] ; get divisible_by_5
-        mov r10, QWORD [rsp + 1 * 8] ; get divisible_by_3
+        mov QWORD [rbp + -24], rbx; initialize divisible_by_5
+        mov rbx, QWORD [rbp + -24] ; get value of divisible_by_5
+        mov r10, QWORD [rbp + -16] ; get value of divisible_by_3
         test rbx, rbx
         je L_land_false_13
         test r10, r10
@@ -226,11 +231,10 @@ fizzbuzz:
             mov rbx, 9
             mov rdx, rbx ; arg 1
             call print
-            add rsp, 4 * 8
             mov rbx, rax ; get return value
         jmp L_exit14
         L_else14:
-            mov rbx, QWORD [rsp + 2 * 8] ; get divisible_by_5
+            mov rbx, QWORD [rbp + -24] ; get value of divisible_by_5
             cmp rbx, 0
             je L_else15
                 sub rsp, 32 ; shadow space
@@ -239,11 +243,10 @@ fizzbuzz:
                 mov rbx, 5
                 mov rdx, rbx ; arg 1
                 call print
-                add rsp, 4 * 8
                 mov rbx, rax ; get return value
             jmp L_exit15
             L_else15:
-                mov rbx, QWORD [rsp + 1 * 8] ; get divisible_by_3
+                mov rbx, QWORD [rbp + -16] ; get value of divisible_by_3
                 cmp rbx, 0
                 je L_else16
                     sub rsp, 32 ; shadow space
@@ -252,42 +255,43 @@ fizzbuzz:
                     mov rbx, 5
                     mov rdx, rbx ; arg 1
                     call print
-                    add rsp, 4 * 8
                     mov rbx, rax ; get return value
                 jmp L_exit16
                 L_else16:
                     sub rsp, 32 ; shadow space
-                    mov rbx, QWORD [rsp + 4 * 8] ; get i
+                    mov rbx, QWORD [rbp + -8] ; get value of i
                     mov rcx, rbx ; arg 0
                     call print_num
-                    add rsp, 4 * 8
                     mov rbx, rax ; get return value
                 L_exit16:
             L_exit15:
         L_exit14:
-        mov rbx, QWORD [rsp + 0 * 8] ; get i
+        mov rbx, QWORD [rbp + -8] ; get value of i
         mov r10, 1
         add rbx, r10
-        lea r10, QWORD [rsp + 0 * 8] ; addr of i
+        lea r10, QWORD [rbp + -8] ; get address of i
         mov QWORD [r10], rbx
     jmp L_loop6
     L_exit6:
-    ; Default return
-    add rsp, 24
-    xor rax, rax
+    xor rax, rax ; Default return value 0
+    L_function_fizzbuzz_exit:
+    mov rsp, rbp
+    pop rbp
     ret
     
 main:
-    sub rsp, 0 * 8 + 8; 0 vars + alignment
+    push rbp ; save RBP
+    mov rbp, rsp ; stack frame
+    sub rsp, 0 ; reserve stack space for locals
     sub rsp, 32 ; shadow space
     mov rbx, 20
     mov rcx, rbx ; arg 0
     call fizzbuzz
-    add rsp, 4 * 8
     mov rbx, rax ; get return value
-    ; Default return
-    add rsp, 8
-    xor rax, rax
+    xor rax, rax ; Default return value 0
+    L_function_main_exit:
+    mov rsp, rbp
+    pop rbp
     ret
     
 SECTION .data

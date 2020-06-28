@@ -4,7 +4,7 @@ extern strlen;
 
 let STD_OUTPUT_HANDLE: int = -11;
 
-func print(str: string, str_len: int) -> void {
+func print(str: char *, str_len: int) -> void {
 	let std_handle: int = GetStdHandle(STD_OUTPUT_HANDLE);
 
 	let bytes_written: int;
@@ -12,7 +12,7 @@ func print(str: string, str_len: int) -> void {
 }
 
 func print_num(num: int) -> void {
-	let num_str: string = "         ";
+	let num_str: char * = "         ";
 	let idx: int = 0;
 
 	while (num > 0) {

@@ -4,32 +4,36 @@ GLOBAL main
 
 SECTION .code
 calling_convention:
-    mov QWORD [rsp + 1 * 8], rcx
-    mov QWORD [rsp + 2 * 8], rdx
-    mov QWORD [rsp + 3 * 8], r8
-    mov QWORD [rsp + 4 * 8], r9
-    sub rsp, 0 * 8 + 8; 0 vars + alignment
-    mov rbx, QWORD [rsp + 2 * 8] ; get rcx
-    mov r10, QWORD [rsp + 3 * 8] ; get rdx
+    push rbp ; save RBP
+    mov rbp, rsp ; stack frame
+    mov QWORD [rbp + 16], rcx ; push arg 0 
+    mov QWORD [rbp + 24], rdx ; push arg 1 
+    mov QWORD [rbp + 32], r8 ; push arg 2 
+    mov QWORD [rbp + 40], r9 ; push arg 3 
+    sub rsp, 0 ; reserve stack space for locals
+    mov rbx, QWORD [rbp + 16] ; get value of rcx
+    mov r10, QWORD [rbp + 24] ; get value of rdx
     add rbx, r10
-    mov r10, QWORD [rsp + 4 * 8] ; get r8
+    mov r10, QWORD [rbp + 32] ; get value of r8
     add rbx, r10
-    mov r10, QWORD [rsp + 5 * 8] ; get r9
+    mov r10, QWORD [rbp + 40] ; get value of r9
     add rbx, r10
-    mov r10, QWORD [rsp + 6 * 8] ; get stack0
+    mov r10, QWORD [rbp + 48] ; get value of stack0
     add rbx, r10
-    mov r10, QWORD [rsp + 7 * 8] ; get stack1
+    mov r10, QWORD [rbp + 56] ; get value of stack1
     add rbx, r10
     mov rax, rbx ; return via rax
-    add rsp, 8
-    ret
-    ; Default return
-    add rsp, 8
-    xor rax, rax
+    jmp L_function_calling_convention_exit
+    xor rax, rax ; Default return value 0
+    L_function_calling_convention_exit:
+    mov rsp, rbp
+    pop rbp
     ret
     
 main:
-    sub rsp, 0 * 8 + 8; 0 vars + alignment
+    push rbp ; save RBP
+    mov rbp, rsp ; stack frame
+    sub rsp, 0 ; reserve stack space for locals
     sub rsp, 32 + 2 * 8 ; shadow space + spill arguments
     mov rbx, 1
     mov rcx, rbx ; arg 0
@@ -40,18 +44,17 @@ main:
     mov rbx, 4
     mov r9, rbx ; arg 3
     mov rbx, 5
-    mov QWORD [RSP + 4 * 8], rbx ; arg 4
+    mov QWORD [rsp + 4 * 8], rbx ; arg 4
     mov rbx, 6
-    mov QWORD [RSP + 5 * 8], rbx ; arg 5
+    mov QWORD [rsp + 5 * 8], rbx ; arg 5
     call calling_convention
-    add rsp, 6 * 8
     mov rbx, rax ; get return value
     mov rax, rbx ; return via rax
-    add rsp, 8
-    ret
-    ; Default return
-    add rsp, 8
-    xor rax, rax
+    jmp L_function_main_exit
+    xor rax, rax ; Default return value 0
+    L_function_main_exit:
+    mov rsp, rbp
+    pop rbp
     ret
     
 SECTION .data

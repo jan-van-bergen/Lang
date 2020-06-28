@@ -4,11 +4,13 @@ GLOBAL main
 
 SECTION .code
 main:
-    sub rsp, 2 * 8 + 8; 2 vars + alignment
+    push rbp ; save RBP
+    mov rbp, rsp ; stack frame
+    sub rsp, 16 ; reserve stack space for locals
     mov rbx, 1
-    mov QWORD [rsp + 0 * 8], rbx; initialize a
-    mov QWORD [rsp + 1 * 8], 0; zero initialize b
-    mov rbx, QWORD [rsp + 0 * 8] ; get a
+    mov QWORD [rbp + -8], rbx; initialize a
+    mov QWORD [rbp + -16], 0; zero initialize b
+    mov rbx, QWORD [rbp + -8] ; get value of a
     mov r10, 0
     cmp rbx, r10
     jle L0
@@ -19,22 +21,22 @@ main:
     L1:
     cmp rbx, 0
     je L_else2
-        mov rbx, 3
-        lea r10, QWORD [rsp + 1 * 8] ; addr of b
-        mov QWORD [r10], rbx
+        lea rbx, QWORD [rbp + -16] ; get address of b
+        mov r10, 3
+        mov QWORD [rbx], r10
     jmp L_exit2
     L_else2:
-        mov rbx, 2
-        lea r10, QWORD [rsp + 1 * 8] ; addr of b
-        mov QWORD [r10], rbx
+        lea rbx, QWORD [rbp + -16] ; get address of b
+        mov r10, 2
+        mov QWORD [rbx], r10
     L_exit2:
-    mov rbx, QWORD [rsp + 1 * 8] ; get b
+    mov rbx, QWORD [rbp + -16] ; get value of b
     mov rax, rbx ; return via rax
-    add rsp, 24
-    ret
-    ; Default return
-    add rsp, 24
-    xor rax, rax
+    jmp L_function_main_exit
+    xor rax, rax ; Default return value 0
+    L_function_main_exit:
+    mov rsp, rbp
+    pop rbp
     ret
     
 SECTION .data

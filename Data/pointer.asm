@@ -4,54 +4,60 @@ GLOBAL main
 
 SECTION .code
 bla:
-    mov QWORD [rsp + 1 * 8], rcx
-    sub rsp, 0 * 8 + 8; 0 vars + alignment
-    mov rbx, 4321
-    mov r10, QWORD [rsp + 2 * 8] ; get ptr
-    mov QWORD [r10], rbx
-    ; Default return
-    add rsp, 8
-    xor rax, rax
+    push rbp ; save RBP
+    mov rbp, rsp ; stack frame
+    mov QWORD [rbp + 16], rcx ; push arg 0 
+    sub rsp, 0 ; reserve stack space for locals
+    mov rbx, QWORD [rbp + 16] ; get value of ptr
+    mov r10, 4321
+    mov QWORD [rbx], r10
+    xor rax, rax ; Default return value 0
+    L_function_bla_exit:
+    mov rsp, rbp
+    pop rbp
     ret
     
 deref:
-    mov QWORD [rsp + 1 * 8], rcx
-    sub rsp, 1 * 8; 1 vars
-    mov QWORD [rsp + 0 * 8], 0; zero initialize local
-    mov rbx, 21
-    mov r10, QWORD [rsp + 2 * 8] ; get ptr
-    mov QWORD [r10], rbx
-    mov rbx, 1234
-    lea r10, QWORD [rsp + 0 * 8] ; addr of local
-    mov QWORD [r10], rbx
+    push rbp ; save RBP
+    mov rbp, rsp ; stack frame
+    mov QWORD [rbp + 16], rcx ; push arg 0 
+    sub rsp, 16 ; reserve stack space for locals
+    mov QWORD [rbp + -8], 0; zero initialize local
+    mov rbx, QWORD [rbp + 16] ; get value of ptr
+    mov r10, 21
+    mov QWORD [rbx], r10
+    lea rbx, QWORD [rbp + -8] ; get address of local
+    mov r10, 1234
+    mov QWORD [rbx], r10
     sub rsp, 32 ; shadow space
-    lea rbx, QWORD [rsp + 4 * 8] ; addrof local
+    lea rbx, QWORD [rbp + -8] ; addrof local
     mov rcx, rbx ; arg 0
     call bla
-    add rsp, 4 * 8
     mov rbx, rax ; get return value
-    ; Default return
-    add rsp, 8
-    xor rax, rax
+    xor rax, rax ; Default return value 0
+    L_function_deref_exit:
+    mov rsp, rbp
+    pop rbp
     ret
     
 main:
-    sub rsp, 1 * 8; 1 vars
+    push rbp ; save RBP
+    mov rbp, rsp ; stack frame
+    sub rsp, 16 ; reserve stack space for locals
     mov rbx, 42
-    mov QWORD [rsp + 0 * 8], rbx; initialize a
+    mov QWORD [rbp + -8], rbx; initialize a
     sub rsp, 32 ; shadow space
-    lea rbx, QWORD [rsp + 4 * 8] ; addrof a
+    lea rbx, QWORD [rbp + -8] ; addrof a
     mov rcx, rbx ; arg 0
     call deref
-    add rsp, 4 * 8
     mov rbx, rax ; get return value
-    mov rbx, QWORD [rsp + 0 * 8] ; get a
+    mov rbx, QWORD [rbp + -8] ; get value of a
     mov rax, rbx ; return via rax
-    add rsp, 8
-    ret
-    ; Default return
-    add rsp, 8
-    xor rax, rax
+    jmp L_function_main_exit
+    xor rax, rax ; Default return value 0
+    L_function_main_exit:
+    mov rsp, rbp
+    pop rbp
     ret
     
 SECTION .data

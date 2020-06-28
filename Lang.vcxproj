@@ -144,6 +144,7 @@
     <ClCompile Include="Lexer.c" />
     <ClCompile Include="Main.c" />
     <ClCompile Include="Parser.c" />
+    <ClCompile Include="Scope.c" />
     <ClCompile Include="Test.c" />
     <ClCompile Include="Token.c" />
   </ItemGroup>
@@ -153,8 +154,10 @@
     <ClInclude Include="Godegen.h" />
     <ClInclude Include="Lexer.h" />
     <ClInclude Include="Parser.h" />
+    <ClInclude Include="Scope.h" />
     <ClInclude Include="Test.h" />
     <ClInclude Include="Token.h" />
+    <ClInclude Include="Type.h" />
     <ClInclude Include="Util.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

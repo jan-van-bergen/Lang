@@ -21,6 +21,9 @@
     <ClCompile Include="Token.c">
       <Filter>Compiler</Filter>
     </ClCompile>
+    <ClCompile Include="Scope.c">
+      <Filter>Compiler</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Test.h" />
@@ -41,6 +44,12 @@
       <Filter>Compiler</Filter>
     </ClInclude>
     <ClInclude Include="Token.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Scope.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Type.h">
       <Filter>Compiler</Filter>
     </ClInclude>
   </ItemGroup>

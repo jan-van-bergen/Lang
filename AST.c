@@ -34,7 +34,7 @@ static void print_call_args(AST_Call_Arg const * arg) {
 }
 
 static void print_expression(AST_Expression const * expr) {
-	switch(expr->type) {
+	switch(expr->expr_type) {
 		case AST_EXPRESSION_CONST: {
 			char token_string[128];
 			token_to_string(&expr->expr_const.token, token_string, sizeof(token_string));
@@ -102,17 +102,16 @@ static void print_expression(AST_Expression const * expr) {
 }
 
 static void print_statement(AST_Statement const * stat, int indent) {
-	switch (stat->type) {
-		case AST_STATEMENT_NOOP: {
-			print_indent(indent);
-			printf(";\n");
+	switch (stat->stat_type) {
+		case AST_STATEMENTS: {
+			print_statement(stat->stat_stats.head, indent);
+			print_statement(stat->stat_stats.cons, indent);
 
 			break;
 		}
 
-		case AST_STATEMENTS: {
-			print_statement(stat->stat_stats.head, indent);
-			print_statement(stat->stat_stats.cons, indent);
+		case AST_STATEMENT_BLOCK: {
+			print_statement(stat->stat_block.stat, indent);
 
 			break;
 		}
@@ -251,7 +250,7 @@ static void ast_free_call_args(AST_Call_Arg * arg) {
 static void ast_free_expression(AST_Expression * expr) {
 	if (expr == NULL) return;
 
-	switch (expr->type) {
+	switch (expr->expr_type) {
 		case AST_EXPRESSION_CONST: break;
 		case AST_EXPRESSION_VAR:   break;
 
@@ -287,12 +286,17 @@ static void ast_free_expression(AST_Expression * expr) {
 void ast_free_statement(AST_Statement * stat) {
 	if (stat == NULL) return;
 
-	switch (stat->type) {
-		case AST_STATEMENT_NOOP: break;
-
+	switch (stat->stat_type) {
 		case AST_STATEMENTS: {
 			if (stat->stat_stats.head) ast_free_statement(stat->stat_stats.head);
 			if (stat->stat_stats.cons) ast_free_statement(stat->stat_stats.cons);
+
+			break;
+		}
+
+		case AST_STATEMENT_BLOCK: {
+			free_scope(stat->stat_block.scope);
+			ast_free_statement(stat->stat_block.stat);
 
 			break;
 		}
