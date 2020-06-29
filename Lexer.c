@@ -129,7 +129,7 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 			curr = lexer_peek(lexer);
 		}
 
-		int value = 0;
+		unsigned long long value = 0;
 
 		while (isdigit(curr)) {
 			value *= 10;
@@ -139,16 +139,15 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 		}
 
 		token->type      = TOKEN_LITERAL_INT;
+		token->sign      = is_negative;
 		token->value_int = value * (is_negative ? -1 : 1);
-
-		//lexer_next(lexer);
 
 		return;
 	}
 	
 	int match_length = 0;
-	if (match_length = lexer_match(lexer, "true"))  { token->type = TOKEN_LITERAL_BOOL; token->value_char = 1; lexer->index += match_length; return; }
-	if (match_length = lexer_match(lexer, "false")) { token->type = TOKEN_LITERAL_BOOL; token->value_char = 0; lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "true"))  { token->type = TOKEN_LITERAL_BOOL; token->value_int = 1; lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "false")) { token->type = TOKEN_LITERAL_BOOL; token->value_int = 0; lexer->index += match_length; return; }
 
 	if (curr == '"') {
 		curr = lexer_next(lexer); // Consume "
@@ -186,6 +185,7 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 	
 	// Keywords
 	if (match_length = lexer_match(lexer, "let"))      { token->type = TOKEN_KEYWORD_LET;      lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "cast"))     { token->type = TOKEN_KEYWORD_CAST;     lexer->index += match_length; return; }
 	if (match_length = lexer_match(lexer, "extern"))   { token->type = TOKEN_KEYWORD_EXTERN;   lexer->index += match_length; return; }
 	if (match_length = lexer_match(lexer, "if"))       { token->type = TOKEN_KEYWORD_IF;       lexer->index += match_length; return; }
 	if (match_length = lexer_match(lexer, "else"))     { token->type = TOKEN_KEYWORD_ELSE;     lexer->index += match_length; return; }

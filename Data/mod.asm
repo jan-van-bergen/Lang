@@ -21,8 +21,8 @@ main:
     idiv r10
     mov rbx, rdx
     mov DWORD [rbp + -8], ebx; initialize b
-    mov ebx, DWORD [rbp + -4] ; get value of a
-    mov r10d, DWORD [rbp + -8] ; get value of b
+    movsx rbx, DWORD [rbp + -4] ; get value of a
+    movsx r10, DWORD [rbp + -8] ; get value of b
     mov rax, rbx
     cdq
     idiv r10

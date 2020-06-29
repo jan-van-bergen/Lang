@@ -13,9 +13,9 @@ main:
     mov r10, 53
     add rbx, r10
     mov WORD [rbp + -3], bx; initialize signed_16
-    mov rbx, 32767
-    mov r10, 2364
-    add rbx, r10
+    mov rbx, 2364
+    mov r10, 32767
+    sub rbx, r10
     mov DWORD [rbp + -7], ebx; initialize signed_32
     mov rbx, 238643254
     mov r10, 2147483647
@@ -35,6 +35,16 @@ main:
     mov r10, 238643254
     add rbx, r10
     mov QWORD [rbp + -30], rbx; initialize unsigned_64
+    lea rbx, QWORD [rbp + -3] ; get address of signed_16
+    movsx r10, BYTE [rbp + -1] ; get value of signed_8
+    mov WORD [rbx], r10w
+    lea rbx, QWORD [rbp + -3] ; get address of signed_16
+    movsx r10, DWORD [rbp + -7] ; get value of signed_32
+    and r10, 0xffff
+    mov WORD [rbx], r10w
+    movsx rbx, WORD [rbp + -3] ; get value of signed_16
+    mov rax, rbx ; return via rax
+    jmp L_function_main_exit
     xor rax, rax ; Default return value 0
     L_function_main_exit:
     mov rsp, rbp

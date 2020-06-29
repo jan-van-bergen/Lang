@@ -80,6 +80,7 @@ static Token const * parser_match_and_advance(Parser * parser, Token_Type token_
 static bool parser_match_expression(Parser const * parser) {
 	return
 		parser_match(parser, TOKEN_IDENTIFIER) || // Variable
+		parser_match(parser, TOKEN_KEYWORD_CAST) || // Cast
 		parser_match(parser, TOKEN_OPERATOR_PLUS)        || // Unary operations
 		parser_match(parser, TOKEN_OPERATOR_MINUS)       ||
 		parser_match(parser, TOKEN_OPERATOR_INC)         ||
@@ -270,6 +271,19 @@ static AST_Expression * parser_parse_expression_elementary(Parser * parser) {
 		factor->expr_const.token = *parser_advance(parser);
 
 		return factor;
+	} else if (parser_match(parser, TOKEN_KEYWORD_CAST)) {
+		parser_advance(parser);
+
+		AST_Expression * cast = malloc(sizeof(AST_Expression));
+		cast->expr_type = AST_EXPRESSION_CAST;
+
+		parser_match_and_advance(parser, TOKEN_PARENTESES_OPEN);
+		cast->expr_cast.new_type = parser_parse_type(parser);
+		parser_match_and_advance(parser, TOKEN_PARENTESES_CLOSE);
+
+		cast->expr_cast.expr = parser_parse_expression(parser);
+
+		return cast;
 	} else if (parser_match(parser, TOKEN_PARENTESES_OPEN)) {
 		parser_advance(parser);
 

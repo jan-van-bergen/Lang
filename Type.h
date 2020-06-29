@@ -58,7 +58,9 @@ bool type_is_integral(Type const * type);
 bool type_is_boolean(Type const * type);
 
 bool type_is_pointer(Type const * type);
+bool is_void_pointer(Type const * type);
 
+bool types_equal(Type const * a, Type const * b);
 
 bool   types_unifiable(Type const * a, Type const * b);
 Type * types_unify    (Type const * a, Type const * b);

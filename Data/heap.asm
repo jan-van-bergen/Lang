@@ -43,7 +43,7 @@ malloc:
     mov rcx, rbx ; arg 0
     mov rbx, 0
     mov rdx, rbx ; arg 1
-    mov ebx, DWORD [rbp + 16] ; get value of size
+    movsx rbx, DWORD [rbp + 16] ; get value of size
     mov r8, rbx ; arg 2
     call HeapAlloc
     add rsp, 32 ; pop arguments
@@ -110,7 +110,7 @@ assert:
     mov rbp, rsp ; stack frame
     mov BYTE [rbp + 16], cl ; push arg 0 
     sub rsp, 0 ; reserve stack space for locals
-    movzx rbx, BYTE [rbp + 16] ; get value of expression
+    movsx rbx, BYTE [rbp + 16] ; get value of expression
     test rbx, rbx
     jne L_lnot_false_7
     mov rbx, 1
@@ -140,7 +140,7 @@ print:
     mov DWORD [rbp + 24], edx ; push arg 1 
     sub rsp, 16 ; reserve stack space for locals
     sub rsp, 32 ; reserve space for call arguments
-    mov ebx, DWORD [REL STD_OUTPUT_HANDLE] ; get value of STD_OUTPUT_HANDLE
+    movsx rbx, DWORD [REL STD_OUTPUT_HANDLE] ; get value of STD_OUTPUT_HANDLE
     mov rcx, rbx ; arg 0
     call GetStdHandle
     add rsp, 32 ; pop arguments
@@ -152,7 +152,7 @@ print:
     mov rcx, rbx ; arg 0
     mov rbx, QWORD [rbp + 16] ; get value of str
     mov rdx, rbx ; arg 1
-    mov ebx, DWORD [rbp + 24] ; get value of str_len
+    movsx rbx, DWORD [rbp + 24] ; get value of str_len
     mov r8, rbx ; arg 2
     lea rbx, QWORD [rbp + -12] ; addrof bytes_written
     mov r9, rbx ; arg 3
@@ -176,7 +176,7 @@ strlen:
     mov DWORD [rbp + -4], ebx; initialize len
     L_loop9:
     mov rbx, QWORD [rbp + 16] ; get value of str
-    mov r10d, DWORD [rbp + -4] ; get value of len
+    movsx r10, DWORD [rbp + -4] ; get value of len
     add rbx, r10
     mov rbx, QWORD [rbx]
     mov r10, 0
@@ -189,14 +189,14 @@ strlen:
     L11:
     cmp rbx, 0
     je L_exit9
-        mov ebx, DWORD [rbp + -4] ; get value of len
+        movsx rbx, DWORD [rbp + -4] ; get value of len
         mov r10, 1
         add rbx, r10
         lea r10, QWORD [rbp + -4] ; get address of len
         mov DWORD [r10], ebx
     jmp L_loop9
     L_exit9:
-    mov ebx, DWORD [rbp + -4] ; get value of len
+    movsx rbx, DWORD [rbp + -4] ; get value of len
     mov rax, rbx ; return via rax
     jmp L_function_strlen_exit
     xor rax, rax ; Default return value 0
@@ -271,7 +271,7 @@ main:
     sub rsp, 32 ; reserve space for call arguments
     mov rbx, QWORD [rbp + -8] ; get value of mem
     mov rcx, rbx ; arg 0
-    mov ebx, DWORD [rbp + -12] ; get value of str_len
+    movsx rbx, DWORD [rbp + -12] ; get value of str_len
     mov rdx, rbx ; arg 1
     call print
     add rsp, 32 ; pop arguments

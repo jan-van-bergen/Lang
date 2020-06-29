@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdbool.h>
+
 typedef enum Token_Type {
 	TOKEN_IDENTIFIER,
 	TOKEN_LITERAL_INT,
@@ -7,6 +9,7 @@ typedef enum Token_Type {
 	TOKEN_LITERAL_STRING,
 
 	TOKEN_KEYWORD_LET,      // let
+	TOKEN_KEYWORD_CAST,     // cast()
 	TOKEN_KEYWORD_EXTERN,   // extern
 	TOKEN_KEYWORD_IF,       // if
 	TOKEN_KEYWORD_ELSE,     // else
@@ -74,9 +77,11 @@ typedef struct Token {
 	int line;
 
 	union {
+		struct {
+			unsigned long long value_int;
+			bool sign;
+		};
 		char const * value_str;
-		char         value_char;
-		int          value_int;
 	};
 } Token;
 

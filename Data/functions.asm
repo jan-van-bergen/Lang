@@ -8,7 +8,7 @@ one:
     mov rbp, rsp ; stack frame
     mov DWORD [rbp + 16], ecx ; push arg 0 
     sub rsp, 0 ; reserve stack space for locals
-    mov ebx, DWORD [rbp + 16] ; get value of arg
+    movsx rbx, DWORD [rbp + 16] ; get value of arg
     mov r10, 1
     add rbx, r10
     mov rax, rbx ; return via rax
@@ -26,19 +26,19 @@ two:
     mov DWORD [rbp + 24], edx ; push arg 1 
     sub rsp, 16 ; reserve stack space for locals
     sub rsp, 32 ; reserve space for call arguments
-    mov ebx, DWORD [rbp + 16] ; get value of a
+    movsx rbx, DWORD [rbp + 16] ; get value of a
     mov rcx, rbx ; arg 0
     call one
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     mov DWORD [rbp + -4], ebx; initialize local
     sub rsp, 32 ; reserve space for call arguments
-    mov ebx, DWORD [rbp + 24] ; get value of b
+    movsx rbx, DWORD [rbp + 24] ; get value of b
     mov rcx, rbx ; arg 0
     call one
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov r10d, DWORD [rbp + -4] ; get value of local
+    movsx r10, DWORD [rbp + -4] ; get value of local
     add rbx, r10
     mov rax, rbx ; return via rax
     jmp L_function_two_exit
@@ -54,7 +54,7 @@ recursive:
     mov DWORD [rbp + 16], ecx ; push arg 0 
     mov DWORD [rbp + 24], edx ; push arg 1 
     sub rsp, 0 ; reserve stack space for locals
-    mov ebx, DWORD [rbp + 16] ; get value of a
+    movsx rbx, DWORD [rbp + 16] ; get value of a
     mov r10, 0
     cmp rbx, r10
     jne L0
@@ -65,24 +65,24 @@ recursive:
     L1:
     cmp rbx, 0
     je L_exit2
-        mov ebx, DWORD [rbp + 24] ; get value of b
+        movsx rbx, DWORD [rbp + 24] ; get value of b
         mov rax, rbx ; return via rax
         jmp L_function_recursive_exit
     L_exit2:
-    mov ebx, DWORD [rbp + 24] ; get value of b
+    movsx rbx, DWORD [rbp + 24] ; get value of b
     mov r10, 2
     add rbx, r10
     lea r10, QWORD [rbp + 24] ; get address of b
     mov DWORD [r10], ebx
-    mov ebx, DWORD [rbp + 16] ; get value of a
+    movsx rbx, DWORD [rbp + 16] ; get value of a
     mov r10, 1
     sub rbx, r10
     lea r10, QWORD [rbp + 16] ; get address of a
     mov DWORD [r10], ebx
     sub rsp, 32 ; reserve space for call arguments
-    mov ebx, DWORD [rbp + 16] ; get value of a
+    movsx rbx, DWORD [rbp + 16] ; get value of a
     mov rcx, rbx ; arg 0
-    mov ebx, DWORD [rbp + 24] ; get value of b
+    movsx rbx, DWORD [rbp + 24] ; get value of b
     mov rdx, rbx ; arg 1
     call recursive
     add rsp, 32 ; pop arguments
@@ -109,7 +109,7 @@ main:
     mov rbx, rax ; get return value
     mov DWORD [rbp + -4], ebx; initialize bla
     sub rsp, 32 ; reserve space for call arguments
-    mov ebx, DWORD [rbp + -4] ; get value of bla
+    movsx rbx, DWORD [rbp + -4] ; get value of bla
     mov rcx, rbx ; arg 0
     call one
     add rsp, 32 ; pop arguments
@@ -117,7 +117,7 @@ main:
     mov DWORD [rbp + -8], ebx; initialize tmp
     sub rsp, 32 ; reserve space for call arguments
     sub rsp, 32 ; reserve space for call arguments
-    mov ebx, DWORD [rbp + -4] ; get value of bla
+    movsx rbx, DWORD [rbp + -4] ; get value of bla
     mov rcx, rbx ; arg 0
     call one
     add rsp, 32 ; pop arguments

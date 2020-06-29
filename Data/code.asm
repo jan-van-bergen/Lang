@@ -10,7 +10,7 @@ main:
     mov rbx, 1
     mov DWORD [rbp + -4], ebx; initialize a
     mov DWORD [rbp + -8], 0; zero initialize b
-    mov ebx, DWORD [rbp + -4] ; get value of a
+    movsx rbx, DWORD [rbp + -4] ; get value of a
     mov r10, 0
     cmp rbx, r10
     jle L0
@@ -30,7 +30,7 @@ main:
         mov r10, 2
         mov DWORD [rbx], r10d
     L_exit2:
-    mov ebx, DWORD [rbp + -8] ; get value of b
+    movsx rbx, DWORD [rbp + -8] ; get value of b
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
     xor rax, rax ; Default return value 0

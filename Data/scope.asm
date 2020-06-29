@@ -9,17 +9,17 @@ test:
     mov BYTE [rbp + 16], cl ; push arg 0 
     mov DWORD [rbp + 24], edx ; push arg 1 
     sub rsp, 16 ; reserve stack space for locals
-    movzx rbx, BYTE [rbp + 16] ; get value of ret_arg
+    movsx rbx, BYTE [rbp + 16] ; get value of ret_arg
     cmp rbx, 0
     je L_else0
-        mov ebx, DWORD [rbp + 24] ; get value of arg
+        movsx rbx, DWORD [rbp + 24] ; get value of arg
         mov rax, rbx ; return via rax
         jmp L_function_test_exit
     jmp L_exit0
     L_else0:
         mov rbx, 3
         mov DWORD [rbp + -4], ebx; initialize arg
-        mov ebx, DWORD [rbp + -4] ; get value of arg
+        movsx rbx, DWORD [rbp + -4] ; get value of arg
         mov rax, rbx ; return via rax
         jmp L_function_test_exit
     L_exit0:
@@ -51,7 +51,7 @@ main:
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     mov DWORD [rbp + -8], ebx; initialize b
-    mov ebx, DWORD [rbp + -4] ; get value of a
+    movsx rbx, DWORD [rbp + -4] ; get value of a
     mov r10, 5
     cmp rbx, r10
     je L1
@@ -60,7 +60,7 @@ main:
     L1:
     mov rbx, 0
     L2:
-    mov r10d, DWORD [rbp + -8] ; get value of b
+    movsx r10, DWORD [rbp + -8] ; get value of b
     mov r11, 3
     cmp r10, r11
     je L3
@@ -96,10 +96,10 @@ main:
         mov r10, 5
         mov DWORD [rbx], r10d
         lea rbx, QWORD [rbp + -16] ; get address of outter
-        mov r10d, DWORD [rbp + -20] ; get value of common_name
+        movsx r10, DWORD [rbp + -20] ; get value of common_name
         mov DWORD [rbx], r10d
     L_exit7:
-    mov ebx, DWORD [rbp + -16] ; get value of outter
+    movsx rbx, DWORD [rbp + -16] ; get value of outter
     mov r10, 5
     cmp rbx, r10
     je L8
@@ -114,7 +114,7 @@ main:
         mov rax, rbx ; return via rax
         jmp L_function_main_exit
     L_exit10:
-    mov ebx, DWORD [rbp + -12] ; get value of common_name
+    movsx rbx, DWORD [rbp + -12] ; get value of common_name
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
     xor rax, rax ; Default return value 0

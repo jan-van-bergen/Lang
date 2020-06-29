@@ -53,7 +53,7 @@ main:
     call deref
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov ebx, DWORD [rbp + -4] ; get value of a
+    movsx rbx, DWORD [rbp + -4] ; get value of a
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
     xor rax, rax ; Default return value 0

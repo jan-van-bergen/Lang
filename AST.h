@@ -7,6 +7,7 @@
 typedef enum AST_Expression_Type {
 	AST_EXPRESSION_CONST,
 	AST_EXPRESSION_VAR,
+	AST_EXPRESSION_CAST,
 	AST_EXPRESSION_ASSIGN,
 	AST_EXPRESSION_OPERATOR_BIN,
 	AST_EXPRESSION_OPERATOR_PRE,
@@ -34,6 +35,11 @@ typedef struct AST_Expression {
 		struct Var {
 			char const * name;
 		} expr_var;
+
+		struct Cast {
+			Type * new_type;
+			struct AST_Expression * expr;
+		} expr_cast;
 
 		struct Op_Bin {
 			Token token;

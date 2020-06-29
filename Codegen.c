@@ -236,8 +236,17 @@ static void context_add_string_literal(Context * ctx, char const * str_name, cha
 	ctx->data_seg_vals[ctx->data_seg_len++] = str_lit_cpy;
 }
 
-static void type_error(char const * msg) {
-	printf("TYPE ERROR: %s\n", msg);
+static void type_error(char const * msg, ...) {
+	va_list args;
+	va_start(args, msg);
+
+	char str_error[512];
+	vsprintf_s(str_error, sizeof(str_error), msg, args);
+
+	printf("TYPE ERROR: %s\n", str_error);
+
+	va_end(args);
+	
 	abort();
 }
 
@@ -250,7 +259,7 @@ typedef struct Result {
 static Result codegen_expression(Context * ctx, AST_Expression const * expr);
 static void   codegen_statement (Context * ctx, AST_Statement  const * stat);
 
-char const * get_reg_name_scratch(int reg_index, int size) {
+static char const * get_reg_name_scratch(int reg_index, int size) {
 	static char const * reg_names_8bit [SCRATCH_REG_COUNT] = {  "bl", "r10b", "r11b", "r12b", "r13b", "r14b", "r15b" };
 	static char const * reg_names_16bit[SCRATCH_REG_COUNT] = {  "bx", "r10w", "r11w", "r12w", "r13w", "r14w", "r15w" };
 	static char const * reg_names_32bit[SCRATCH_REG_COUNT] = { "ebx", "r10d", "r11d", "r12d", "r13d", "r14d", "r15d" };
@@ -266,7 +275,7 @@ char const * get_reg_name_scratch(int reg_index, int size) {
 	}
 }
 
-char const * get_reg_name_call(int reg_index, int size) {
+static char const * get_reg_name_call(int reg_index, int size) {
 	static char const * reg_names_8bit [4] = {  "cl",  "dl", "r8b", "r9b" };
 	static char const * reg_names_16bit[4] = {  "cx",  "dx", "r8w", "r9w" };
 	static char const * reg_names_32bit[4] = { "ecx", "edx", "r8d", "r9d" };
@@ -282,7 +291,7 @@ char const * get_reg_name_call(int reg_index, int size) {
 	}
 }
 
-char const * get_word_name(int size) {
+static char const * get_word_name(int size) {
 	switch (size) {
 		case 1: return "BYTE";
 		case 2: return "WORD";
@@ -315,9 +324,32 @@ static Result codegen_expression_const(Context * ctx, AST_Expression const * exp
 		}
 
 		case TOKEN_LITERAL_INT: {
-			result.type = make_type_i64();
+			int value = expr->expr_const.token.value_int;
 
-			context_emit_code(ctx, "mov %s, %i\n", get_reg_name_scratch(result.reg, 8), expr->expr_const.token.value_int);
+			// Find smallest possible type that can contain the value
+			if (expr->expr_const.token.sign) {
+				if (value >= CHAR_MIN && value <= CHAR_MAX) {
+					result.type = make_type_i8();
+				} else if (value >= SHRT_MIN && value <= SHRT_MAX) {
+					result.type = make_type_i16();
+				} else if (value >= INT_MIN && value <= INT_MAX) {
+					result.type = make_type_i32();
+				} else {
+					result.type = make_type_i64();
+				}
+			} else {
+				if (value <= UCHAR_MAX) {
+					result.type = make_type_u8();
+				} else if (value <= USHRT_MAX) {
+					result.type = make_type_u16();
+				} else if (UINT_MAX) {
+					result.type = make_type_u32();
+				} else {
+					result.type = make_type_u64();
+				}
+			}
+
+			context_emit_code(ctx, "mov %s, %i\n", get_reg_name_scratch(result.reg, 8), value);
 
 			break;
 		}
@@ -325,7 +357,7 @@ static Result codegen_expression_const(Context * ctx, AST_Expression const * exp
 		case TOKEN_LITERAL_BOOL: {
 			result.type = make_type_bool();
 
-			context_emit_code(ctx, "mov %s, %i\n", get_reg_name_scratch(result.reg, 8), expr->expr_const.token.value_char);
+			context_emit_code(ctx, "mov %s, %i\n", get_reg_name_scratch(result.reg, 8), expr->expr_const.token.value_int);
 
 			break;
 		}
@@ -354,15 +386,32 @@ static Result codegen_expression_var(Context * ctx, AST_Expression const * expr)
 		context_emit_code(ctx, "lea %s, QWORD [%s] ; get address of %s\n", get_reg_name_scratch(result.reg, 8), var_address, var_name);
 	} else {
 		int type_size = type_get_size(result.type);
-
-		if (type_size < 4) {
-			context_emit_code(ctx, "movzx %s, %s [%s] ; get value of %s\n", get_reg_name_scratch(result.reg, 8), get_word_name(type_size), var_address, var_name);
-		} else if (type_size == 4) {
-			context_emit_code(ctx, "mov %s, %s [%s] ; get value of %s\n", get_reg_name_scratch(result.reg, 4), get_word_name(type_size), var_address, var_name);
+		if (type_size < 8) {
+			context_emit_code(ctx, "movsx %s, %s [%s] ; get value of %s\n", get_reg_name_scratch(result.reg, 8), get_word_name(type_size), var_address, var_name); // Mov with Sign Extension
 		} else {
-			context_emit_code(ctx, "mov %s, %s [%s] ; get value of %s\n", get_reg_name_scratch(result.reg, 8), get_word_name(type_size), var_address, var_name);
+			context_emit_code(ctx, "mov %s, %s [%s] ; get value of %s\n",   get_reg_name_scratch(result.reg, 8), get_word_name(type_size), var_address, var_name);
 		}
 	}
+
+	return result;
+}
+
+static Result codegen_expression_cast(Context * ctx, AST_Expression * expr) {
+	assert(expr->expr_type == AST_EXPRESSION_CAST);
+
+	Result result = codegen_expression(ctx, expr->expr_cast.expr);
+
+	switch (expr->expr_cast.new_type->type) {
+		case TYPE_VOID: type_error("Cannot cast to void!");
+
+		case TYPE_I8:  case TYPE_U8:  context_emit_code(ctx, "and %s, 0xff\n",       get_reg_name_scratch(result.reg, 8)); break;
+		case TYPE_I16: case TYPE_U16: context_emit_code(ctx, "and %s, 0xffff\n",     get_reg_name_scratch(result.reg, 8)); break;
+		case TYPE_I32: case TYPE_U32: context_emit_code(ctx, "and %s, 0xffffffff\n", get_reg_name_scratch(result.reg, 8)); break;
+
+		case TYPE_BOOL: context_emit_code(ctx, "and %s, 1\n", get_reg_name_scratch(result.reg, 8)); break;
+	}
+
+	result.type = expr->expr_cast.new_type;
 
 	return result;
 }
@@ -410,9 +459,22 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
 		}
 
-		int type_size = type_get_size(result_left.type);
+		int type_size_left  = type_get_size(result_left .type);
+		int type_size_right = type_get_size(result_right.type);
 
-		context_emit_code(ctx, "mov %s [%s], %s\n", get_word_name(type_size), get_reg_name_scratch(result_left.reg, 8), get_reg_name_scratch(result_right.reg, type_size));
+		if (!types_unifiable(result_left.type, result_right.type)) {
+			type_error("");
+		} else if (type_size_right > type_size_left) {
+			char str_type_left [128];
+			char str_type_right[128];
+
+			type_to_string(result_left .type, str_type_left,  sizeof(str_type_left));
+			type_to_string(result_right.type, str_type_right, sizeof(str_type_right));
+
+			type_error("Implicit narrowing conversion from type '%s' to '%s' is not allowed", str_type_right, str_type_left);
+		}
+
+		context_emit_code(ctx, "mov %s [%s], %s\n", get_word_name(type_size_left), get_reg_name_scratch(result_left.reg, 8), get_reg_name_scratch(result_right.reg, type_size_left));
 
 		context_reg_free(ctx, result_right.reg);
 
@@ -796,12 +858,9 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 			type_to_string(result_arg.type, str_type_given,    sizeof(str_type_given));
 			type_to_string(decl_arg->type,  str_type_expected, sizeof(str_type_expected));
 
-			char str_error[512];
-			sprintf_s(str_error, sizeof(str_error), "Argument %i in function call to '%s' has incorrect type. Given type: '%s', expected type: '%s'",
+			type_error("Argument %i in function call to '%s' has incorrect type. Given type: '%s', expected type: '%s'",
 				arg_index + 1, expr->expr_call.function_name, str_type_given, str_type_expected
 			);
-
-			type_error(str_error);
 		}
 
 		if (arg_index < 4) {
@@ -838,8 +897,8 @@ static Result codegen_expression(Context * ctx, AST_Expression const * expr) {
 	switch (expr->expr_type) {
 		case AST_EXPRESSION_CONST: return codegen_expression_const(ctx, expr);
 		case AST_EXPRESSION_VAR:   return codegen_expression_var  (ctx, expr);
+		case AST_EXPRESSION_CAST:  return codegen_expression_cast (ctx, expr);
 
-		//case AST_EXPRESSION_ASSIGN:
 		case AST_EXPRESSION_OPERATOR_BIN:  return codegen_expression_op_bin (ctx, expr);
 		case AST_EXPRESSION_OPERATOR_PRE:  return codegen_expression_op_pre (ctx, expr);
 		//case AST_EXPRESSION_OPERATOR_POST: return codegen_expression_op_post(ctx, expr);

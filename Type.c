@@ -90,6 +90,7 @@ int type_get_size(Type const * type) {
 	}
 }
 
+
 bool type_is_void(Type const * type) {
 	return type->type == TYPE_VOID;
 }
@@ -110,8 +111,17 @@ bool type_is_boolean(Type const * type) {
 	return type->type == TYPE_BOOL;
 }
 
-bool type_is_pointer (Type const * type) {
+bool type_is_pointer(Type const * type) {
 	return type->type == TYPE_POINTER;
+}
+
+bool is_void_pointer(Type const * type) {
+	return type_is_pointer(type) && type_is_void(type->ptr);
+}
+
+
+bool types_equal(Type const * a, Type const * b) {
+	if (a->type != b->type) return false;
 }
 
 bool types_unifiable(Type const * a, Type const * b) {
@@ -128,13 +138,18 @@ bool types_unifiable(Type const * a, Type const * b) {
 }
 
 Type * types_unify(Type const * a, Type const * b) {
-	if (types_unifiable(a, b)) return a;
+	if (types_equal(a, b)) return a;
 
 	if (type_is_integral(a) && type_is_integral(b)) {
 		int size_a = type_get_size(a);
 		int size_b = type_get_size(b);
 
 		return size_a >= size_b ? a : b;
+	}
+
+	if (type_is_pointer(a) && type_is_pointer(b)) {
+		if (is_void_pointer(a)) return b;
+		if (is_void_pointer(b)) return a;
 	}
 
 	char str_type_a[128];
