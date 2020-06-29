@@ -103,9 +103,9 @@ free:
 assert:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    mov QWORD [rbp + 16], rcx ; push arg 0 
+    mov BYTE [rbp + 16], cl ; push arg 0 
     sub rsp, 0 ; reserve stack space for locals
-    mov rbx, QWORD [rbp + 16] ; get value of expression
+    movzx rbx, BYTE [rbp + 16] ; get value of expression
     test rbx, rbx
     jne L_lnot_false_7
     mov rbx, 1
@@ -149,7 +149,7 @@ print:
     mov r8, rbx ; arg 2
     lea rbx, QWORD [rbp + -16] ; addrof bytes_written
     mov r9, rbx ; arg 3
-    mov rbx, QWORD [REL NULL] ; get value of NULL
+    mov rbx, 0
     mov QWORD [rsp + 4 * 8], rbx ; arg 4
     call WriteFile
     mov rbx, rax ; get return value
@@ -171,7 +171,7 @@ strlen:
     mov r10, QWORD [rbp + -8] ; get value of len
     add rbx, r10
     mov rbx, QWORD [rbx]
-    mov r10, QWORD [REL NULL] ; get value of NULL
+    mov r10, 0
     cmp rbx, r10
     je L10
     mov rbx, 1
@@ -211,47 +211,47 @@ main:
     mov r10, 0
     add rbx, r10
     mov r10, 66
-    mov QWORD [rbx], r10
+    mov BYTE [rbx], r10b
     mov rbx, QWORD [rbp + -8] ; get value of mem
     mov r10, 1
     add rbx, r10
     mov r10, 114
-    mov QWORD [rbx], r10
+    mov BYTE [rbx], r10b
     mov rbx, QWORD [rbp + -8] ; get value of mem
     mov r10, 2
     add rbx, r10
     mov r10, 117
-    mov QWORD [rbx], r10
+    mov BYTE [rbx], r10b
     mov rbx, QWORD [rbp + -8] ; get value of mem
     mov r10, 3
     add rbx, r10
     mov r10, 104
-    mov QWORD [rbx], r10
+    mov BYTE [rbx], r10b
     mov rbx, QWORD [rbp + -8] ; get value of mem
     mov r10, 4
     add rbx, r10
     mov r10, 84
-    mov QWORD [rbx], r10
+    mov BYTE [rbx], r10b
     mov rbx, QWORD [rbp + -8] ; get value of mem
     mov r10, 5
     add rbx, r10
     mov r10, 101
-    mov QWORD [rbx], r10
+    mov BYTE [rbx], r10b
     mov rbx, QWORD [rbp + -8] ; get value of mem
     mov r10, 6
     add rbx, r10
     mov r10, 115
-    mov QWORD [rbx], r10
+    mov BYTE [rbx], r10b
     mov rbx, QWORD [rbp + -8] ; get value of mem
     mov r10, 7
     add rbx, r10
     mov r10, 116
-    mov QWORD [rbx], r10
+    mov BYTE [rbx], r10b
     mov rbx, QWORD [rbp + -8] ; get value of mem
     mov r10, 8
     add rbx, r10
     mov r10, 0
-    mov QWORD [rbx], r10
+    mov BYTE [rbx], r10b
     sub rsp, 32 ; shadow space
     mov rbx, QWORD [rbp + -8] ; get value of mem
     mov rcx, rbx ; arg 0
@@ -280,42 +280,42 @@ main:
     mov r10, 0
     add rbx, r10
     mov r10, 1
-    mov QWORD [rbx], r10
+    mov BYTE [rbx], r10b
     mov rbx, QWORD [rbp + -24] ; get value of mem2
     mov r10, 1
     add rbx, r10
     mov r10, 2
-    mov QWORD [rbx], r10
+    mov BYTE [rbx], r10b
     mov rbx, QWORD [rbp + -24] ; get value of mem2
     mov r10, 2
     add rbx, r10
     mov r10, 3
-    mov QWORD [rbx], r10
+    mov BYTE [rbx], r10b
     mov rbx, QWORD [rbp + -24] ; get value of mem2
     mov r10, 3
     add rbx, r10
     mov r10, 4
-    mov QWORD [rbx], r10
+    mov BYTE [rbx], r10b
     mov rbx, QWORD [rbp + -24] ; get value of mem2
     mov r10, 4
     add rbx, r10
     mov r10, 0
-    mov QWORD [rbx], r10
+    mov BYTE [rbx], r10b
     mov rbx, QWORD [rbp + -24] ; get value of mem2
     mov r10, 5
     add rbx, r10
     mov r10, 0
-    mov QWORD [rbx], r10
+    mov BYTE [rbx], r10b
     mov rbx, QWORD [rbp + -24] ; get value of mem2
     mov r10, 6
     add rbx, r10
     mov r10, 0
-    mov QWORD [rbx], r10
+    mov BYTE [rbx], r10b
     mov rbx, QWORD [rbp + -24] ; get value of mem2
     mov r10, 7
     add rbx, r10
     mov r10, 0
-    mov QWORD [rbx], r10
+    mov BYTE [rbx], r10b
     mov rbx, QWORD [rbp + -24] ; get value of mem2
     mov rbx, QWORD [rbx]
     mov rax, rbx ; return via rax

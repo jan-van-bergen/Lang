@@ -8,9 +8,9 @@ EXTERN ExitProcess
 assert:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    mov QWORD [rbp + 16], rcx ; push arg 0 
+    mov BYTE [rbp + 16], cl ; push arg 0 
     sub rsp, 0 ; reserve stack space for locals
-    mov rbx, QWORD [rbp + 16] ; get value of expression
+    movzx rbx, BYTE [rbp + 16] ; get value of expression
     test rbx, rbx
     jne L_lnot_false_0
     mov rbx, 1
@@ -36,7 +36,7 @@ main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
     sub rsp, 16 ; reserve stack space for locals
-    mov QWORD [rbp + -8], 0; zero initialize a
+    mov BYTE [rbp + -1], 0; zero initialize a
     mov rbx, 1
     mov r10, 0
     test rbx, rbx
@@ -48,10 +48,10 @@ main:
     L_lor_true_2:
     mov rbx, 1
     L_lor_exit_2:
-    lea r10, QWORD [rbp + -8] ; get address of a
-    mov QWORD [r10], rbx
+    lea r10, QWORD [rbp + -1] ; get address of a
+    mov BYTE [r10], bl
     sub rsp, 32 ; shadow space
-    mov rbx, QWORD [rbp + -8] ; get value of a
+    movzx rbx, BYTE [rbp + -1] ; get value of a
     mov r10, 1
     cmp rbx, r10
     jne L3
@@ -74,10 +74,10 @@ main:
     L_land_false_5:
     mov rbx, 0
     L_land_exit_5:
-    lea r10, QWORD [rbp + -8] ; get address of a
-    mov QWORD [r10], rbx
+    lea r10, QWORD [rbp + -1] ; get address of a
+    mov BYTE [r10], bl
     sub rsp, 32 ; shadow space
-    mov rbx, QWORD [rbp + -8] ; get value of a
+    movzx rbx, BYTE [rbp + -1] ; get value of a
     mov r10, 0
     cmp rbx, r10
     jne L6
@@ -89,7 +89,7 @@ main:
     mov rcx, rbx ; arg 0
     call assert
     mov rbx, rax ; get return value
-    mov rbx, QWORD [rbp + -8] ; get value of a
+    movzx rbx, BYTE [rbp + -1] ; get value of a
     test rbx, rbx
     jne L_lnot_false_8
     mov rbx, 1
@@ -97,7 +97,7 @@ main:
     L_lnot_false_8:
     mov rbx, 0
     L_lnot_exit_8:
-    mov r10, QWORD [rbp + -8] ; get value of a
+    movzx r10, BYTE [rbp + -1] ; get value of a
     test r10, r10
     jne L_lor_true_9
     test rbx, rbx
@@ -107,10 +107,10 @@ main:
     L_lor_true_9:
     mov r10, 1
     L_lor_exit_9:
-    lea rbx, QWORD [rbp + -8] ; get address of a
-    mov QWORD [rbx], r10
+    lea rbx, QWORD [rbp + -1] ; get address of a
+    mov BYTE [rbx], r10b
     sub rsp, 32 ; shadow space
-    mov rbx, QWORD [rbp + -8] ; get value of a
+    movzx rbx, BYTE [rbp + -1] ; get value of a
     mov r10, 1
     cmp rbx, r10
     jne L10

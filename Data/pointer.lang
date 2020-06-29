@@ -1,8 +1,8 @@
-func bla(ptr: int) -> int {
+func bla(ptr: int *) -> int {
 	*ptr = 4321;
 }
 
-func deref(ptr: int) -> int {
+func deref(ptr: int *) -> int {
 	let local: int;
 	
 	*ptr = 21;

@@ -75,7 +75,7 @@ print_num:
         mov r10, QWORD [rbp + -24] ; get value of digit
         mov r11, 48
         add r10, r11
-        mov QWORD [rbx], r10
+        mov BYTE [rbx], r10b
         mov rbx, QWORD [rbp + 16] ; get value of num
         mov r10, 10
         mov rax, rbx
@@ -114,7 +114,7 @@ print_num:
         mov r10, QWORD [rbp + -32] ; get value of i
         add rbx, r10
         mov rbx, QWORD [rbx]
-        mov QWORD [rbp + -40], rbx; initialize tmp
+        mov BYTE [rbp + -33], bl; initialize tmp
         mov rbx, QWORD [rbp + -8] ; get value of num_str
         mov r10, QWORD [rbp + -16] ; get value of idx
         add rbx, r10
@@ -126,7 +126,7 @@ print_num:
         mov r10, QWORD [rbp + -8] ; get value of num_str
         mov r11, QWORD [rbp + -32] ; get value of i
         add r10, r11
-        mov QWORD [r10], rbx
+        mov BYTE [r10], bl
         mov rbx, QWORD [rbp + -8] ; get value of num_str
         mov r10, QWORD [rbp + -16] ; get value of idx
         add rbx, r10
@@ -134,8 +134,8 @@ print_num:
         sub rbx, r10
         mov r10, 1
         sub rbx, r10
-        mov r10, QWORD [rbp + -40] ; get value of tmp
-        mov QWORD [rbx], r10
+        movzx r10, BYTE [rbp + -33] ; get value of tmp
+        mov BYTE [rbx], r10b
         mov rbx, QWORD [rbp + -32] ; get value of i
         mov r10, 1
         add rbx, r10
@@ -147,7 +147,7 @@ print_num:
     mov r10, QWORD [rbp + -16] ; get value of idx
     add rbx, r10
     mov r10, 32
-    mov QWORD [rbx], r10
+    mov BYTE [rbx], r10b
     sub rsp, 32 ; shadow space
     mov rbx, QWORD [rbp + -8] ; get value of num_str
     mov rcx, rbx ; arg 0
@@ -167,7 +167,7 @@ fizzbuzz:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
     mov QWORD [rbp + 16], rcx ; push arg 0 
-    sub rsp, 32 ; reserve stack space for locals
+    sub rsp, 16 ; reserve stack space for locals
     mov rbx, 1
     mov QWORD [rbp + -8], rbx; initialize i
     L_loop6:
@@ -196,7 +196,7 @@ fizzbuzz:
         L9:
         mov rbx, 0
         L10:
-        mov QWORD [rbp + -16], rbx; initialize divisible_by_3
+        mov BYTE [rbp + -9], bl; initialize divisible_by_3
         mov rbx, QWORD [rbp + -8] ; get value of i
         mov r10, 5
         mov rax, rbx
@@ -211,9 +211,9 @@ fizzbuzz:
         L11:
         mov rbx, 0
         L12:
-        mov QWORD [rbp + -24], rbx; initialize divisible_by_5
-        mov rbx, QWORD [rbp + -24] ; get value of divisible_by_5
-        mov r10, QWORD [rbp + -16] ; get value of divisible_by_3
+        mov BYTE [rbp + -10], bl; initialize divisible_by_5
+        movzx rbx, BYTE [rbp + -10] ; get value of divisible_by_5
+        movzx r10, BYTE [rbp + -9] ; get value of divisible_by_3
         test rbx, rbx
         je L_land_false_13
         test r10, r10
@@ -234,7 +234,7 @@ fizzbuzz:
             mov rbx, rax ; get return value
         jmp L_exit14
         L_else14:
-            mov rbx, QWORD [rbp + -24] ; get value of divisible_by_5
+            movzx rbx, BYTE [rbp + -10] ; get value of divisible_by_5
             cmp rbx, 0
             je L_else15
                 sub rsp, 32 ; shadow space
@@ -246,7 +246,7 @@ fizzbuzz:
                 mov rbx, rax ; get return value
             jmp L_exit15
             L_else15:
-                mov rbx, QWORD [rbp + -16] ; get value of divisible_by_3
+                movzx rbx, BYTE [rbp + -9] ; get value of divisible_by_3
                 cmp rbx, 0
                 je L_else16
                     sub rsp, 32 ; shadow space

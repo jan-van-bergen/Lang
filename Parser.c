@@ -14,6 +14,19 @@ void parser_init(Parser * parser, Token const * tokens, int token_count) {
 
 	parser->current_stack_frame = NULL;
 	parser->current_scope       = NULL;
+
+	parser->functions_len = 0;
+	parser->functions_cap = 16;
+	parser->functions = malloc(parser->functions_cap * sizeof(AST_Decl_Func *));
+}
+
+static void parser_add_function_type(Parser * parser, AST_Decl_Func * function) {
+	if (parser->functions_len == parser->functions_cap) {
+		parser->functions_cap *= 2;
+		parser->functions = realloc(parser->functions, parser->functions_cap * sizeof(AST_Decl_Func *));
+	}
+
+	parser->functions[parser->functions_len++] = function;
 }
 
 static void parser_error(Parser * parser) {
@@ -214,7 +227,7 @@ static AST_Expression * parser_parse_expression_elementary(Parser * parser) {
 			AST_Expression * expr = malloc(sizeof(AST_Expression));
 
 			expr->expr_type = AST_EXPRESSION_CALL_FUNC;
-			expr->expr_call.function = identifier->value_str;
+			expr->expr_call.function_name = identifier->value_str;
 			expr->expr_call.args = parser_parse_call_args(parser);
 
 			if (expr->expr_call.args == NULL) {
@@ -550,24 +563,28 @@ static AST_Statement * parser_parse_statement_decl_var(Parser * parser) {
 	return decl;
 }
 
-static AST_Decl_Arg * parser_parse_decl_arg(Parser * parser) {
+static AST_Decl_Arg * parser_parse_decl_arg(Parser * parser, int * arg_count) {
 	AST_Decl_Arg * arg = malloc(sizeof(AST_Decl_Arg));
 
 	arg->name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
 	parser_match_and_advance(parser, TOKEN_COLON);
 	arg->type = parser_parse_type(parser);
 	arg->next = NULL;
+	
+	(*arg_count)++;
 
 	return arg;
 }
 
-static AST_Decl_Arg * parser_parse_decl_args(Parser * parser) {
+static AST_Decl_Arg * parser_parse_decl_args(Parser * parser, int * arg_count) {
 	AST_Decl_Arg * args_head = NULL;
+
+	*arg_count = 0;
 
 	parser_match_and_advance(parser, TOKEN_PARENTESES_OPEN);
 	
 	if (parser_match(parser, TOKEN_IDENTIFIER)) {
-		args_head = parser_parse_decl_arg(parser);
+		args_head = parser_parse_decl_arg(parser, arg_count);
 	}
 	
 	AST_Decl_Arg * args_curr = args_head;
@@ -575,7 +592,7 @@ static AST_Decl_Arg * parser_parse_decl_args(Parser * parser) {
 	while (parser_match(parser, TOKEN_COMMA)) {
 		parser_advance(parser);
 
-		AST_Decl_Arg * arg = parser_parse_decl_arg(parser);
+		AST_Decl_Arg * arg = parser_parse_decl_arg(parser, arg_count);
 		args_curr->next = arg;
 		args_curr       = arg;
 	}
@@ -598,17 +615,17 @@ static AST_Statement * parser_parse_statement_decl_func(Parser * parser) {
 	parser->current_stack_frame = make_stack_frame(func_name);
 
 	func->stat_decl_func.name = func_name;
-	func->stat_decl_func.args = parser_parse_decl_args(parser);
+	func->stat_decl_func.args = parser_parse_decl_args(parser, &func->stat_decl_func.arg_count);
 
 	if (parser_match(parser, TOKEN_ARROW)) {
 		parser_advance(parser);
 
 		func->stat_decl_func.return_type = parser_parse_type(parser);
 	} else {
-		func->stat_decl_func.return_type = malloc(sizeof(Type));
-		func->stat_decl_func.return_type->type = TYPE_VOID;
-		func->stat_decl_func.return_type->ptr  = NULL;
+		func->stat_decl_func.return_type = make_type_void();
 	}
+
+	parser_add_function_type(parser, &func->stat_decl_func);
 
 	func->stat_decl_func.body = parser_parse_statement_block(parser);
 	
@@ -631,6 +648,17 @@ static AST_Statement * parser_parse_statement_extern(Parser * parser) {
 
 	parser_match_and_advance(parser, TOKEN_KEYWORD_EXTERN);
 	decl_extern->stat_extern.name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
+	decl_extern->stat_extern.args = parser_parse_decl_args(parser, &decl_extern->stat_extern.arg_count);
+	
+	if (parser_match(parser, TOKEN_ARROW)) {
+		parser_advance(parser);
+
+		decl_extern->stat_extern.return_type = parser_parse_type(parser);
+	} else {
+		decl_extern->stat_extern.return_type = make_type_void();
+	}
+
+	parser_add_function_type(parser, &decl_extern->stat_extern);
 
 	parser_match_and_advance(parser, TOKEN_SEMICOLON);
 

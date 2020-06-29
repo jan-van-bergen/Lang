@@ -43,7 +43,7 @@ void compile_file(char const * filename, bool show_output) {
 	//printf("\n\nPretty Print:\n\n");
 	//ast_pretty_print(program);
 
-	char const * code = codegen_program(program);
+	char const * code = codegen_program(program, parser.functions, parser.functions_len);
 
 	ast_free_statement(program);
 

@@ -19,29 +19,27 @@ main:
     call GetStdHandle
     mov rbx, rax ; get return value
     mov QWORD [rbp + -8], rbx; initialize std_handle
-    lea rbx, [REL str_lit_1]
-    mov QWORD [rbp + -16], rbx; initialize str
     sub rsp, 32 ; shadow space
-    mov rbx, QWORD [rbp + -16] ; get value of str
+    lea rbx, QWORD [REL string] ; get address of string
     mov rcx, rbx ; arg 0
     call strlen
     mov rbx, rax ; get return value
-    mov QWORD [rbp + -24], rbx; initialize str_len
-    mov QWORD [rbp + -32], 0; zero initialize bytes_written
+    mov QWORD [rbp + -16], rbx; initialize str_len
+    mov QWORD [rbp + -24], 0; zero initialize bytes_written
     sub rsp, 32 + 1 * 8 + 8 ; shadow space + spill arguments + alignment
     mov rbx, QWORD [rbp + -8] ; get value of std_handle
     mov rcx, rbx ; arg 0
-    mov rbx, QWORD [rbp + -16] ; get value of str
+    lea rbx, QWORD [REL string] ; get address of string
     mov rdx, rbx ; arg 1
-    mov rbx, QWORD [rbp + -24] ; get value of str_len
+    mov rbx, QWORD [rbp + -16] ; get value of str_len
     mov r8, rbx ; arg 2
-    lea rbx, QWORD [rbp + -32] ; addrof bytes_written
+    lea rbx, QWORD [rbp + -24] ; addrof bytes_written
     mov r9, rbx ; arg 3
     mov rbx, 0
     mov QWORD [rsp + 4 * 8], rbx ; arg 4
     call WriteFile
     mov rbx, rax ; get return value
-    mov rbx, QWORD [rbp + -32] ; get value of bytes_written
+    mov rbx, QWORD [rbp + -24] ; get value of bytes_written
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
     xor rax, rax ; Default return value 0
@@ -52,4 +50,4 @@ main:
     
 SECTION .data
 STD_OUTPUT_HANDLE dq -11
-str_lit_1 db "Hallo wereld!", 0
+string db "Hallo wereld!", 0

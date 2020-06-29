@@ -1,4 +1,4 @@
-extern ExitProcess;
+extern ExitProcess(exit_code: int) -> void;
 
 func assert(expression: bool) -> void {
 	if (!expression) {
@@ -11,7 +11,7 @@ func main() -> int {
 	
 	a = true || false;
 	assert(a == true);
-	
+
 	a = false && true;
 	assert(a == false);
 	

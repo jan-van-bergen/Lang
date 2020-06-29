@@ -6,13 +6,13 @@ SECTION .code
 test:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    mov QWORD [rbp + 16], rcx ; push arg 0 
-    mov QWORD [rbp + 24], rdx ; push arg 1 
+    mov BYTE [rbp + 16], cl ; push arg 0 
+    mov QWORD [rbp + 17], rdx ; push arg 1 
     sub rsp, 16 ; reserve stack space for locals
-    mov rbx, QWORD [rbp + 16] ; get value of ret_arg
+    movzx rbx, BYTE [rbp + 16] ; get value of ret_arg
     cmp rbx, 0
     je L_else0
-        mov rbx, QWORD [rbp + 24] ; get value of arg
+        mov rbx, QWORD [rbp + 17] ; get value of arg
         mov rax, rbx ; return via rax
         jmp L_function_test_exit
     jmp L_exit0

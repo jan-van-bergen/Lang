@@ -9,8 +9,8 @@ func test(ret_arg: bool, arg: int) -> int {
 }
 
 func main() -> int {
-	let a: bool = test(true,  5); // 5
-	let b: bool = test(false, 5); // 3
+	let a: int = test(true,  5); // 5
+	let b: int = test(false, 5); // 3
 	
 	if (a != 5 || b != 3) return -1;
 	

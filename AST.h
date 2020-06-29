@@ -14,12 +14,6 @@ typedef enum AST_Expression_Type {
 	AST_EXPRESSION_CALL_FUNC
 } AST_Expression_Type;
 
-typedef struct AST_Decl_Arg {
-	char const * name;
-	Type       * type;
-	struct AST_Decl_Arg * next;
-} AST_Decl_Arg;
-
 typedef struct AST_Call_Arg {
 	struct AST_Expression * expr;
 	struct AST_Call_Arg   * next;
@@ -29,8 +23,6 @@ typedef struct AST_Call_Arg {
 
 typedef struct AST_Expression {
 	AST_Expression_Type expr_type;
-	
-	Type type;
 
 	int height;
 
@@ -63,7 +55,7 @@ typedef struct AST_Expression {
 		} expr_op_post;
 
 		struct Call {
-			char const * function;
+			char const * function_name;
 
 			struct AST_Call_Arg * args;
 		} expr_call;
@@ -84,6 +76,22 @@ typedef enum AST_Statement_Type {
 	AST_STATEMENT_CONTINUE,
 	AST_STATEMENT_RETURN
 } AST_Statement_Type;
+
+typedef struct AST_Decl_Arg {
+	char const * name;
+	Type       * type;
+	struct AST_Decl_Arg * next;
+} AST_Decl_Arg;
+
+typedef struct AST_Decl_Func {
+	char const * name;
+	Type       * return_type;
+
+	int arg_count;
+
+	struct AST_Decl_Arg  * args;
+	struct AST_Statement * body;
+} AST_Decl_Func;
 
 typedef struct AST_Statement {
 	AST_Statement_Type stat_type;
@@ -111,17 +119,9 @@ typedef struct AST_Statement {
 			struct AST_Expression * value;
 		} stat_decl_var;
 
-		struct Decl_Func {
-			char const * name;
-			Type       * return_type;
+		AST_Decl_Func stat_decl_func;
 
-			struct AST_Decl_Arg  * args;
-			struct AST_Statement * body;
-		} stat_decl_func;
-
-		struct Extern {
-			char const * name;
-		} stat_extern;
+		AST_Decl_Func stat_extern;
 
 		struct If {
 			struct AST_Expression * condition;

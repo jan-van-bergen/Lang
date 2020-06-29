@@ -24,6 +24,9 @@
     <ClCompile Include="Scope.c">
       <Filter>Compiler</Filter>
     </ClCompile>
+    <ClCompile Include="Type.c">
+      <Filter>Compiler</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Test.h" />

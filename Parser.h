@@ -11,6 +11,10 @@ typedef struct Parser {
 
 	Stack_Frame * current_stack_frame;
 	Scope       * current_scope;
+
+	int              functions_len;
+	int              functions_cap;
+	AST_Decl_Func ** functions;
 } Parser;
 
 void parser_init(Parser * parser, Token const * tokens, int token_count);

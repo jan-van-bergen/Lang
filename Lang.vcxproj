@@ -147,6 +147,7 @@
     <ClCompile Include="Scope.c" />
     <ClCompile Include="Test.c" />
     <ClCompile Include="Token.c" />
+    <ClCompile Include="Type.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AST.h" />

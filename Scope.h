@@ -12,8 +12,6 @@ typedef struct Variable {
 	int offset;
 } Variable;
 
-int variable_get_size(Variable const * var);
-
 typedef struct Stack_Frame {
 	char const * function_name;
 

@@ -6,20 +6,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-int variable_get_size(Variable const * var) {
-	return 8; // TEMP
-
-
-	switch (var->type->type) {
-		case TYPE_INT:     return 8; // 64 bit
-		case TYPE_BOOL:    return 1;
-		case TYPE_CHAR:    return 1;
-		case TYPE_POINTER: return 8;
-
-		default: abort();
-	}
-}
-
 static int stack_frame_add_variable(Stack_Frame * frame, char const * name, Type * type, bool is_global) {
 	if (frame->vars_len == frame->vars_cap) {
 		frame->vars_cap *= 2;
@@ -47,8 +33,8 @@ Stack_Frame * make_stack_frame(char const * function_name) {
 	frame->arg_size = 0;
 	frame->var_size = 0;
 
-	frame->curr_arg_offset = 8; // Bias by 8 to account for return address on stack
-	frame->curr_var_offset = 8; // Bias by 8 to account for stack frame on stack
+	frame->curr_arg_offset = 16; // Bias by 8 to account for return address and RBP on stack
+	frame->curr_var_offset = 0;
 
 	return frame;
 }
@@ -93,7 +79,7 @@ void scope_add_arg(Scope * scope, char const * name, Type * type) {
 	scope->indices[scope->indices_len++] = index;
 
 	Variable * arg = &scope->stack_frame->vars[index];
-	scope->stack_frame->arg_size += variable_get_size(arg);
+	scope->stack_frame->arg_size += type_get_size(arg->type);
 }
 
 void scope_add_var(Scope * scope, char const * name, Type * type) {
@@ -107,7 +93,7 @@ void scope_add_var(Scope * scope, char const * name, Type * type) {
 	scope->indices[scope->indices_len++] = index;
 
 	Variable * var = &scope->stack_frame->vars[index];
-	scope->stack_frame->var_size += variable_get_size(var);
+	scope->stack_frame->var_size += type_get_size(var->type);
 }
 
 Variable * scope_get_variable(Scope const * scope, char const * name) {
