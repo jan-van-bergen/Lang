@@ -31,7 +31,7 @@ main:
     mov r10, 2364
     add rbx, r10
     mov DWORD [rbp + -22], ebx; initialize unsigned_32
-    mov rbx, 0
+    mov rbx, 4294967296
     mov r10, 238643254
     add rbx, r10
     mov QWORD [rbp + -30], rbx; initialize unsigned_64

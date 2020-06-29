@@ -324,7 +324,7 @@ static Result codegen_expression_const(Context * ctx, AST_Expression const * exp
 		}
 
 		case TOKEN_LITERAL_INT: {
-			int value = expr->expr_const.token.value_int;
+			unsigned long long value = expr->expr_const.token.value_int;
 
 			// Find smallest possible type that can contain the value
 			if (expr->expr_const.token.sign) {
@@ -337,19 +337,21 @@ static Result codegen_expression_const(Context * ctx, AST_Expression const * exp
 				} else {
 					result.type = make_type_i64();
 				}
+
+				context_emit_code(ctx, "mov %s, %lld\n", get_reg_name_scratch(result.reg, 8), value);
 			} else {
 				if (value <= UCHAR_MAX) {
 					result.type = make_type_u8();
 				} else if (value <= USHRT_MAX) {
 					result.type = make_type_u16();
-				} else if (UINT_MAX) {
+				} else if (value <= UINT_MAX) {
 					result.type = make_type_u32();
 				} else {
 					result.type = make_type_u64();
 				}
+				
+				context_emit_code(ctx, "mov %s, %llu\n", get_reg_name_scratch(result.reg, 8), value);
 			}
-
-			context_emit_code(ctx, "mov %s, %i\n", get_reg_name_scratch(result.reg, 8), value);
 
 			break;
 		}
