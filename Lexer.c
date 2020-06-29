@@ -117,7 +117,37 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 	char curr = lexer_peek(lexer);
 	
 	token->line = lexer->line;
+	
+	// Parse HEX literal
+	if (lexer_match(lexer, "0x")) {
+		lexer->index += 2;
+		curr = lexer_peek(lexer);
 
+		unsigned long long hex = 0;
+
+		while (isalnum(curr)) {
+			hex <<= 4;
+			if (curr >= 'A' && curr <= 'F') {
+				hex += curr - 'A' + 10;
+			} else if (curr >= 'a' && curr < 'f') {
+				hex += curr - 'a' + 10;
+			} else if (isdigit(curr)) {
+				hex += curr - '0';
+			} else {
+				abort(); // Invalid hex literal
+			}
+
+			curr = lexer_next(lexer);
+		}
+		
+		token->type      = TOKEN_LITERAL_INT;
+		token->sign      = 0;
+		token->value_int = hex;
+
+		return;
+	}
+
+	// Parse integer literal
 	if (isdigit(curr) || ((curr == '+' || curr == '-') && isdigit(lexer->source[lexer->index + 1]))) {
 		bool is_negative = false;
 
@@ -176,6 +206,7 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 		lexer_next(lexer); // Consume '
 
 		token->type      = TOKEN_LITERAL_INT; // Treat as int literal
+		token->sign      = false;
 		token->value_int = c;
 
 		lexer_next(lexer);

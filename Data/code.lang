@@ -4,9 +4,9 @@ func main() -> int {
 	let b: int;
 	
 	if (a > 0) {
-		b = 3;
+		b = 0xc0de;
 	} else {
-		b = 2;
+		b = 0xBEEF;
 	}
 
 	return b;

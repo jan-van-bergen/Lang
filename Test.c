@@ -43,7 +43,7 @@ void run_tests() {
 	puts("Starting tests...");
 
 	run_test("Data\\calling_convention.lang", 21, "");
-	run_test("Data\\code.lang",                3, "");
+	run_test("Data\\code.lang",           0xc0de, "");
 	run_test("Data\\extern.lang",             13, "Hallo wereld!");
 	run_test("Data\\functions.lang",          12, "");
 	run_test("Data\\pointer.lang",            21, "");

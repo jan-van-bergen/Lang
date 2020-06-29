@@ -22,12 +22,12 @@ main:
     cmp rbx, 0
     je L_else2
         lea rbx, QWORD [rbp + -8] ; get address of b
-        mov r10, 3
+        mov r10, 49374
         mov DWORD [rbx], r10d
     jmp L_exit2
     L_else2:
         lea rbx, QWORD [rbp + -8] ; get address of b
-        mov r10, 2
+        mov r10, 48879
         mov DWORD [rbx], r10d
     L_exit2:
     movsx rbx, DWORD [rbp + -8] ; get value of b
