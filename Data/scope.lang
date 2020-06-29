@@ -1,13 +1,3 @@
-func test(ret_arg: bool, arg: int) -> int {
-	if (ret_arg) {
-		return arg; // Returns argument 'arg', because local 'arg' is not in scope
-	} else {
-		let arg: int = 3;
-		
-		return arg; // Returns local 'arg'
-	}
-}
-
 func main() -> int {
 	let a: int = test(true,  5); // 5
 	let b: int = test(false, 5); // 3
@@ -26,4 +16,15 @@ func main() -> int {
 	if (outter != 5) return -1;
 	
 	return common_name; // 3
+}
+
+// The order in which functions are defined is irrelevant
+func test(ret_arg: bool, arg: int) -> int {
+	if (ret_arg) {
+		return arg; // Returns argument 'arg', because local 'arg' is not in scope
+	} else {
+		let arg: int = 3;
+		
+		return arg; // Returns local 'arg'
+	}
 }

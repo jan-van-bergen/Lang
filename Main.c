@@ -21,9 +21,6 @@ int main(int arg_count, char const * args[]) {
 	int ret = system(file_exe);
 	printf("Program returned: %i\n", ret);
 
-	//char test[4];
-	//memcpy(test, &ret, 4);
-
 	free(file_exe);
 
 #if RUN_TESTS

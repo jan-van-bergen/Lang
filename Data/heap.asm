@@ -210,7 +210,7 @@ main:
     mov rbp, rsp ; stack frame
     sub rsp, 32 ; reserve stack space for locals
     sub rsp, 32 ; reserve space for call arguments
-    mov rbx, 16
+    mov rbx, 9
     mov rcx, rbx ; arg 0
     call malloc
     add rsp, 32 ; pop arguments
@@ -283,7 +283,7 @@ main:
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     sub rsp, 32 ; reserve space for call arguments
-    mov rbx, 16
+    mov rbx, 9
     mov rcx, rbx ; arg 0
     call malloc
     add rsp, 32 ; pop arguments

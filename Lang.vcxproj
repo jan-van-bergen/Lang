@@ -152,7 +152,7 @@
   <ItemGroup>
     <ClInclude Include="AST.h" />
     <ClInclude Include="Compiler.h" />
-    <ClInclude Include="Godegen.h" />
+    <ClInclude Include="Codegen.h" />
     <ClInclude Include="Lexer.h" />
     <ClInclude Include="Parser.h" />
     <ClInclude Include="Scope.h" />

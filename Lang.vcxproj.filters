@@ -6,9 +6,6 @@
     <ClCompile Include="AST.c">
       <Filter>Compiler</Filter>
     </ClCompile>
-    <ClCompile Include="Codegen.c">
-      <Filter>Compiler</Filter>
-    </ClCompile>
     <ClCompile Include="Compiler.c">
       <Filter>Compiler</Filter>
     </ClCompile>
@@ -27,6 +24,9 @@
     <ClCompile Include="Type.c">
       <Filter>Compiler</Filter>
     </ClCompile>
+    <ClCompile Include="Codegen.c">
+      <Filter>Compiler</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Test.h" />
@@ -35,9 +35,6 @@
       <Filter>Compiler</Filter>
     </ClInclude>
     <ClInclude Include="Compiler.h">
-      <Filter>Compiler</Filter>
-    </ClInclude>
-    <ClInclude Include="Godegen.h">
       <Filter>Compiler</Filter>
     </ClInclude>
     <ClInclude Include="Lexer.h">
@@ -53,6 +50,9 @@
       <Filter>Compiler</Filter>
     </ClInclude>
     <ClInclude Include="Type.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Codegen.h">
       <Filter>Compiler</Filter>
     </ClInclude>
   </ItemGroup>
