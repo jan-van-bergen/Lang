@@ -6,21 +6,21 @@ SECTION .code
 calling_convention:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    mov QWORD [rbp + 16], rcx ; push arg 0 
-    mov QWORD [rbp + 24], rdx ; push arg 1 
-    mov QWORD [rbp + 32], r8 ; push arg 2 
-    mov QWORD [rbp + 40], r9 ; push arg 3 
+    mov DWORD [rbp + 16], ecx ; push arg 0 
+    mov DWORD [rbp + 24], edx ; push arg 1 
+    mov DWORD [rbp + 32], r8d ; push arg 2 
+    mov DWORD [rbp + 40], r9d ; push arg 3 
     sub rsp, 0 ; reserve stack space for locals
-    mov rbx, QWORD [rbp + 16] ; get value of rcx
-    mov r10, QWORD [rbp + 24] ; get value of rdx
+    mov ebx, DWORD [rbp + 16] ; get value of rcx
+    mov r10d, DWORD [rbp + 24] ; get value of rdx
     add rbx, r10
-    mov r10, QWORD [rbp + 32] ; get value of r8
+    mov r10d, DWORD [rbp + 32] ; get value of r8
     add rbx, r10
-    mov r10, QWORD [rbp + 40] ; get value of r9
+    mov r10d, DWORD [rbp + 40] ; get value of r9
     add rbx, r10
-    mov r10, QWORD [rbp + 48] ; get value of stack0
+    mov r10d, DWORD [rbp + 48] ; get value of stack0
     add rbx, r10
-    mov r10, QWORD [rbp + 56] ; get value of stack1
+    mov r10d, DWORD [rbp + 52] ; get value of stack1
     add rbx, r10
     mov rax, rbx ; return via rax
     jmp L_function_calling_convention_exit
@@ -34,7 +34,7 @@ main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
     sub rsp, 0 ; reserve stack space for locals
-    sub rsp, 32 + 2 * 8 ; shadow space + spill arguments
+    sub rsp, 48 ; reserve space for call arguments
     mov rbx, 1
     mov rcx, rbx ; arg 0
     mov rbx, 2
@@ -44,10 +44,11 @@ main:
     mov rbx, 4
     mov r9, rbx ; arg 3
     mov rbx, 5
-    mov QWORD [rsp + 4 * 8], rbx ; arg 4
+    mov QWORD [rsp + 32], rbx ; arg 4
     mov rbx, 6
-    mov QWORD [rsp + 5 * 8], rbx ; arg 5
+    mov QWORD [rsp + 36], rbx ; arg 5
     call calling_convention
+    add rsp, 48 ; pop arguments
     mov rbx, rax ; get return value
     mov rax, rbx ; return via rax
     jmp L_function_main_exit

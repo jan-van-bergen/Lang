@@ -6,25 +6,32 @@
 #include <stdlib.h>
 
 static Type type_void = { TYPE_VOID, NULL };
-static Type type_int  = { TYPE_INT,  NULL };
+
+static Type type_i8   = { TYPE_I8,  NULL };
+static Type type_i16  = { TYPE_I16, NULL };
+static Type type_i32  = { TYPE_I32, NULL };
+static Type type_i64  = { TYPE_I64, NULL };
+
+static Type type_u8   = { TYPE_U8,  NULL };
+static Type type_u16  = { TYPE_U16, NULL };
+static Type type_u32  = { TYPE_U32, NULL };
+static Type type_u64  = { TYPE_U64, NULL };
+
 static Type type_bool = { TYPE_BOOL, NULL };
-static Type type_char = { TYPE_CHAR, NULL };
 
-Type * make_type_void() {
-	return &type_void;
-}
+Type * make_type_void() { return &type_void; }
 
-Type * make_type_int() {
-	return &type_int;
-}
+Type * make_type_i8 () { return &type_i8; }
+Type * make_type_i16() { return &type_i16; }
+Type * make_type_i32() { return &type_i32; }
+Type * make_type_i64() { return &type_i64; }
 
-Type * make_type_bool() {
-	return &type_bool;
-}
+Type * make_type_u8 () { return &type_u8; }
+Type * make_type_u16() { return &type_u16; }
+Type * make_type_u32() { return &type_u32; }
+Type * make_type_u64() { return &type_u64; }
 
-Type * make_type_char() {
-	return &type_char;
-}
+Type * make_type_bool() { return &type_bool; }
 
 Type * make_type_pointer(Type const * type) {
 	Type * ptr_type = malloc(sizeof(Type));
@@ -37,9 +44,18 @@ Type * make_type_pointer(Type const * type) {
 void type_to_string(Type const * type, char * string, int string_size) {
 	switch (type->type) {
 		case TYPE_VOID: sprintf_s(string, string_size, "void"); break;
-		case TYPE_INT:  sprintf_s(string, string_size, "int");  break;
+
+		case TYPE_I8:  sprintf_s(string, string_size, "i8");  break;
+		case TYPE_I16: sprintf_s(string, string_size, "i16"); break;
+		case TYPE_I32: sprintf_s(string, string_size, "i32"); break;
+		case TYPE_I64: sprintf_s(string, string_size, "i64"); break;
+
+		case TYPE_U8:  sprintf_s(string, string_size, "u8");  break;
+		case TYPE_U16: sprintf_s(string, string_size, "u16"); break;
+		case TYPE_U32: sprintf_s(string, string_size, "u32"); break;
+		case TYPE_U64: sprintf_s(string, string_size, "u64"); break;
+
 		case TYPE_BOOL: sprintf_s(string, string_size, "bool"); break;
-		case TYPE_CHAR: sprintf_s(string, string_size, "char"); break;
 
 		case TYPE_POINTER: {
 			type_to_string(type->ptr, string, string_size);
@@ -53,12 +69,21 @@ void type_to_string(Type const * type, char * string, int string_size) {
 }
 
 int type_get_size(Type const * type) {
-	//return 8; // TEMP
-
 	switch (type->type) {
-		case TYPE_INT:     return 8; // 64 bit
-		case TYPE_BOOL:    return 1;
-		case TYPE_CHAR:    return 1;
+		case TYPE_VOID: abort(); // Invalid!
+
+		case TYPE_I8:  return 1;
+		case TYPE_I16: return 2;
+		case TYPE_I32: return 4;
+		case TYPE_I64: return 8;
+
+		case TYPE_U8:  return 1;
+		case TYPE_U16: return 2;
+		case TYPE_U32: return 4;
+		case TYPE_U64: return 8;
+
+		case TYPE_BOOL: return 1;
+
 		case TYPE_POINTER: return 8;
 
 		default: abort();
@@ -69,9 +94,17 @@ bool type_is_void(Type const * type) {
 	return type->type == TYPE_VOID;
 }
 
-bool type_is_integral(Type const * type) {
-	return type->type == TYPE_INT || type->type == TYPE_CHAR;
+bool type_is_signed_integral(Type const * type) {
+	return type->type == TYPE_I8 || type->type == TYPE_I16 || type->type == TYPE_I32 || type->type == TYPE_I64;
 }
+
+bool type_is_unsigned_integral(Type const * type) {
+	return type->type == TYPE_U8 || type->type == TYPE_U16 || type->type == TYPE_U32 || type->type == TYPE_U64;
+}
+
+bool type_is_integral(Type const * type) {
+	return type_is_signed_integral(type) || type_is_unsigned_integral(type);
+}	
 
 bool type_is_boolean(Type const * type) {
 	return type->type == TYPE_BOOL;

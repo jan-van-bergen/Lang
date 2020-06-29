@@ -6,9 +6,9 @@ SECTION .code
 one:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    mov QWORD [rbp + 16], rcx ; push arg 0 
+    mov DWORD [rbp + 16], ecx ; push arg 0 
     sub rsp, 0 ; reserve stack space for locals
-    mov rbx, QWORD [rbp + 16] ; get value of arg
+    mov ebx, DWORD [rbp + 16] ; get value of arg
     mov r10, 1
     add rbx, r10
     mov rax, rbx ; return via rax
@@ -22,21 +22,23 @@ one:
 two:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    mov QWORD [rbp + 16], rcx ; push arg 0 
-    mov QWORD [rbp + 24], rdx ; push arg 1 
+    mov DWORD [rbp + 16], ecx ; push arg 0 
+    mov DWORD [rbp + 24], edx ; push arg 1 
     sub rsp, 16 ; reserve stack space for locals
-    sub rsp, 32 ; shadow space
-    mov rbx, QWORD [rbp + 16] ; get value of a
+    sub rsp, 32 ; reserve space for call arguments
+    mov ebx, DWORD [rbp + 16] ; get value of a
     mov rcx, rbx ; arg 0
     call one
+    add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov QWORD [rbp + -8], rbx; initialize local
-    sub rsp, 32 ; shadow space
-    mov rbx, QWORD [rbp + 24] ; get value of b
+    mov DWORD [rbp + -4], ebx; initialize local
+    sub rsp, 32 ; reserve space for call arguments
+    mov ebx, DWORD [rbp + 24] ; get value of b
     mov rcx, rbx ; arg 0
     call one
+    add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov r10, QWORD [rbp + -8] ; get value of local
+    mov r10d, DWORD [rbp + -4] ; get value of local
     add rbx, r10
     mov rax, rbx ; return via rax
     jmp L_function_two_exit
@@ -49,10 +51,10 @@ two:
 recursive:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    mov QWORD [rbp + 16], rcx ; push arg 0 
-    mov QWORD [rbp + 24], rdx ; push arg 1 
+    mov DWORD [rbp + 16], ecx ; push arg 0 
+    mov DWORD [rbp + 24], edx ; push arg 1 
     sub rsp, 0 ; reserve stack space for locals
-    mov rbx, QWORD [rbp + 16] ; get value of a
+    mov ebx, DWORD [rbp + 16] ; get value of a
     mov r10, 0
     cmp rbx, r10
     jne L0
@@ -63,26 +65,27 @@ recursive:
     L1:
     cmp rbx, 0
     je L_exit2
-        mov rbx, QWORD [rbp + 24] ; get value of b
+        mov ebx, DWORD [rbp + 24] ; get value of b
         mov rax, rbx ; return via rax
         jmp L_function_recursive_exit
     L_exit2:
-    mov rbx, QWORD [rbp + 24] ; get value of b
+    mov ebx, DWORD [rbp + 24] ; get value of b
     mov r10, 2
     add rbx, r10
     lea r10, QWORD [rbp + 24] ; get address of b
-    mov QWORD [r10], rbx
-    mov rbx, QWORD [rbp + 16] ; get value of a
+    mov DWORD [r10], ebx
+    mov ebx, DWORD [rbp + 16] ; get value of a
     mov r10, 1
     sub rbx, r10
     lea r10, QWORD [rbp + 16] ; get address of a
-    mov QWORD [r10], rbx
-    sub rsp, 32 ; shadow space
-    mov rbx, QWORD [rbp + 16] ; get value of a
+    mov DWORD [r10], ebx
+    sub rsp, 32 ; reserve space for call arguments
+    mov ebx, DWORD [rbp + 16] ; get value of a
     mov rcx, rbx ; arg 0
-    mov rbx, QWORD [rbp + 24] ; get value of b
+    mov ebx, DWORD [rbp + 24] ; get value of b
     mov rdx, rbx ; arg 1
     call recursive
+    add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     mov rax, rbx ; return via rax
     jmp L_function_recursive_exit
@@ -96,30 +99,34 @@ main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
     sub rsp, 16 ; reserve stack space for locals
-    sub rsp, 32 ; shadow space
+    sub rsp, 32 ; reserve space for call arguments
     mov rbx, 1
     mov rcx, rbx ; arg 0
     mov rbx, 2
     mov rdx, rbx ; arg 1
     call two
+    add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov QWORD [rbp + -8], rbx; initialize bla
-    sub rsp, 32 ; shadow space
-    mov rbx, QWORD [rbp + -8] ; get value of bla
+    mov DWORD [rbp + -4], ebx; initialize bla
+    sub rsp, 32 ; reserve space for call arguments
+    mov ebx, DWORD [rbp + -4] ; get value of bla
     mov rcx, rbx ; arg 0
     call one
+    add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov QWORD [rbp + -16], rbx; initialize tmp
-    sub rsp, 32 ; shadow space
-    sub rsp, 32 ; shadow space
-    mov rbx, QWORD [rbp + -8] ; get value of bla
+    mov DWORD [rbp + -8], ebx; initialize tmp
+    sub rsp, 32 ; reserve space for call arguments
+    sub rsp, 32 ; reserve space for call arguments
+    mov ebx, DWORD [rbp + -4] ; get value of bla
     mov rcx, rbx ; arg 0
     call one
+    add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     mov rcx, rbx ; arg 0
     mov rbx, 0
     mov rdx, rbx ; arg 1
     call recursive
+    add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     mov rax, rbx ; return via rax
     jmp L_function_main_exit

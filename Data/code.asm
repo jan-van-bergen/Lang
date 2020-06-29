@@ -8,9 +8,9 @@ main:
     mov rbp, rsp ; stack frame
     sub rsp, 16 ; reserve stack space for locals
     mov rbx, 1
-    mov QWORD [rbp + -8], rbx; initialize a
-    mov QWORD [rbp + -16], 0; zero initialize b
-    mov rbx, QWORD [rbp + -8] ; get value of a
+    mov DWORD [rbp + -4], ebx; initialize a
+    mov DWORD [rbp + -8], 0; zero initialize b
+    mov ebx, DWORD [rbp + -4] ; get value of a
     mov r10, 0
     cmp rbx, r10
     jle L0
@@ -21,16 +21,16 @@ main:
     L1:
     cmp rbx, 0
     je L_else2
-        lea rbx, QWORD [rbp + -16] ; get address of b
+        lea rbx, QWORD [rbp + -8] ; get address of b
         mov r10, 3
-        mov QWORD [rbx], r10
+        mov DWORD [rbx], r10d
     jmp L_exit2
     L_else2:
-        lea rbx, QWORD [rbp + -16] ; get address of b
+        lea rbx, QWORD [rbp + -8] ; get address of b
         mov r10, 2
-        mov QWORD [rbx], r10
+        mov DWORD [rbx], r10d
     L_exit2:
-    mov rbx, QWORD [rbp + -16] ; get value of b
+    mov ebx, DWORD [rbp + -8] ; get value of b
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
     xor rax, rax ; Default return value 0

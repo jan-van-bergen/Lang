@@ -94,13 +94,17 @@ static void context_flag_unset(Context * ctx, Context_Flags flag) {
 	ctx->flags &= ~flag;
 }
 
-static Variable * context_decl_arg(Context * ctx, const char * name) {
+static Variable * context_decl_arg(Context * ctx, const char * name, int arg_index) {
 	assert(ctx->current_scope);
 
 	Variable * var = scope_get_variable(ctx->current_scope, name);
 
 	var->offset = ctx->current_scope->stack_frame->curr_arg_offset;
-	ctx->current_scope->stack_frame->curr_arg_offset += type_get_size(var->type);
+	if (arg_index < 4) {
+		ctx->current_scope->stack_frame->curr_arg_offset += 8;
+	} else {
+		ctx->current_scope->stack_frame->curr_arg_offset += type_get_size(var->type);
+	}
 
 	return var;
 }
@@ -299,7 +303,7 @@ static Result codegen_expression_const(Context * ctx, AST_Expression const * exp
 
 	switch (literal_type) {
 		case TOKEN_LITERAL_STRING: {
-			result.type = make_type_pointer(make_type_char());
+			result.type = make_type_pointer(make_type_u8());
 
 			char str_lit_name[128];
 			sprintf_s(str_lit_name, sizeof(str_lit_name), "str_lit_%i", ctx->data_seg_len);
@@ -311,7 +315,7 @@ static Result codegen_expression_const(Context * ctx, AST_Expression const * exp
 		}
 
 		case TOKEN_LITERAL_INT: {
-			result.type = make_type_int();
+			result.type = make_type_i64();
 
 			context_emit_code(ctx, "mov %s, %i\n", get_reg_name_scratch(result.reg, 8), expr->expr_const.token.value_int);
 
@@ -344,14 +348,20 @@ static Result codegen_expression_var(Context * ctx, AST_Expression const * expr)
 	bool is_global_char_ptr =
 		var->is_global &&
 		var->type->type == TYPE_POINTER &&
-		var->type->ptr->type == TYPE_CHAR;
+		var->type->ptr->type == TYPE_U8;
 
 	if (ctx->flags & CTX_FLAG_VAR_BY_ADDRESS || is_global_char_ptr) {
 		context_emit_code(ctx, "lea %s, QWORD [%s] ; get address of %s\n", get_reg_name_scratch(result.reg, 8), var_address, var_name);
 	} else {
 		int type_size = type_get_size(result.type);
 
-		context_emit_code(ctx, "%s %s, %s [%s] ; get value of %s\n", type_size < 4 ? "movzx" : "mov", get_reg_name_scratch(result.reg, 8), get_word_name(type_size), var_address, var_name);
+		if (type_size < 4) {
+			context_emit_code(ctx, "movzx %s, %s [%s] ; get value of %s\n", get_reg_name_scratch(result.reg, 8), get_word_name(type_size), var_address, var_name);
+		} else if (type_size == 4) {
+			context_emit_code(ctx, "mov %s, %s [%s] ; get value of %s\n", get_reg_name_scratch(result.reg, 4), get_word_name(type_size), var_address, var_name);
+		} else {
+			context_emit_code(ctx, "mov %s, %s [%s] ; get value of %s\n", get_reg_name_scratch(result.reg, 8), get_word_name(type_size), var_address, var_name);
+		}
 	}
 
 	return result;
@@ -447,7 +457,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			} else if (type_is_pointer(result_left.type) && type_is_integral(result_right.type)) { // pointer - integral --> pointer
 				// Resulting type is pointer, do nothing
 			} else if (type_is_pointer(result_left.type) && type_is_pointer(result_right.type) && types_unifiable(result_left.type, result_right.type)) { // pointer - pointer --> integral
-				result_left.type = make_type_int();
+				result_left.type = make_type_i64();
 			} else {
 				type_error("Cannot subtract pointer type from integral type!");
 			}
@@ -727,6 +737,7 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr) {
 	assert(expr->expr_type == AST_EXPRESSION_CALL_FUNC);
 	
+	// Count call arguments
 	int            call_arg_count = 0;
 	AST_Call_Arg * call_arg = expr->expr_call.args;
 
@@ -735,17 +746,7 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 		call_arg = call_arg->next;
 	}
 
-	call_arg = expr->expr_call.args;
-
-	// Reserve stack space for arguments
-	if (call_arg_count < 4) {
-		context_emit_code(ctx, "sub rsp, 32 ; shadow space\n");
-	} else if (call_arg_count & 1) {
-		context_emit_code(ctx, "sub rsp, 32 + %i * 8 + 8 ; shadow space + spill arguments + alignment\n", call_arg_count - 4);
-	} else {
-		context_emit_code(ctx, "sub rsp, 32 + %i * 8 ; shadow space + spill arguments\n", call_arg_count - 4);
-	}
-
+	// Get function declaration
 	AST_Decl_Func * function_decl = context_get_function_decl(ctx, expr->expr_call.function_name);
 	AST_Decl_Arg  * decl_arg = function_decl->args;
 
@@ -753,9 +754,38 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 		type_error("Incorrect number of arguments");
 	}
 
+	// Count total size (in bytes) of arguments
+	int arg_size = 0;
+	int decl_arg_count = 0;
+
+	while (decl_arg) {
+		if (decl_arg_count < 4) {
+			arg_size += 8;
+		} else {
+			arg_size += type_get_size(decl_arg->type);
+		}
+
+		decl_arg_count++;
+		decl_arg = decl_arg->next;
+	}
+
+	if (arg_size < 32) {
+		arg_size = 32; // Needs at least 32 bytes for shadow space
+	} else {
+		arg_size = (arg_size + 15) & ~15; // Round up to next multiple of 16 bytes for correct alignment of stack
+	}
+
+	// Reserve stack space for arguments
+	context_emit_code(ctx, "sub rsp, %i ; reserve space for call arguments\n", arg_size);
+
 	// Evaluate arguments and put them into the right register / stack address
 	// The first 4 arguments go in registers, the rest spills onto the stack
-	int arg_index = 0;
+	int arg_index  = 0;
+	int arg_offset = 0;
+
+	call_arg = expr->expr_call.args;
+	decl_arg = function_decl->args;
+
 	while (call_arg) {
 		Result result_arg = codegen_expression(ctx, call_arg->expr);
 
@@ -776,8 +806,12 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 
 		if (arg_index < 4) {
 			context_emit_code(ctx, "mov %s, %s ; arg %i\n", get_reg_name_call(arg_index, 8), get_reg_name_scratch(result_arg.reg, 8), arg_index);
+
+			arg_offset += 8;
 		} else {
-			context_emit_code(ctx, "mov QWORD [rsp + %i * 8], %s ; arg %i\n", arg_index,     get_reg_name_scratch(result_arg.reg, 8), arg_index);
+			context_emit_code(ctx, "mov QWORD [rsp + %i], %s ; arg %i\n", arg_offset, get_reg_name_scratch(result_arg.reg, 8), arg_index);
+
+			arg_offset += type_get_size(decl_arg->type);
 		}
 
 		context_reg_free(ctx, result_arg.reg);
@@ -788,6 +822,8 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 	}
 
 	context_emit_code(ctx, "call %s\n", expr->expr_call.function_name);
+
+	context_emit_code(ctx, "add rsp, %i ; pop arguments\n", arg_size);
 
 	Result result;
 	result.reg = context_reg_request(ctx);
@@ -904,7 +940,7 @@ static void codegen_statement_decl_func(Context * ctx, AST_Statement const * sta
 	AST_Decl_Arg * arg = stat->stat_decl_func.args;
 	
 	while (arg) {
-		Variable * var = context_decl_arg(ctx, arg->name);
+		Variable * var = context_decl_arg(ctx, arg->name, arg_index);
 
 		if (arg_index < 4) {
 			int type_size = type_get_size(var->type);

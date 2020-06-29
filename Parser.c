@@ -159,12 +159,24 @@ static Type * parser_parse_type(Parser * parser) {
 
 	if (strcmp(identifier, "void") == 0) {
 		type->type = TYPE_VOID;
-	} else if (strcmp(identifier, "int") == 0) {
-		type->type = TYPE_INT;
+	} else if (strcmp(identifier, "i8") == 0) {
+		type->type = TYPE_I8;
+	} else if (strcmp(identifier, "i16") == 0) {
+		type->type = TYPE_I16;
+	} else if (strcmp(identifier, "i32") == 0 || strcmp(identifier, "int") == 0) {
+		type->type = TYPE_I32;
+	} else if (strcmp(identifier, "i64") == 0) {
+		type->type = TYPE_I64;
+	} else if (strcmp(identifier, "u8") == 0 || strcmp(identifier, "char") == 0) {
+		type->type = TYPE_U8;
+	} else if (strcmp(identifier, "u16") == 0) {
+		type->type = TYPE_U16;
+	} else if (strcmp(identifier, "u32") == 0) {
+		type->type = TYPE_U32;
+	} else if (strcmp(identifier, "u64") == 0) {
+		type->type = TYPE_U64;
 	} else if (strcmp(identifier, "bool") == 0) {
 		type->type = TYPE_BOOL;
-	} else if (strcmp(identifier, "char") == 0) {
-		type->type = TYPE_CHAR;
 	} else {
 		abort(); // Invalid primitive type!
 	}

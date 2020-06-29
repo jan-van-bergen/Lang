@@ -1,0 +1,11 @@
+func main() -> int {
+	let signed_8:  i8  = 2;
+	let signed_16: i16 = 127 + 53;
+	let signed_32: i32 = 32767 + 2364;
+	let signed_64: i64 = 238643254 - 2147483647;
+	
+	let unsigned_8:  u8  = 2;
+	let unsigned_16: u16 = 256 + 53;
+	let unsigned_32: u32 = 65536 + 2364;
+	let unsigned_64: u64 = 4294967296 + 238643254;
+}

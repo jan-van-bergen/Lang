@@ -6,8 +6,8 @@ SECTION .code
 abc:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    mov QWORD [rbp + 16], rcx ; push arg 0 
-    mov QWORD [rbp + 24], rdx ; push arg 1 
+    mov DWORD [rbp + 16], ecx ; push arg 0 
+    mov DWORD [rbp + 24], edx ; push arg 1 
     sub rsp, 32 ; reserve stack space for locals
     lea rbx, QWORD [rbp + 16] ; addrof a
     mov QWORD [rbp + -8], rbx; initialize ptr_a
@@ -33,12 +33,13 @@ main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
     sub rsp, 0 ; reserve stack space for locals
-    sub rsp, 32 ; shadow space
+    sub rsp, 32 ; reserve space for call arguments
     mov rbx, 1
     mov rcx, rbx ; arg 0
     mov rbx, 2
     mov rdx, rbx ; arg 1
     call abc
+    add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     mov rax, rbx ; return via rax
     jmp L_function_main_exit

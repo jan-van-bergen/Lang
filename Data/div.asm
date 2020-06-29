@@ -6,19 +6,19 @@ SECTION .code
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    sub rsp, 32 ; reserve stack space for locals
+    sub rsp, 16 ; reserve stack space for locals
     mov rbx, 48
-    mov QWORD [rbp + -8], rbx; initialize a
+    mov DWORD [rbp + -4], ebx; initialize a
     mov rbx, 3
-    mov QWORD [rbp + -16], rbx; initialize b
-    mov rbx, QWORD [rbp + -8] ; get value of a
-    mov r10, QWORD [rbp + -16] ; get value of b
+    mov DWORD [rbp + -8], ebx; initialize b
+    mov ebx, DWORD [rbp + -4] ; get value of a
+    mov r10d, DWORD [rbp + -8] ; get value of b
     mov rax, rbx
     cdq
     idiv r10
     mov rbx, rax
-    mov QWORD [rbp + -24], rbx; initialize c
-    mov rbx, QWORD [rbp + -24] ; get value of c
+    mov DWORD [rbp + -12], ebx; initialize c
+    mov ebx, DWORD [rbp + -12] ; get value of c
     mov r10, 16
     cmp rbx, r10
     je L0
@@ -33,18 +33,18 @@ main:
         mov rax, rbx ; return via rax
         jmp L_function_main_exit
     L_exit2:
-    lea rbx, QWORD [rbp + -16] ; get address of b
+    lea rbx, QWORD [rbp + -8] ; get address of b
     mov r10, 4
-    mov QWORD [rbx], r10
-    mov rbx, QWORD [rbp + -24] ; get value of c
-    mov r10, QWORD [rbp + -16] ; get value of b
+    mov DWORD [rbx], r10d
+    mov ebx, DWORD [rbp + -12] ; get value of c
+    mov r10d, DWORD [rbp + -8] ; get value of b
     mov rax, rbx
     cdq
     idiv r10
     mov rbx, rax
-    lea r10, QWORD [rbp + -24] ; get address of c
-    mov QWORD [r10], rbx
-    mov rbx, QWORD [rbp + -24] ; get value of c
+    lea r10, QWORD [rbp + -12] ; get address of c
+    mov DWORD [r10], ebx
+    mov ebx, DWORD [rbp + -12] ; get value of c
     mov r10, 4
     cmp rbx, r10
     je L3
@@ -59,15 +59,15 @@ main:
         mov rax, rbx ; return via rax
         jmp L_function_main_exit
     L_exit5:
-    mov rbx, QWORD [rbp + -24] ; get value of c
-    mov r10, QWORD [rbp + -24] ; get value of c
+    mov ebx, DWORD [rbp + -12] ; get value of c
+    mov r10d, DWORD [rbp + -12] ; get value of c
     mov rax, rbx
     cdq
     idiv r10
     mov rbx, rax
-    lea r10, QWORD [rbp + -24] ; get address of c
-    mov QWORD [r10], rbx
-    mov rbx, QWORD [rbp + -24] ; get value of c
+    lea r10, QWORD [rbp + -12] ; get address of c
+    mov DWORD [r10], ebx
+    mov ebx, DWORD [rbp + -12] ; get value of c
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
     xor rax, rax ; Default return value 0

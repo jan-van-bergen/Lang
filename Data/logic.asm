@@ -20,10 +20,11 @@ assert:
     L_lnot_exit_0:
     cmp rbx, 0
     je L_exit1
-        sub rsp, 32 ; shadow space
+        sub rsp, 32 ; reserve space for call arguments
         mov rbx, 1
         mov rcx, rbx ; arg 0
         call ExitProcess
+        add rsp, 32 ; pop arguments
         mov rbx, rax ; get return value
     L_exit1:
     xor rax, rax ; Default return value 0
@@ -50,7 +51,7 @@ main:
     L_lor_exit_2:
     lea r10, QWORD [rbp + -1] ; get address of a
     mov BYTE [r10], bl
-    sub rsp, 32 ; shadow space
+    sub rsp, 32 ; reserve space for call arguments
     movzx rbx, BYTE [rbp + -1] ; get value of a
     mov r10, 1
     cmp rbx, r10
@@ -62,6 +63,7 @@ main:
     L4:
     mov rcx, rbx ; arg 0
     call assert
+    add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     mov rbx, 0
     mov r10, 1
@@ -76,7 +78,7 @@ main:
     L_land_exit_5:
     lea r10, QWORD [rbp + -1] ; get address of a
     mov BYTE [r10], bl
-    sub rsp, 32 ; shadow space
+    sub rsp, 32 ; reserve space for call arguments
     movzx rbx, BYTE [rbp + -1] ; get value of a
     mov r10, 0
     cmp rbx, r10
@@ -88,6 +90,7 @@ main:
     L7:
     mov rcx, rbx ; arg 0
     call assert
+    add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     movzx rbx, BYTE [rbp + -1] ; get value of a
     test rbx, rbx
@@ -109,7 +112,7 @@ main:
     L_lor_exit_9:
     lea rbx, QWORD [rbp + -1] ; get address of a
     mov BYTE [rbx], r10b
-    sub rsp, 32 ; shadow space
+    sub rsp, 32 ; reserve space for call arguments
     movzx rbx, BYTE [rbp + -1] ; get value of a
     mov r10, 1
     cmp rbx, r10
@@ -121,6 +124,7 @@ main:
     L11:
     mov rcx, rbx ; arg 0
     call assert
+    add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     mov rbx, 0
     mov rax, rbx ; return via rax

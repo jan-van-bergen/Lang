@@ -10,7 +10,7 @@ func main() -> int {
 	let std_handle: void * = GetStdHandle(STD_OUTPUT_HANDLE);
 	
 	let str_len: int = strlen(string);
-	
+
 	let bytes_written: int;
 	WriteFile(std_handle, string, str_len, &bytes_written, 0);
 	
