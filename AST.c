@@ -321,7 +321,7 @@ void ast_free_statement(AST_Statement * stat) {
 
 		case AST_STATEMENT_DECL_FUNC: {
 			free(stat->stat_decl_func.name);
-			free(stat->stat_decl_func.return_type);
+			//free(stat->stat_decl_func.return_type);
 
 			ast_free_decl_args(stat->stat_decl_func.args);
 			ast_free_statement(stat->stat_decl_func.body);

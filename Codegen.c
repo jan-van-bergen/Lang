@@ -230,7 +230,7 @@ static void context_add_string_literal(Context * ctx, char const * str_name, cha
 	str_lit_cpy[idx++] = '\"';
 	str_lit_cpy[idx++] = '\0';
 
-	strcat_s(str_lit_cpy, str_lit_cpy_size - idx, ", 0");
+	strcat_s(str_lit_cpy, str_lit_cpy_size, ", 0");
 
 	ctx->data_seg_vals[ctx->data_seg_len++] = str_lit_cpy;
 }
@@ -530,7 +530,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			} else if (type_is_pointer(result_left.type) && type_is_pointer(result_right.type) && types_unifiable(result_left.type, result_right.type)) { // pointer - pointer --> integral
 				result_left.type = make_type_i64();
 			} else {
-				type_error("Cannot subtract pointer type from integral type!");
+				type_error("Operator '-' cannot cannot have integral type on the left and pointer type on the right");
 			}
 
 			break;
@@ -542,7 +542,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			if (type_is_integral(result_left.type) && type_is_integral(result_right.type)) {
 				result_left.type = types_unify(result_left.type, result_right.type);
 			} else {
-				type_error("Can only multiply integral types");
+				type_error("Operator '*' only works with integral types");
 			}
 
 			break;
@@ -557,7 +557,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			if (type_is_integral(result_left.type) && type_is_integral(result_right.type)) {
 				result_left.type = types_unify(result_left.type, result_right.type);
 			} else {
-				type_error("Can only divide integral types");
+				type_error("Operator '/' only works with integral types");
 			}
 
 			break;
@@ -572,7 +572,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			if (type_is_integral(result_left.type) && type_is_integral(result_right.type)) {
 				result_left.type = types_unify(result_left.type, result_right.type);
 			} else {
-				type_error("Can only take modulo of integral types");
+				type_error("Operator '%' only works with integral types");
 			}
 
 			break;
@@ -586,7 +586,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			) {
 				result_left.type = make_type_bool();
 			} else {
-				type_error("Can only compare two integral or two equal pointer types");
+				type_error("Operator '<' requires two integral or two equal pointer types");
 			}
 
 			break;
@@ -600,7 +600,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			) {
 				result_left.type = make_type_bool();
 			} else {
-				type_error("Can only compare two integral or two equal pointer types");
+				type_error("Operator '<=' requires two integral or two equal pointer types");
 			}
 
 			break;
@@ -614,7 +614,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			) {
 				result_left.type = make_type_bool();
 			} else {
-				type_error("Can only compare two integral or two equal pointer types");
+				type_error("Operator '>' requires two integral or two equal pointer types");
 			}
 			
 			break;
@@ -628,7 +628,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			) {
 				result_left.type = make_type_bool();
 			} else {
-				type_error("Can only compare two integral or two equal pointer types");
+				type_error("Operator '>=' requires two integral or two equal pointer types");
 			}
 
 			break;
@@ -674,7 +674,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			if (type_is_boolean(result_left.type) && type_is_boolean(result_right.type)) {
 				// Resulting type is bool, do nothing
 			} else {
-				type_error("Can only perform logical AND on two booleans");
+				type_error("Operator '&&' requires two booleans");
 			}
 
 			break;
@@ -696,7 +696,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			if (type_is_boolean(result_left.type) && type_is_boolean(result_right.type)) {
 				// Resulting type is bool, do nothing
 			} else {
-				type_error("Can only perform logical OR on two booleans");
+				type_error("Operator '||' requires two booleans");
 			}
 
 			break;
@@ -740,13 +740,17 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 		context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS); // Unset temporarily
 
 		result = codegen_expression(ctx, operand);
-		result.type = result.type->ptr;
+		
+		if (result.type->ptr == NULL) {
+			char str_type[128];
+			type_to_string(result.type, str_type, sizeof(str_type));
 
-		if (result.type == NULL) {
-			type_error("Attempted to dereference non-pointer type!");
-		} else if (type_is_void(&result.type)) {
+			type_error("Cannot dereference non-pointer type '%s'", str_type);
+		} else if (type_is_void(result.type->ptr)) {
 			type_error("Cannot dereference 'void *'");
 		}
+
+		result.type = result.type->ptr;
 
 		if (var_by_address) {
 			context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS); // Reset if this flag was previously set

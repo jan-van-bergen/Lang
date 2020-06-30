@@ -55,4 +55,5 @@ void run_tests() {
 	run_test("Data\\logic.lang",               0, "");
 	run_test("Data\\heap.lang",         67305985, "BruhTest");
 	run_test("Data\\scope.lang",               3, "");
+	run_test("Data\\cast.lang",       0x0a0b0c0d, "");
 }

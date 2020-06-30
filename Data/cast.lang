@@ -1,13 +1,13 @@
 func main() -> int {
-	let i: int = 0x0a0b0c0d;
+	let i: int = 1234;
 	
 	let ptr_int:  int  * = &i;
 	let ptr_char: char * = cast(char *) ptr_int;
 	
-	*(ptr_char + 0) = 0x0a;
-	*(ptr_char + 1) = 0x0b;
-	*(ptr_char + 2) = 0x0c;
-	*(ptr_char + 3) = 0x0d;
+	*(ptr_char + 0) = 0xd;
+	*(ptr_char + 1) = 0xc;
+	*(ptr_char + 2) = 0xb;
+	*(ptr_char + 3) = 0xa;
 	
 	return i;
 }
