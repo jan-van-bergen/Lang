@@ -94,7 +94,7 @@ print_num:
     jmp L_loop0
     L_exit0:
     mov rbx, 0
-    mov DWORD [rbp + -17], ebx; initialize i
+    mov DWORD [rbp + -20], ebx; initialize i
     L_loop3:
     movsx rbx, DWORD [rbp + -12] ; get value of idx
     mov r10, 2
@@ -102,7 +102,7 @@ print_num:
     cdq
     idiv r10
     mov rbx, rax
-    movsx r10, DWORD [rbp + -17] ; get value of i
+    movsx r10, DWORD [rbp + -20] ; get value of i
     cmp r10, rbx
     jge L4
     mov r10, 1
@@ -113,35 +113,35 @@ print_num:
     cmp r10, 0
     je L_exit3
         mov rbx, QWORD [rbp + -8] ; get value of num_str
-        movsx r10, DWORD [rbp + -17] ; get value of i
+        movsx r10, DWORD [rbp + -20] ; get value of i
         add rbx, r10
         movsx rbx, BYTE [rbx]
-        mov BYTE [rbp + -18], bl; initialize tmp
+        mov BYTE [rbp + -21], bl; initialize tmp
         mov rbx, QWORD [rbp + -8] ; get value of num_str
         movsx r10, DWORD [rbp + -12] ; get value of idx
         add rbx, r10
-        movsx r10, DWORD [rbp + -17] ; get value of i
+        movsx r10, DWORD [rbp + -20] ; get value of i
         sub rbx, r10
         mov r10, 1
         sub rbx, r10
         movsx rbx, BYTE [rbx]
         mov r10, QWORD [rbp + -8] ; get value of num_str
-        movsx r11, DWORD [rbp + -17] ; get value of i
+        movsx r11, DWORD [rbp + -20] ; get value of i
         add r10, r11
         mov BYTE [r10], bl
         mov rbx, QWORD [rbp + -8] ; get value of num_str
         movsx r10, DWORD [rbp + -12] ; get value of idx
         add rbx, r10
-        movsx r10, DWORD [rbp + -17] ; get value of i
+        movsx r10, DWORD [rbp + -20] ; get value of i
         sub rbx, r10
         mov r10, 1
         sub rbx, r10
-        movsx r10, BYTE [rbp + -18] ; get value of tmp
+        movsx r10, BYTE [rbp + -21] ; get value of tmp
         mov BYTE [rbx], r10b
-        movsx rbx, DWORD [rbp + -17] ; get value of i
+        movsx rbx, DWORD [rbp + -20] ; get value of i
         mov r10, 1
         add rbx, r10
-        lea r10, QWORD [rbp + -17] ; get address of i
+        lea r10, QWORD [rbp + -20] ; get address of i
         mov DWORD [r10], ebx
     jmp L_loop3
     L_exit3:

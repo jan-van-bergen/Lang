@@ -90,6 +90,35 @@ int type_get_size(Type const * type) {
 	}
 }
 
+int type_get_align(Type const * type) {
+	switch (type->type) {
+		case TYPE_VOID: abort(); // Invalid!
+
+		case TYPE_I8:  return 1;
+		case TYPE_I16: return 2;
+		case TYPE_I32: return 4;
+		case TYPE_I64: return 8;
+
+		case TYPE_U8:  return 1;
+		case TYPE_U16: return 2;
+		case TYPE_U32: return 4;
+		case TYPE_U64: return 8;
+
+		case TYPE_BOOL: return 1;
+
+		case TYPE_POINTER: return 8;
+
+		default: abort();
+	}
+}
+
+void align(int * address, int alignment) {
+	int remainder = *address & (alignment - 1);
+	if (remainder == 0) return;
+	
+	*address += alignment - remainder;
+}
+
 
 bool type_is_void(Type const * type) {
 	return type->type == TYPE_VOID;
@@ -122,6 +151,12 @@ bool is_void_pointer(Type const * type) {
 
 bool types_equal(Type const * a, Type const * b) {
 	if (a->type != b->type) return false;
+
+	if (a->type == TYPE_POINTER) {
+		return types_equal(a->ptr, b->ptr);
+	}
+
+	return true;
 }
 
 bool types_unifiable(Type const * a, Type const * b) {

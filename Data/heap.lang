@@ -50,7 +50,7 @@ func strlen(str: char *) -> int {
 }
 
 func main() -> int {
-	let mem: char * = malloc(9);
+	let mem: char * = malloc(16);
 	
 	*(mem + 0) = 'B';
 	*(mem + 1) = 'r';
@@ -67,7 +67,7 @@ func main() -> int {
 	print(mem, str_len);
 	free(mem);
 
-	let mem2: char * = malloc(9);
+	let mem2: char * = malloc(16);
 
 	*(mem2 + 0) = 1;
 	*(mem2 + 1) = 2;

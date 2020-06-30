@@ -46,8 +46,10 @@ Type * make_type_pointer(Type const * type);
 void type_to_string(Type const * type, char * string, int string_size);
 
 
-int type_get_size(Type const * type);
+int type_get_size (Type const * type);
+int type_get_align(Type const * type);
 
+void align(int * address, int alignment);
 
 bool type_is_void(Type const * type);
 
@@ -64,13 +66,3 @@ bool types_equal(Type const * a, Type const * b);
 
 bool   types_unifiable(Type const * a, Type const * b);
 Type * types_unify    (Type const * a, Type const * b);
-
-
-//typedef struct Function_Type {
-//
-//
-//	int     arg_count;
-//	Type ** arg_types;
-//
-//	Type * return_type;
-//} Function_Type;

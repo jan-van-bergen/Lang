@@ -103,6 +103,7 @@ static Variable * context_decl_arg(Context * ctx, const char * name, int arg_ind
 	if (arg_index < 4) {
 		ctx->current_scope->stack_frame->curr_arg_offset += 8;
 	} else {
+		align(&ctx->current_scope->stack_frame->curr_arg_offset, type_get_align(var->type));
 		ctx->current_scope->stack_frame->curr_arg_offset += type_get_size(var->type);
 	}
 
@@ -114,7 +115,9 @@ static void context_decl_var(Context * ctx, const char * name) {
 
 	Variable * var = scope_get_variable(ctx->current_scope, name);
 
+	align(&ctx->current_scope->stack_frame->curr_var_offset, type_get_align(var->type));
 	ctx->current_scope->stack_frame->curr_var_offset += type_get_size(var->type);
+
 	var->offset = -ctx->current_scope->stack_frame->curr_var_offset;
 }
 
@@ -465,7 +468,13 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 		int type_size_right = type_get_size(result_right.type);
 
 		if (!types_unifiable(result_left.type, result_right.type)) {
-			type_error("");
+			char str_type_left [128];
+			char str_type_right[128];
+
+			type_to_string(result_left .type, str_type_left,  sizeof(str_type_left));
+			type_to_string(result_right.type, str_type_right, sizeof(str_type_right));
+
+			type_error("Cannot assign type '%s' to type '%s'", str_type_right, str_type_left);
 		} else if (type_size_right > type_size_left) {
 			char str_type_left [128];
 			char str_type_right[128];
@@ -473,7 +482,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			type_to_string(result_left .type, str_type_left,  sizeof(str_type_left));
 			type_to_string(result_right.type, str_type_right, sizeof(str_type_right));
 
-			type_error("Implicit narrowing conversion from type '%s' to '%s' is not allowed", str_type_right, str_type_left);
+			type_error("Implicit narrowing conversion from type '%s' to '%s' is not allowed. Explicit cast required", str_type_right, str_type_left);
 		}
 
 		context_emit_code(ctx, "mov %s [%s], %s\n", get_word_name(type_size_left), get_reg_name_scratch(result_left.reg, 8), get_reg_name_scratch(result_right.reg, type_size_left));
@@ -829,6 +838,7 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 		if (decl_arg_count < 4) {
 			arg_size += 8;
 		} else {
+			align(&arg_size, type_get_align(decl_arg->type));
 			arg_size += type_get_size(decl_arg->type);
 		}
 
@@ -875,6 +885,7 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 		} else {
 			context_emit_code(ctx, "mov QWORD [rsp + %i], %s ; arg %i\n", arg_offset, get_reg_name_scratch(result_arg.reg, 8), arg_index);
 
+			align(&arg_offset, type_get_align(decl_arg->type));
 			arg_offset += type_get_size(decl_arg->type);
 		}
 
