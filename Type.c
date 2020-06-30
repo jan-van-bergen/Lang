@@ -166,7 +166,7 @@ bool types_unifiable(Type const * a, Type const * b) {
 		// If either type is a void star and the other is a pointer as well, the types are considered equal
 		if (a->ptr->type == TYPE_VOID || b->ptr->type == TYPE_VOID) return true;
 
-		return types_unifiable(a->ptr, b->ptr);
+		return types_equal(a->ptr, b->ptr);
 	}
 
 	return a->type == b->type;

@@ -14,7 +14,13 @@ func deref(ptr: int *) -> int {
 func main() -> int {
 	let a: int = 42;
 	
-	deref(&a);
+	let p: int *;
+	p = &a;
+	
+	let p2: int *;
+	p2 = p;
+	
+	deref(p2);
 	
 	return a;
 }

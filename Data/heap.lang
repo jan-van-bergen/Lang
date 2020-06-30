@@ -19,7 +19,7 @@ func malloc(size: int) -> void * {
 	return HeapAlloc(heap, 0, size);
 }
 
-func free(ptr: int *) -> void {
+func free(ptr: void *) -> void {
 	assert(ptr  != NULL);
 	assert(heap != NULL);
 	

@@ -121,16 +121,12 @@ static void context_decl_var(Context * ctx, const char * name) {
 	var->offset = -ctx->current_scope->stack_frame->curr_var_offset;
 }
 
-static Variable const * context_get_variable_offset(Context * ctx, const char * name, char * address, int address_size) {
-	Variable const * var = scope_get_variable(ctx->current_scope, name);
-
+static void variable_get_address(Variable const * var, char * address, int address_size) {
 	if (var->is_global) {
-		sprintf_s(address, address_size, "REL %s", name); // Globals by name
+		sprintf_s(address, address_size, "REL %s", var->name); // Globals by name
 	} else {
 		sprintf_s(address, address_size, "rbp + %i", var->offset); // Locals / Arguments relative to stack frame pointer
 	}
-
-	return var;
 }
 
 static AST_Decl_Func * context_get_function_decl(Context * ctx, char const * name) {
@@ -375,8 +371,10 @@ static Result codegen_expression_var(Context * ctx, AST_Expression const * expr)
 	assert(expr->expr_type == AST_EXPRESSION_VAR);
 
 	char     const * var_name = expr->expr_var.name;
-	char             var_address[32];
-	Variable const * var = context_get_variable_offset(ctx, var_name, var_address, sizeof(var_address));
+	Variable const * var = scope_get_variable(ctx->current_scope, var_name);
+
+	char var_address[32];
+	variable_get_address(var, var_address, sizeof(var_address));
 
 	Result result;
 	result.reg = context_reg_request(ctx);
@@ -724,9 +722,11 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 	if (operator == TOKEN_OPERATOR_BITWISE_AND) {
 		if (operand->expr_type != AST_EXPRESSION_VAR) abort(); // Can only take address of variable
 		
-		char     const * var_name   = operand->expr_var.name;
-		char             var_address[32];
-		Variable const * var = context_get_variable_offset(ctx, var_name, var_address, sizeof(var_address));
+		char     const * var_name = operand->expr_var.name;
+		Variable const * var = scope_get_variable(ctx->current_scope, var_name);
+		
+		char var_address[32];
+		variable_get_address(var, var_address, sizeof(var_address));
 
 		result.reg  = context_reg_request(ctx);
 		result.type = make_type_pointer(var->type);
@@ -976,8 +976,10 @@ static void codegen_statement_decl_var(Context * ctx, AST_Statement const * stat
 			context_add_global(ctx, var_name, 0);
 		}
 	} else {
-		char             var_address[32];
-		Variable const * var = context_get_variable_offset(ctx, var_name, var_address, sizeof(var_address));
+		Variable const * var = scope_get_variable(ctx->current_scope, var_name);
+
+		char var_address[32];
+		variable_get_address(var, var_address, sizeof(var_address));
 
 		int type_size = type_get_size(var->type);
 
