@@ -78,5 +78,5 @@ func main() -> int {
 	*(mem2 + 6) = 0;
 	*(mem2 + 7) = 0;
 
-	return *mem2; // 0x04030201 (little endian) = 67305985
+	return *(cast(int *) mem2); // 0x04030201 (little endian) = 67305985
 }

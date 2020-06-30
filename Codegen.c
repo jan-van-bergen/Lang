@@ -743,8 +743,11 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 			context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS); // Reset if this flag was previously set
 		} else {
 			int type_size = type_get_size(result.type);
-
-			context_emit_code(ctx, "mov %s, QWORD [%s]\n", get_reg_name_scratch(result.reg, 8), get_reg_name_scratch(result.reg, 8));
+			if (type_size < 8) {
+				context_emit_code(ctx, "movsx %s, %s [%s]\n", get_reg_name_scratch(result.reg, 8), get_word_name(type_size), get_reg_name_scratch(result.reg, 8));
+			} else {
+				context_emit_code(ctx, "mov %s, QWORD [%s]\n", get_reg_name_scratch(result.reg, 8), get_reg_name_scratch(result.reg, 8));
+			}
 		}
 
 		return result;

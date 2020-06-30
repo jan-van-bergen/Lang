@@ -178,7 +178,7 @@ strlen:
     mov rbx, QWORD [rbp + 16] ; get value of str
     movsx r10, DWORD [rbp + -4] ; get value of len
     add rbx, r10
-    mov rbx, QWORD [rbx]
+    movsx rbx, BYTE [rbx]
     mov r10, 0
     cmp rbx, r10
     je L10
@@ -330,7 +330,7 @@ main:
     mov r10, 0
     mov BYTE [rbx], r10b
     mov rbx, QWORD [rbp + -20] ; get value of mem2
-    mov rbx, QWORD [rbx]
+    movsx rbx, DWORD [rbx]
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
     xor rax, rax ; Default return value 0

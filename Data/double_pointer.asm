@@ -20,7 +20,7 @@ abc:
     mov QWORD [rbx], r10
     mov rbx, QWORD [rbp + -24] ; get value of ptr_ptr
     mov rbx, QWORD [rbx]
-    mov rbx, QWORD [rbx]
+    movsx rbx, DWORD [rbx]
     mov rax, rbx ; return via rax
     jmp L_function_abc_exit
     xor rax, rax ; Default return value 0

@@ -115,7 +115,7 @@ print_num:
         mov rbx, QWORD [rbp + -8] ; get value of num_str
         movsx r10, DWORD [rbp + -17] ; get value of i
         add rbx, r10
-        mov rbx, QWORD [rbx]
+        movsx rbx, BYTE [rbx]
         mov BYTE [rbp + -18], bl; initialize tmp
         mov rbx, QWORD [rbp + -8] ; get value of num_str
         movsx r10, DWORD [rbp + -12] ; get value of idx
@@ -124,7 +124,7 @@ print_num:
         sub rbx, r10
         mov r10, 1
         sub rbx, r10
-        mov rbx, QWORD [rbx]
+        movsx rbx, BYTE [rbx]
         mov r10, QWORD [rbp + -8] ; get value of num_str
         movsx r11, DWORD [rbp + -17] ; get value of i
         add r10, r11
