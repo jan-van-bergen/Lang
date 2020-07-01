@@ -44,12 +44,12 @@ typedef struct AST_Expression {
 		} expr_struct_member;
 
 		struct Cast {
-			Type * new_type;
+			Type new_type;
 			struct AST_Expression * expr;
 		} expr_cast;
 
 		struct Sizeof {
-			Type * type;
+			Type type;
 		} expr_sizeof;
 
 		struct Op_Bin {
@@ -98,7 +98,7 @@ typedef enum AST_Statement_Type {
 
 typedef struct AST_Def_Arg {
 	char const * name;
-	Type       * type;
+	Type         type;
 	struct AST_Def_Arg * next;
 } AST_Def_Arg;
 
@@ -130,7 +130,7 @@ typedef struct AST_Statement {
 
 		struct Def_Var {
 			char const * name;
-			Type       * type;
+			Type         type;
 
 			struct AST_Expression * assign;
 		} stat_def_var;

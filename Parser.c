@@ -145,45 +145,41 @@ static bool parser_match_program(Parser const * parser) {
 	return parser_match_statement(parser);
 }
 
-static Type * parser_parse_type(Parser * parser) {
-	Type * type = malloc(sizeof(Type));
-	type->ptr = NULL;
+static Type parser_parse_type(Parser * parser) {
+	Type type;
+	type.ptr_level = 0;
 
 	char const * identifier = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
 
 	if (strcmp(identifier, "void") == 0) {
-		type->type = TYPE_VOID;
+		type.type = TYPE_VOID;
 	} else if (strcmp(identifier, "i8") == 0) {
-		type->type = TYPE_I8;
+		type.type = TYPE_I8;
 	} else if (strcmp(identifier, "i16") == 0) {
-		type->type = TYPE_I16;
+		type.type = TYPE_I16;
 	} else if (strcmp(identifier, "i32") == 0 || strcmp(identifier, "int") == 0) {
-		type->type = TYPE_I32;
+		type.type = TYPE_I32;
 	} else if (strcmp(identifier, "i64") == 0) {
-		type->type = TYPE_I64;
+		type.type = TYPE_I64;
 	} else if (strcmp(identifier, "u8") == 0 || strcmp(identifier, "char") == 0) {
-		type->type = TYPE_U8;
+		type.type = TYPE_U8;
 	} else if (strcmp(identifier, "u16") == 0) {
-		type->type = TYPE_U16;
+		type.type = TYPE_U16;
 	} else if (strcmp(identifier, "u32") == 0) {
-		type->type = TYPE_U32;
+		type.type = TYPE_U32;
 	} else if (strcmp(identifier, "u64") == 0) {
-		type->type = TYPE_U64;
+		type.type = TYPE_U64;
 	} else if (strcmp(identifier, "bool") == 0) {
-		type->type = TYPE_BOOL;
+		type.type = TYPE_BOOL;
 	} else {
-		type->type        = TYPE_STRUCT;
-		type->struct_name = identifier;
+		type.type        = TYPE_STRUCT;
+		type.struct_name = identifier;
 	}
 
 	while (parser_match(parser, TOKEN_OPERATOR_MULTIPLY)) {
 		parser_advance(parser);
 
-		Type * type_ptr = malloc(sizeof(Type));
-		type_ptr->type = TYPE_POINTER;
-		type_ptr->ptr = type;
-
-		type = type_ptr;
+		type.ptr_level++;
 	}
 
 	return type;
@@ -617,7 +613,7 @@ static AST_Statement * parser_parse_statement_def_var(Parser * parser) {
 
 	parser_match_and_advance(parser, TOKEN_SEMICOLON);
 
-	scope_add_var(parser->current_scope, var_name, def->stat_def_var.type);
+	scope_add_var(parser->current_scope, var_name, &def->stat_def_var.type);
 
 	return def;
 }
@@ -700,7 +696,7 @@ static AST_Statement * parser_parse_statement_def_func(Parser * parser) {
 	
 	AST_Def_Arg * arg = func->stat_def_func.function_def->args;
 	while (arg) {
-		scope_add_arg(func->stat_def_func.scope_args, arg->name, arg->type);
+		scope_add_arg(func->stat_def_func.scope_args, arg->name, &arg->type);
 		
 		arg = arg->next;
 	}
@@ -729,11 +725,11 @@ static AST_Statement * parser_parse_statement_def_struct(Parser * parser) {
 
 		parser_match_and_advance(parser, TOKEN_COLON);
 
-		Type * member_type = parser_parse_type(parser);
+		Type member_type = parser_parse_type(parser);
 
 		parser_match_and_advance(parser, TOKEN_SEMICOLON);
 
-		scope_add_var(struct_def->member_scope, member_name, member_type);
+		scope_add_var(struct_def->member_scope, member_name, &member_type);
 	}
 	
 	align(&struct_def->members->size, struct_def->members->align);

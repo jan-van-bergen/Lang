@@ -17,7 +17,7 @@ static int variable_buffer_add_variable(Variable_Buffer * buf, char const * name
 	
 	Variable * var = &buf->vars[index];
 	var->name = name;
-	var->type = type;
+	var->type = *type;
 	var->is_global = is_global;
 
 	return index;
@@ -72,7 +72,7 @@ bool scope_is_global(Scope const * scope) {
 	return scope->prev == NULL;
 }
 
-void scope_add_arg(Scope * scope, char const * name, Type * type) {
+void scope_add_arg(Scope * scope, char const * name, Type const * type) {
 	assert(!scope_is_global(scope));
 
 	int index = variable_buffer_add_variable(scope->variable_buffer, name, type, false);
@@ -86,8 +86,8 @@ void scope_add_arg(Scope * scope, char const * name, Type * type) {
 
 	Variable * arg = &scope->variable_buffer->vars[index];
 	
-	int arg_size  = type_get_size (arg->type, scope);
-	int arg_align = type_get_align(arg->type, scope);
+	int arg_size  = type_get_size (&arg->type, scope);
+	int arg_align = type_get_align(&arg->type, scope);
 
 	if (scope->indices_len <= 4) { // First 4 arguments will be put into shadow space by callee
 		arg_size  = 8;
@@ -104,7 +104,7 @@ void scope_add_arg(Scope * scope, char const * name, Type * type) {
 	}
 }
 
-void scope_add_var(Scope * scope, char const * name, Type * type) {
+void scope_add_var(Scope * scope, char const * name, Type const * type) {
 	int index = variable_buffer_add_variable(scope->variable_buffer, name, type, scope_is_global(scope));
 
 	if (scope->indices_len == scope->indices_cap) {
@@ -116,8 +116,8 @@ void scope_add_var(Scope * scope, char const * name, Type * type) {
 
 	Variable * var = &scope->variable_buffer->vars[index];
 
-	int var_size  = type_get_size (var->type, scope);
-	int var_align = type_get_align(var->type, scope);
+	int var_size  = type_get_size (&var->type, scope);
+	int var_align = type_get_align(&var->type, scope);
 
 	align(&scope->variable_buffer->size, var_align);
 

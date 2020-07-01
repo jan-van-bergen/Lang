@@ -9,7 +9,7 @@
 #define RUN_TESTS 1
 
 int main(int arg_count, char const * args[]) {
-	char const * filename = "Data\\pointer_arith.lang";
+	char const * filename = "Data\\cast.lang";
 	if (arg_count > 1) {
 		filename = args[1];
 	}

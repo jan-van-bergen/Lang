@@ -5,7 +5,7 @@
 
 typedef struct Variable {
 	char const * name;
-	Type       * type;
+	Type         type;
 
 	bool is_global;
 
@@ -37,7 +37,7 @@ typedef struct Struct_Def {
 
 typedef struct Function_Def {
 	char const * name;
-	Type       * return_type;
+	Type         return_type;
 
 	int                   arg_count;
 	struct AST_Def_Arg  * args;
@@ -66,8 +66,8 @@ void    free_scope(Scope * scope);
 
 bool scope_is_global(Scope const * scope);
 
-void scope_add_arg(Scope * scope, char const * name, Type * type);
-void scope_add_var(Scope * scope, char const * name, Type * type);
+void scope_add_arg(Scope * scope, char const * name, Type const * type);
+void scope_add_var(Scope * scope, char const * name, Type const * type);
 
 Struct_Def   * scope_add_struct_def  (Scope * scope);
 Function_Def * scope_add_function_def(Scope * scope);

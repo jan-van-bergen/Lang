@@ -1,5 +1,6 @@
 #include "Type.h"
 
+#include <assert.h>
 #include <string.h>
 
 #include <stdio.h>
@@ -7,40 +8,40 @@
 
 #include "Scope.h"
 
-static Type type_void = { TYPE_VOID, NULL };
+Type make_type_void() { return (Type){ TYPE_VOID, 0 }; }
 
-static Type type_i8   = { TYPE_I8,  NULL };
-static Type type_i16  = { TYPE_I16, NULL };
-static Type type_i32  = { TYPE_I32, NULL };
-static Type type_i64  = { TYPE_I64, NULL };
+Type make_type_i8 () { return (Type){ TYPE_I8,  0 }; }
+Type make_type_i16() { return (Type){ TYPE_I16, 0 }; }
+Type make_type_i32() { return (Type){ TYPE_I32, 0 }; }
+Type make_type_i64() { return (Type){ TYPE_I64, 0 }; }
 
-static Type type_u8   = { TYPE_U8,  NULL };
-static Type type_u16  = { TYPE_U16, NULL };
-static Type type_u32  = { TYPE_U32, NULL };
-static Type type_u64  = { TYPE_U64, NULL };
+Type make_type_u8 () { return (Type){ TYPE_U8,  0 }; }
+Type make_type_u16() { return (Type){ TYPE_U16, 0 }; }
+Type make_type_u32() { return (Type){ TYPE_U32, 0 }; }
+Type make_type_u64() { return (Type){ TYPE_U64, 0 }; }
 
-static Type type_bool = { TYPE_BOOL, NULL };
+Type make_type_bool() { return (Type){ TYPE_BOOL, 0 }; }
 
-Type * make_type_void() { return &type_void; }
-
-Type * make_type_i8 () { return &type_i8; }
-Type * make_type_i16() { return &type_i16; }
-Type * make_type_i32() { return &type_i32; }
-Type * make_type_i64() { return &type_i64; }
-
-Type * make_type_u8 () { return &type_u8; }
-Type * make_type_u16() { return &type_u16; }
-Type * make_type_u32() { return &type_u32; }
-Type * make_type_u64() { return &type_u64; }
-
-Type * make_type_bool() { return &type_bool; }
-
-Type * make_type_pointer(Type const * type) {
-	Type * ptr_type = malloc(sizeof(Type));
-	ptr_type->type = TYPE_POINTER;
-	ptr_type->ptr  = type;
+Type make_type_pointer(Type const * type) {
+	Type ptr_type;
+	ptr_type.type      = type->type;
+	ptr_type.ptr_level = type->ptr_level + 1;
 
 	return ptr_type;
+}
+
+Type make_type_deref(Type const * type) {
+	assert(type_is_pointer(type));
+
+	Type deref_type;
+	deref_type.type      = type->type;
+	deref_type.ptr_level = type->ptr_level - 1;
+
+	return deref_type;
+}
+
+Type make_type_str() {
+	return (Type){ TYPE_U8, 1 };
 }
 
 void type_to_string(Type const * type, char * string, int string_size) {
@@ -59,20 +60,23 @@ void type_to_string(Type const * type, char * string, int string_size) {
 
 		case TYPE_BOOL: sprintf_s(string, string_size, "bool"); break;
 
-		case TYPE_POINTER: {
-			type_to_string(type->ptr, string, string_size);
-			strcat_s(string, string_size, " *");
-
-			break;
-		}
-
 		case TYPE_STRUCT: sprintf_s(string, string_size, "%s", type->struct_name); break;
 
 		default: abort();
 	}
+
+	int ptr_level = type->ptr_level;
+
+	while (ptr_level > 0) {
+		strcat_s(string, string_size, "*");
+
+		ptr_level--;
+	}
 }
 
 int type_get_size(Type const * type, Scope * scope) {
+	if (type_is_pointer(type)) return 8;
+
 	switch (type->type) {
 		case TYPE_VOID: abort(); // Invalid!
 
@@ -87,8 +91,6 @@ int type_get_size(Type const * type, Scope * scope) {
 		case TYPE_U64: return 8;
 
 		case TYPE_BOOL: return 1;
-
-		case TYPE_POINTER: return 8;
 
 		case TYPE_STRUCT: return scope_get_struct_def(scope, type->struct_name)->members->size;
 
@@ -97,6 +99,8 @@ int type_get_size(Type const * type, Scope * scope) {
 }
 
 int type_get_align(Type const * type, Scope * scope) {
+	if (type_is_pointer(type)) return 8;
+
 	switch (type->type) {
 		case TYPE_VOID: abort(); // Invalid!
 
@@ -111,8 +115,6 @@ int type_get_align(Type const * type, Scope * scope) {
 		case TYPE_U64: return 8;
 
 		case TYPE_BOOL: return 1;
-
-		case TYPE_POINTER: return 8;
 
 		case TYPE_STRUCT: return scope_get_struct_def(scope, type->struct_name)->members->align;
 
@@ -129,15 +131,15 @@ void align(int * address, int alignment) {
 
 
 bool type_is_void(Type const * type) {
-	return type->type == TYPE_VOID;
+	return !type_is_pointer(type) && type->type == TYPE_VOID;
 }
 
 bool type_is_signed_integral(Type const * type) {
-	return type->type == TYPE_I8 || type->type == TYPE_I16 || type->type == TYPE_I32 || type->type == TYPE_I64;
+	return !type_is_pointer(type) && (type->type == TYPE_I8 || type->type == TYPE_I16 || type->type == TYPE_I32 || type->type == TYPE_I64);
 }
 
 bool type_is_unsigned_integral(Type const * type) {
-	return type->type == TYPE_U8 || type->type == TYPE_U16 || type->type == TYPE_U32 || type->type == TYPE_U64;
+	return !type_is_pointer(type) && (type->type == TYPE_U8 || type->type == TYPE_U16 || type->type == TYPE_U32 || type->type == TYPE_U64);
 }
 
 bool type_is_integral(Type const * type) {
@@ -145,19 +147,19 @@ bool type_is_integral(Type const * type) {
 }	
 
 bool type_is_boolean(Type const * type) {
-	return type->type == TYPE_BOOL;
+	return !type_is_pointer(type) && type->type == TYPE_BOOL;
 }
 
 bool type_is_pointer(Type const * type) {
-	return type->type == TYPE_POINTER;
+	return type->ptr_level > 0;
 }
 
 bool type_is_struct(Type const * type) {
-	return type->type == TYPE_STRUCT;
+	return !type_is_pointer(type) && type->type == TYPE_STRUCT;
 }
 
 bool type_is_void_pointer(Type const * type) {
-	return type_is_pointer(type) && type_is_void(type->ptr);
+	return type_is_pointer(type) && type->type == TYPE_VOID;
 }
 
 bool type_is_primitive(Type const * type) {
@@ -168,8 +170,12 @@ bool type_is_primitive(Type const * type) {
 bool types_equal(Type const * a, Type const * b) {
 	if (a->type != b->type) return false;
 
-	if (a->type == TYPE_POINTER) {
-		return types_equal(a->ptr, b->ptr);
+	if (type_is_pointer(a)) {
+		return a->ptr_level == b->ptr_level;
+	}
+
+	if (type_is_struct(a)) {
+		return strcmp(a->struct_name, b->struct_name) == 0;
 	}
 
 	return true;
@@ -178,33 +184,33 @@ bool types_equal(Type const * a, Type const * b) {
 bool types_unifiable(Type const * a, Type const * b) {
 	if (type_is_integral(a) && type_is_integral(b)) return true;
 
-	if (a->type == TYPE_POINTER && b->type == TYPE_POINTER) {
+	if (type_is_pointer(a) && type_is_pointer(b)) {
 		// If either type is a void star and the other is a pointer as well, the types are considered equal
-		if (a->ptr->type == TYPE_VOID || b->ptr->type == TYPE_VOID) return true;
+		if ((a->type == TYPE_VOID || b->type == TYPE_VOID) && a->ptr_level == b->ptr_level) return true;
 
-		return types_equal(a->ptr, b->ptr);
+		return types_equal(a, b);
 	}
 
-	if (a->type == TYPE_STRUCT && b->type == TYPE_STRUCT) {
+	if (type_is_struct(a) && type_is_struct(b)) {
 		return strcmp(a->struct_name, b->struct_name) == 0;
 	}
 
 	return a->type == b->type;
 }
 
-Type * types_unify(Type const * a, Type const * b, Scope * scope) {
-	if (types_equal(a, b)) return a;
+Type types_unify(Type const * a, Type const * b, Scope * scope) {
+	if (types_equal(a, b)) return *a;
 
 	if (type_is_integral(a) && type_is_integral(b)) {
 		int size_a = type_get_size(a, scope);
 		int size_b = type_get_size(b, scope);
 
-		return size_a >= size_b ? a : b;
+		return size_a >= size_b ? *a : *b;
 	}
 
 	if (type_is_pointer(a) && type_is_pointer(b)) {
-		if (type_is_void_pointer(a)) return b;
-		if (type_is_void_pointer(b)) return a;
+		if (type_is_void_pointer(a)) return *b;
+		if (type_is_void_pointer(b)) return *a;
 	}
 
 	char str_type_a[128];

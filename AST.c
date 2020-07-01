@@ -12,7 +12,7 @@ static void print_indent(int level) {
 static void print_def_args(AST_Def_Arg const * arg) {
 	if (arg) {
 		char str_type[128];
-		type_to_string(arg->type, str_type, sizeof(str_type));
+		type_to_string(&arg->type, str_type, sizeof(str_type));
 
 		printf("%s: %s", arg->name, str_type);
 
@@ -61,7 +61,7 @@ static void print_expression(AST_Expression const * expr) {
 
 		case AST_EXPRESSION_CAST: {
 			char str_type[128];
-			type_to_string(expr->expr_cast.new_type, str_type, sizeof(str_type));
+			type_to_string(&expr->expr_cast.new_type, str_type, sizeof(str_type));
 
 			printf("cast(%s) ", str_type);
 			print_expression(expr->expr_cast.expr);
@@ -152,7 +152,7 @@ static void print_statement(AST_Statement const * stat, int indent) {
 
 		case AST_STATEMENT_DEF_VAR: {
 			char str_type[128];
-			type_to_string(stat->stat_def_var.type, str_type, sizeof(str_type));
+			type_to_string(&stat->stat_def_var.type, str_type, sizeof(str_type));
 
 			print_indent(indent);
 			printf("let %s: %s;\n", stat->stat_def_var.name, str_type);
@@ -169,7 +169,7 @@ static void print_statement(AST_Statement const * stat, int indent) {
 			}
 
 			char str_type[128];
-			type_to_string(stat->stat_def_func.function_def->return_type, str_type, sizeof(str_type));
+			type_to_string(&stat->stat_def_func.function_def->return_type, str_type, sizeof(str_type));
 
 			printf(") -> %s {\n", str_type);
 
@@ -266,7 +266,6 @@ static void ast_free_def_args(AST_Def_Arg * arg) {
 	ast_free_def_args(arg->next);
 
 	free(arg->name);
-	free(arg->type);
 	free(arg);
 }
 
@@ -343,7 +342,6 @@ void ast_free_statement(AST_Statement * stat) {
 
 		case AST_STATEMENT_DEF_VAR: {
 			free(stat->stat_def_var.name);
-			free(stat->stat_def_var.type);
 
 			break;
 		}

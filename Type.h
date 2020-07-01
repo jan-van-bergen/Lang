@@ -16,38 +16,38 @@ typedef enum Type_Type {
 
 	TYPE_BOOL,
 
-	TYPE_POINTER,
-
 	TYPE_STRUCT
 } Type_Type;
 
 typedef struct Type {
 	Type_Type type;
 
-	union {
-		struct Type * ptr;        // If type is a TYPE_POINTER
+	int ptr_level; // Number of pointer indirections, 0 means not a pointer
 
+	union {
 		char const * struct_name; // If type is a TYPE_STRUCT
 	};
 } Type;
 
 
-Type * make_type_void();
+Type make_type_void();
 
-Type * make_type_i8 ();
-Type * make_type_i16();
-Type * make_type_i32();
-Type * make_type_i64();
+Type make_type_i8 ();
+Type make_type_i16();
+Type make_type_i32();
+Type make_type_i64();
 
-Type * make_type_u8 ();
-Type * make_type_u16();
-Type * make_type_u32();
-Type * make_type_u64();
+Type make_type_u8 ();
+Type make_type_u16();
+Type make_type_u32();
+Type make_type_u64();
 
-Type * make_type_bool();
+Type make_type_bool();
 
-Type * make_type_pointer(Type const * type);
+Type make_type_pointer(Type const * type);
+Type make_type_deref  (Type const * type);
 
+Type make_type_str(); // char *
 
 void type_to_string(Type const * type, char * string, int string_size);
 
@@ -79,5 +79,5 @@ bool type_is_primitive(Type const * type);
 bool types_equal(Type const * a, Type const * b);
 
 
-bool   types_unifiable(Type const * a, Type const * b);
-Type * types_unify    (Type const * a, Type const * b, struct Scope * scope);
+bool types_unifiable(Type const * a, Type const * b);
+Type types_unify    (Type const * a, Type const * b, struct Scope * scope);
