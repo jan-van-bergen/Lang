@@ -6,7 +6,7 @@ SECTION .code
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    sub rsp, 16 ; reserve stack space for locals
+    sub rsp, 16 ; reserve stack space for 2 locals
     mov rbx, 321
     mov r10, 43
     mov rax, rbx

@@ -9,7 +9,7 @@ static void print_indent(int level) {
 	}
 }
 
-static void print_decl_args(AST_Decl_Arg const * arg) {
+static void print_def_args(AST_Def_Arg const * arg) {
 	if (arg) {
 		char str_type[128];
 		type_to_string(arg->type, str_type, sizeof(str_type));
@@ -18,7 +18,7 @@ static void print_decl_args(AST_Decl_Arg const * arg) {
 
 		if (arg->next) {
 			printf(", ");
-			print_decl_args(arg->next);
+			print_def_args(arg->next);
 		}
 	}
 }
@@ -150,30 +150,30 @@ static void print_statement(AST_Statement const * stat, int indent) {
 			break;
 		}
 
-		case AST_STATEMENT_DECL_VAR: {
+		case AST_STATEMENT_DEF_VAR: {
 			char str_type[128];
-			type_to_string(stat->stat_decl_var.type, str_type, sizeof(str_type));
+			type_to_string(stat->stat_def_var.type, str_type, sizeof(str_type));
 
 			print_indent(indent);
-			printf("let %s: %s;\n", stat->stat_decl_var.name, str_type);
+			printf("let %s: %s;\n", stat->stat_def_var.name, str_type);
 
 			break;
 		}
 
-		case AST_STATEMENT_DECL_FUNC: {
+		case AST_STATEMENT_DEF_FUNC: {
 			print_indent(indent);
-			printf("func %s(", stat->stat_decl_func.name);
+			printf("func %s(", stat->stat_def_func.name);
 
-			if (stat->stat_decl_func.args) {
-				print_decl_args(stat->stat_decl_func.args);
+			if (stat->stat_def_func.args) {
+				print_def_args(stat->stat_def_func.args);
 			}
 
 			char str_type[128];
-			type_to_string(stat->stat_decl_func.return_type, str_type, sizeof(str_type));
+			type_to_string(stat->stat_def_func.return_type, str_type, sizeof(str_type));
 
 			printf(") -> %s {\n", str_type);
 
-			print_statement(stat->stat_decl_func.body, indent + 1);
+			print_statement(stat->stat_def_func.body, indent + 1);
 
 			print_indent(indent);
 			printf("}\n");
@@ -260,10 +260,10 @@ void ast_pretty_print(AST_Statement const * program) {
 
 static void ast_free_expression(AST_Expression * expr);
 
-static void ast_free_decl_args(AST_Decl_Arg * arg) {
+static void ast_free_def_args(AST_Def_Arg * arg) {
 	if (arg == NULL) return;
 
-	ast_free_decl_args(arg->next);
+	ast_free_def_args(arg->next);
 
 	free(arg->name);
 	free(arg->type);
@@ -341,19 +341,19 @@ void ast_free_statement(AST_Statement * stat) {
 
 		case AST_STATEMENT_EXPR: ast_free_expression(stat->stat_expr.expr); break;
 
-		case AST_STATEMENT_DECL_VAR: {
-			free(stat->stat_decl_var.name);
-			free(stat->stat_decl_var.type);
+		case AST_STATEMENT_DEF_VAR: {
+			free(stat->stat_def_var.name);
+			free(stat->stat_def_var.type);
 
 			break;
 		}
 
-		case AST_STATEMENT_DECL_FUNC: {
-			free(stat->stat_decl_func.name);
-			//free(stat->stat_decl_func.return_type);
+		case AST_STATEMENT_DEF_FUNC: {
+			free(stat->stat_def_func.name);
+			//free(stat->stat_def_func.return_type);
 
-			ast_free_decl_args(stat->stat_decl_func.args);
-			ast_free_statement(stat->stat_decl_func.body);
+			ast_free_def_args(stat->stat_def_func.args);
+			ast_free_statement(stat->stat_def_func.body);
 
 			break;
 		}

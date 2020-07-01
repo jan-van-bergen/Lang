@@ -17,13 +17,13 @@ void parser_init(Parser * parser, Token const * tokens, int token_count) {
 
 	parser->functions_len = 0;
 	parser->functions_cap = 16;
-	parser->functions = malloc(parser->functions_cap * sizeof(AST_Decl_Func *));
+	parser->functions = malloc(parser->functions_cap * sizeof(AST_Def_Func *));
 }
 
-static void parser_add_function_type(Parser * parser, AST_Decl_Func * function) {
+static void parser_add_function_type(Parser * parser, AST_Def_Func * function) {
 	if (parser->functions_len == parser->functions_cap) {
 		parser->functions_cap *= 2;
-		parser->functions = realloc(parser->functions, parser->functions_cap * sizeof(AST_Decl_Func *));
+		parser->functions = realloc(parser->functions, parser->functions_cap * sizeof(AST_Def_Func *));
 	}
 
 	parser->functions[parser->functions_len++] = function;
@@ -99,15 +99,15 @@ static bool parser_match_statement_expr(Parser const * parser) {
 	return parser_match_expression(parser);
 }
 
-static bool parser_match_statement_decl_var(Parser const * parser) {
+static bool parser_match_statement_def_var(Parser const * parser) {
 	return parser_match(parser, TOKEN_KEYWORD_LET);
 }
 
-static bool parser_match_statement_decl_func(Parser const * parser) {
+static bool parser_match_statement_def_func(Parser const * parser) {
 	return parser_match(parser, TOKEN_KEYWORD_FUNC);
 }
 
-static bool parser_match_statement_decl_struct(Parser const * parser) {
+static bool parser_match_statement_def_struct(Parser const * parser) {
 	return parser_match(parser, TOKEN_KEYWORD_STRUCT);
 }
 
@@ -142,9 +142,9 @@ static bool parser_match_statement_block(Parser const * parser) {
 static bool parser_match_statement(Parser const * parser) {
 	return
 		parser_match_statement_expr(parser) ||
-		parser_match_statement_decl_var   (parser) ||
-		parser_match_statement_decl_func  (parser) ||
-		parser_match_statement_decl_struct(parser) ||
+		parser_match_statement_def_var   (parser) ||
+		parser_match_statement_def_func  (parser) ||
+		parser_match_statement_def_struct(parser) ||
 		parser_match_statement_extern(parser) ||
 		parser_match_statement_if   (parser) ||
 		parser_match_statement_while(parser) ||
@@ -596,17 +596,17 @@ static AST_Statement * parser_parse_statement_expr(Parser * parser) {
 	return stat;
 }
 
-static AST_Statement * parser_parse_statement_decl_var(Parser * parser) {
+static AST_Statement * parser_parse_statement_def_var(Parser * parser) {
 	parser_match_and_advance(parser, TOKEN_KEYWORD_LET);
 
-	AST_Statement * decl = malloc(sizeof(AST_Statement));
-	decl->type = AST_STATEMENT_DECL_VAR;
+	AST_Statement * def = malloc(sizeof(AST_Statement));
+	def->type = AST_STATEMENT_DEF_VAR;
 
 	char const * var_name =  parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
 
-	decl->stat_decl_var.name = var_name;
+	def->stat_def_var.name = var_name;
 	parser_match_and_advance(parser, TOKEN_COLON);
-	decl->stat_decl_var.type = parser_parse_type(parser);
+	def->stat_def_var.type = parser_parse_type(parser);
 
 	if (parser_match(parser, TOKEN_ASSIGN)) {
 		parser_advance(parser);
@@ -623,20 +623,20 @@ static AST_Statement * parser_parse_statement_decl_var(Parser * parser) {
 		assign->expr_op_bin.expr_left  = lhs;
 		assign->expr_op_bin.expr_right = rhs;
 
-		decl->stat_decl_var.assign = assign;
+		def->stat_def_var.assign = assign;
 	} else {
-		decl->stat_decl_var.assign = NULL;
+		def->stat_def_var.assign = NULL;
 	}
 
 	parser_match_and_advance(parser, TOKEN_SEMICOLON);
 
-	scope_add_var(parser->current_scope, var_name, decl->stat_decl_var.type);
+	scope_add_var(parser->current_scope, var_name, def->stat_def_var.type);
 
-	return decl;
+	return def;
 }
 
-static AST_Decl_Arg * parser_parse_decl_arg(Parser * parser, int * arg_count) {
-	AST_Decl_Arg * arg = malloc(sizeof(AST_Decl_Arg));
+static AST_Def_Arg * parser_parse_def_arg(Parser * parser, int * arg_count) {
+	AST_Def_Arg * arg = malloc(sizeof(AST_Def_Arg));
 
 	arg->name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
 	parser_match_and_advance(parser, TOKEN_COLON);
@@ -648,23 +648,23 @@ static AST_Decl_Arg * parser_parse_decl_arg(Parser * parser, int * arg_count) {
 	return arg;
 }
 
-static AST_Decl_Arg * parser_parse_decl_args(Parser * parser, int * arg_count) {
-	AST_Decl_Arg * args_head = NULL;
+static AST_Def_Arg * parser_parse_def_args(Parser * parser, int * arg_count) {
+	AST_Def_Arg * args_head = NULL;
 
 	*arg_count = 0;
 
 	parser_match_and_advance(parser, TOKEN_PARENTESES_OPEN);
 	
 	if (parser_match(parser, TOKEN_IDENTIFIER)) {
-		args_head = parser_parse_decl_arg(parser, arg_count);
+		args_head = parser_parse_def_arg(parser, arg_count);
 	}
 	
-	AST_Decl_Arg * args_curr = args_head;
+	AST_Def_Arg * args_curr = args_head;
 
 	while (parser_match(parser, TOKEN_COMMA)) {
 		parser_advance(parser);
 
-		AST_Decl_Arg * arg = parser_parse_decl_arg(parser, arg_count);
+		AST_Def_Arg * arg = parser_parse_def_arg(parser, arg_count);
 		args_curr->next = arg;
 		args_curr       = arg;
 	}
@@ -674,46 +674,46 @@ static AST_Decl_Arg * parser_parse_decl_args(Parser * parser, int * arg_count) {
 	return args_head;
 }
 
-static AST_Statement * parser_parse_statement_decl_func(Parser * parser) {
+static AST_Statement * parser_parse_statement_def_func(Parser * parser) {
 	parser_match_and_advance(parser, TOKEN_KEYWORD_FUNC);
 
 	char const * func_name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
 
 	AST_Statement * func = malloc(sizeof(AST_Statement));
-	func->type = AST_STATEMENT_DECL_FUNC;
+	func->type = AST_STATEMENT_DEF_FUNC;
 
-	func->stat_decl_func.buffer_args = make_variable_buffer(func_name);
-	func->stat_decl_func.buffer_vars = make_variable_buffer(func_name);
+	func->stat_def_func.buffer_args = make_variable_buffer(func_name);
+	func->stat_def_func.buffer_vars = make_variable_buffer(func_name);
 
-	func->stat_decl_func.scope_args = make_scope(func->stat_decl_func.buffer_args);
-	func->stat_decl_func.scope_args->prev = parser->current_scope;
-	func->stat_decl_func.scope_args->variable_buffer->size = 16; // Bias by 16 to account for return address and RBP on stack
+	func->stat_def_func.scope_args = make_scope(func->stat_def_func.buffer_args);
+	func->stat_def_func.scope_args->prev = parser->current_scope;
+	func->stat_def_func.scope_args->variable_buffer->size = 16; // Bias by 16 to account for return address and RBP on stack
 
 	Variable_Buffer * prev_variable_buffer = parser->current_variable_buffer;
 
-	parser->current_variable_buffer = func->stat_decl_func.buffer_args;
-	parser->current_scope           = func->stat_decl_func.scope_args;
+	parser->current_variable_buffer = func->stat_def_func.buffer_args;
+	parser->current_scope           = func->stat_def_func.scope_args;
 
-	func->stat_decl_func.name = func_name;
-	func->stat_decl_func.args = parser_parse_decl_args(parser, &func->stat_decl_func.arg_count);
+	func->stat_def_func.name = func_name;
+	func->stat_def_func.args = parser_parse_def_args(parser, &func->stat_def_func.arg_count);
 
 	if (parser_match(parser, TOKEN_ARROW)) {
 		parser_advance(parser);
 
-		func->stat_decl_func.return_type = parser_parse_type(parser);
+		func->stat_def_func.return_type = parser_parse_type(parser);
 	} else {
-		func->stat_decl_func.return_type = make_type_void();
+		func->stat_def_func.return_type = make_type_void();
 	}
 
-	parser_add_function_type(parser, &func->stat_decl_func);
+	parser_add_function_type(parser, &func->stat_def_func);
 
-	parser->current_variable_buffer = func->stat_decl_func.buffer_vars;
+	parser->current_variable_buffer = func->stat_def_func.buffer_vars;
 
-	func->stat_decl_func.body = parser_parse_statement_block(parser);
+	func->stat_def_func.body = parser_parse_statement_block(parser);
 	
-	AST_Decl_Arg * arg = func->stat_decl_func.args;
+	AST_Def_Arg * arg = func->stat_def_func.args;
 	while (arg) {
-		scope_add_arg(func->stat_decl_func.scope_args, arg->name, arg->type);
+		scope_add_arg(func->stat_def_func.scope_args, arg->name, arg->type);
 		
 		arg = arg->next;
 	}
@@ -724,7 +724,7 @@ static AST_Statement * parser_parse_statement_decl_func(Parser * parser) {
 	return func;
 }
 
-static AST_Statement * parser_parse_statement_decl_struct(Parser * parser) {
+static AST_Statement * parser_parse_statement_def_struct(Parser * parser) {
 	parser_match_and_advance(parser, TOKEN_KEYWORD_STRUCT);
 
 	char const * name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
@@ -767,7 +767,7 @@ static AST_Statement * parser_parse_statement_extern(Parser * parser) {
 
 	parser_match_and_advance(parser, TOKEN_KEYWORD_EXTERN);
 	decl_extern->stat_extern.name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
-	decl_extern->stat_extern.args = parser_parse_decl_args(parser, &decl_extern->stat_extern.arg_count);
+	decl_extern->stat_extern.args = parser_parse_def_args(parser, &decl_extern->stat_extern.arg_count);
 	
 	if (parser_match(parser, TOKEN_ARROW)) {
 		parser_advance(parser);
@@ -889,12 +889,12 @@ static AST_Statement * parser_parse_statement_block(Parser * parser) {
 static AST_Statement * parser_parse_statement(Parser * parser) {
 	if (parser_match_expression(parser)) {
 		return parser_parse_statement_expr(parser);
-	} else if (parser_match_statement_decl_var(parser)) {
-		return parser_parse_statement_decl_var(parser);
-	} else if (parser_match_statement_decl_func(parser)) {
-		return parser_parse_statement_decl_func(parser);
-	} else if (parser_match_statement_decl_struct(parser)) {
-		return parser_parse_statement_decl_struct(parser);
+	} else if (parser_match_statement_def_var(parser)) {
+		return parser_parse_statement_def_var(parser);
+	} else if (parser_match_statement_def_func(parser)) {
+		return parser_parse_statement_def_func(parser);
+	} else if (parser_match_statement_def_struct(parser)) {
+		return parser_parse_statement_def_struct(parser);
 	} else if (parser_match_statement_extern(parser)) {
 		return parser_parse_statement_extern(parser);
 	} else if (parser_match_statement_if(parser)) {

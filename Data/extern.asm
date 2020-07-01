@@ -12,8 +12,8 @@ EXTERN strlen
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    sub rsp, 16 ; reserve stack space for locals
-    sub rsp, 32 ; reserve space for call arguments
+    sub rsp, 16 ; reserve stack space for 3 locals
+    sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [REL STD_OUTPUT_HANDLE] ; get value of 'STD_OUTPUT_HANDLE'
     mov rcx, rbx ; arg 0
     call GetStdHandle
@@ -21,7 +21,7 @@ main:
     mov rbx, rax ; get return value
     lea r10, QWORD [rbp + -16] ; get address of 'std_handle'
     mov QWORD [r10], rbx
-    sub rsp, 32 ; reserve space for call arguments
+    sub rsp, 32 ; reserve shadow space and 1 arguments
     lea rbx, QWORD [REL string] ; get address of 'string'
     mov rcx, rbx ; arg 0
     call strlen
@@ -30,7 +30,7 @@ main:
     lea r10, QWORD [rbp + -8] ; get address of 'str_len'
     mov DWORD [r10], ebx
     mov DWORD [rbp + -4], 0 ; zero initialize bytes_written
-    sub rsp, 48 ; reserve space for call arguments
+    sub rsp, 48 ; reserve shadow space and 5 arguments
     mov rbx, QWORD [rbp + -16] ; get value of 'std_handle'
     mov rcx, rbx ; arg 0
     lea rbx, QWORD [REL string] ; get address of 'string'

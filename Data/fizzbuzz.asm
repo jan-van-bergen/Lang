@@ -14,8 +14,8 @@ print:
     mov rbp, rsp ; stack frame
     mov QWORD [rbp + 16], rcx ; push arg 0 
     mov DWORD [rbp + 24], edx ; push arg 1 
-    sub rsp, 16 ; reserve stack space for locals
-    sub rsp, 32 ; reserve space for call arguments
+    sub rsp, 16 ; reserve stack space for 2 locals
+    sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [REL STD_OUTPUT_HANDLE] ; get value of 'STD_OUTPUT_HANDLE'
     mov rcx, rbx ; arg 0
     call GetStdHandle
@@ -24,7 +24,7 @@ print:
     lea r10, QWORD [rbp + -16] ; get address of 'std_handle'
     mov QWORD [r10], rbx
     mov DWORD [rbp + -8], 0 ; zero initialize bytes_written
-    sub rsp, 48 ; reserve space for call arguments
+    sub rsp, 48 ; reserve shadow space and 5 arguments
     mov rbx, QWORD [rbp + -16] ; get value of 'std_handle'
     mov rcx, rbx ; arg 0
     mov rbx, QWORD [rbp + 16] ; get value of 'str'
@@ -48,7 +48,7 @@ print_num:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
     mov DWORD [rbp + 16], ecx ; push arg 0 
-    sub rsp, 32 ; reserve stack space for locals
+    sub rsp, 32 ; reserve stack space for 5 locals
     lea rbx, [REL str_lit_1]
     lea r10, QWORD [rbp + -32] ; get address of 'num_str'
     mov QWORD [r10], rbx
@@ -157,7 +157,7 @@ print_num:
     add rbx, r10
     mov r10, 32
     mov BYTE [rbx], r10b
-    sub rsp, 32 ; reserve space for call arguments
+    sub rsp, 32 ; reserve shadow space and 2 arguments
     mov rbx, QWORD [rbp + -32] ; get value of 'num_str'
     mov rcx, rbx ; arg 0
     movsx rbx, DWORD [rbp + -24] ; get value of 'idx'
@@ -177,7 +177,7 @@ fizzbuzz:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
     mov DWORD [rbp + 16], ecx ; push arg 0 
-    sub rsp, 16 ; reserve stack space for locals
+    sub rsp, 16 ; reserve stack space for 3 locals
     mov rbx, 1
     lea r10, QWORD [rbp + -16] ; get address of 'i'
     mov DWORD [r10], ebx
@@ -238,7 +238,7 @@ fizzbuzz:
         L_land_exit_13:
         cmp rbx, 0
         je L_else14
-            sub rsp, 32 ; reserve space for call arguments
+            sub rsp, 32 ; reserve shadow space and 2 arguments
             lea rbx, [REL str_lit_2]
             mov rcx, rbx ; arg 0
             mov rbx, 9
@@ -251,7 +251,7 @@ fizzbuzz:
             movsx rbx, BYTE [rbp + -11] ; get value of 'divisible_by_5'
             cmp rbx, 0
             je L_else15
-                sub rsp, 32 ; reserve space for call arguments
+                sub rsp, 32 ; reserve shadow space and 2 arguments
                 lea rbx, [REL str_lit_3]
                 mov rcx, rbx ; arg 0
                 mov rbx, 5
@@ -264,7 +264,7 @@ fizzbuzz:
                 movsx rbx, BYTE [rbp + -12] ; get value of 'divisible_by_3'
                 cmp rbx, 0
                 je L_else16
-                    sub rsp, 32 ; reserve space for call arguments
+                    sub rsp, 32 ; reserve shadow space and 2 arguments
                     lea rbx, [REL str_lit_4]
                     mov rcx, rbx ; arg 0
                     mov rbx, 5
@@ -274,7 +274,7 @@ fizzbuzz:
                     mov rbx, rax ; get return value
                 jmp L_exit16
                 L_else16:
-                    sub rsp, 32 ; reserve space for call arguments
+                    sub rsp, 32 ; reserve shadow space and 1 arguments
                     movsx rbx, DWORD [rbp + -16] ; get value of 'i'
                     mov rcx, rbx ; arg 0
                     call print_num
@@ -299,8 +299,7 @@ fizzbuzz:
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    sub rsp, 0 ; reserve stack space for locals
-    sub rsp, 32 ; reserve space for call arguments
+    sub rsp, 32 ; reserve shadow space and 1 arguments
     mov rbx, 20
     mov rcx, rbx ; arg 0
     call fizzbuzz

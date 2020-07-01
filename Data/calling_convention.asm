@@ -10,7 +10,6 @@ calling_convention:
     mov DWORD [rbp + 24], edx ; push arg 1 
     mov DWORD [rbp + 32], r8d ; push arg 2 
     mov DWORD [rbp + 40], r9d ; push arg 3 
-    sub rsp, 0 ; reserve stack space for locals
     movsx rbx, DWORD [rbp + 16] ; get value of 'rcx'
     movsx r10, DWORD [rbp + 24] ; get value of 'rdx'
     add rbx, r10
@@ -33,8 +32,7 @@ calling_convention:
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    sub rsp, 0 ; reserve stack space for locals
-    sub rsp, 48 ; reserve space for call arguments
+    sub rsp, 48 ; reserve shadow space and 6 arguments
     mov rbx, 1
     mov rcx, rbx ; arg 0
     mov rbx, 2

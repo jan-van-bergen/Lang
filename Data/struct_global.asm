@@ -6,7 +6,6 @@ SECTION .code
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    sub rsp, 0 ; reserve stack space for locals
     lea rbx, QWORD [REL globla] ; get address of 'globla'
     add rbx, 0 ; member offset 'b'
     mov r10, 3

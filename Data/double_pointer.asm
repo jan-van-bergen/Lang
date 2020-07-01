@@ -8,7 +8,7 @@ abc:
     mov rbp, rsp ; stack frame
     mov DWORD [rbp + 16], ecx ; push arg 0 
     mov DWORD [rbp + 24], edx ; push arg 1 
-    sub rsp, 32 ; reserve stack space for locals
+    sub rsp, 32 ; reserve stack space for 3 locals
     lea rbx, QWORD [rbp + 16] ; addrof a
     lea r10, QWORD [rbp + -32] ; get address of 'ptr_a'
     mov QWORD [r10], rbx
@@ -35,8 +35,7 @@ abc:
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    sub rsp, 0 ; reserve stack space for locals
-    sub rsp, 32 ; reserve space for call arguments
+    sub rsp, 32 ; reserve shadow space and 2 arguments
     mov rbx, 1
     mov rcx, rbx ; arg 0
     mov rbx, 2

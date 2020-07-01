@@ -7,7 +7,6 @@ factorial_recursive:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
     mov DWORD [rbp + 16], ecx ; push arg 0 
-    sub rsp, 0 ; reserve stack space for locals
     movsx rbx, DWORD [rbp + 16] ; get value of 'n'
     mov r10, 0
     cmp rbx, r10
@@ -23,7 +22,7 @@ factorial_recursive:
         mov rax, rbx ; return via rax
         jmp L_function_factorial_recursive_exit
     L_exit2:
-    sub rsp, 32 ; reserve space for call arguments
+    sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [rbp + 16] ; get value of 'n'
     mov r10, 1
     sub rbx, r10
@@ -45,7 +44,7 @@ factorial_loop:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
     mov DWORD [rbp + 16], ecx ; push arg 0 
-    sub rsp, 16 ; reserve stack space for locals
+    sub rsp, 16 ; reserve stack space for 1 locals
     mov rbx, 1
     lea r10, QWORD [rbp + -16] ; get address of 'result'
     mov DWORD [r10], ebx
@@ -85,11 +84,11 @@ factorial_loop:
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    sub rsp, 16 ; reserve stack space for locals
+    sub rsp, 16 ; reserve stack space for 3 locals
     mov rbx, 5
     lea r10, QWORD [rbp + -16] ; get address of 'arg'
     mov DWORD [r10], ebx
-    sub rsp, 32 ; reserve space for call arguments
+    sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [rbp + -16] ; get value of 'arg'
     mov rcx, rbx ; arg 0
     call factorial_recursive
@@ -97,7 +96,7 @@ main:
     mov rbx, rax ; get return value
     lea r10, QWORD [rbp + -12] ; get address of 'a'
     mov DWORD [r10], ebx
-    sub rsp, 32 ; reserve space for call arguments
+    sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [rbp + -16] ; get value of 'arg'
     mov rcx, rbx ; arg 0
     call factorial_loop

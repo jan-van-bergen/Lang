@@ -7,7 +7,6 @@ one:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
     mov DWORD [rbp + 16], ecx ; push arg 0 
-    sub rsp, 0 ; reserve stack space for locals
     movsx rbx, DWORD [rbp + 16] ; get value of 'arg'
     mov r10, 1
     add rbx, r10
@@ -24,8 +23,8 @@ two:
     mov rbp, rsp ; stack frame
     mov DWORD [rbp + 16], ecx ; push arg 0 
     mov DWORD [rbp + 24], edx ; push arg 1 
-    sub rsp, 16 ; reserve stack space for locals
-    sub rsp, 32 ; reserve space for call arguments
+    sub rsp, 16 ; reserve stack space for 1 locals
+    sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [rbp + 16] ; get value of 'a'
     mov rcx, rbx ; arg 0
     call one
@@ -33,7 +32,7 @@ two:
     mov rbx, rax ; get return value
     lea r10, QWORD [rbp + -16] ; get address of 'local'
     mov DWORD [r10], ebx
-    sub rsp, 32 ; reserve space for call arguments
+    sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [rbp + 24] ; get value of 'b'
     mov rcx, rbx ; arg 0
     call one
@@ -54,7 +53,6 @@ recursive:
     mov rbp, rsp ; stack frame
     mov DWORD [rbp + 16], ecx ; push arg 0 
     mov DWORD [rbp + 24], edx ; push arg 1 
-    sub rsp, 0 ; reserve stack space for locals
     movsx rbx, DWORD [rbp + 16] ; get value of 'a'
     mov r10, 0
     cmp rbx, r10
@@ -80,7 +78,7 @@ recursive:
     sub rbx, r10
     lea r10, QWORD [rbp + 16] ; get address of 'a'
     mov DWORD [r10], ebx
-    sub rsp, 32 ; reserve space for call arguments
+    sub rsp, 32 ; reserve shadow space and 2 arguments
     movsx rbx, DWORD [rbp + 16] ; get value of 'a'
     mov rcx, rbx ; arg 0
     movsx rbx, DWORD [rbp + 24] ; get value of 'b'
@@ -99,8 +97,8 @@ recursive:
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    sub rsp, 16 ; reserve stack space for locals
-    sub rsp, 32 ; reserve space for call arguments
+    sub rsp, 16 ; reserve stack space for 2 locals
+    sub rsp, 32 ; reserve shadow space and 2 arguments
     mov rbx, 1
     mov rcx, rbx ; arg 0
     mov rbx, 2
@@ -110,7 +108,7 @@ main:
     mov rbx, rax ; get return value
     lea r10, QWORD [rbp + -16] ; get address of 'bla'
     mov DWORD [r10], ebx
-    sub rsp, 32 ; reserve space for call arguments
+    sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [rbp + -16] ; get value of 'bla'
     mov rcx, rbx ; arg 0
     call one
@@ -118,8 +116,8 @@ main:
     mov rbx, rax ; get return value
     lea r10, QWORD [rbp + -12] ; get address of 'tmp'
     mov DWORD [r10], ebx
-    sub rsp, 32 ; reserve space for call arguments
-    sub rsp, 32 ; reserve space for call arguments
+    sub rsp, 32 ; reserve shadow space and 2 arguments
+    sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [rbp + -16] ; get value of 'bla'
     mov rcx, rbx ; arg 0
     call one

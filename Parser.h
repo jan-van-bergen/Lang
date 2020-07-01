@@ -14,7 +14,7 @@ typedef struct Parser {
 
 	int              functions_len;
 	int              functions_cap;
-	AST_Decl_Func ** functions;
+	AST_Def_Func ** functions;
 } Parser;
 
 void parser_init(Parser * parser, Token const * tokens, int token_count);

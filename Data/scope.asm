@@ -6,8 +6,8 @@ SECTION .code
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    sub rsp, 32 ; reserve stack space for locals
-    sub rsp, 32 ; reserve space for call arguments
+    sub rsp, 32 ; reserve stack space for 5 locals
+    sub rsp, 32 ; reserve shadow space and 2 arguments
     mov rbx, 1
     mov rcx, rbx ; arg 0
     mov rbx, 5
@@ -17,7 +17,7 @@ main:
     mov rbx, rax ; get return value
     lea r10, QWORD [rbp + -32] ; get address of 'a'
     mov DWORD [r10], ebx
-    sub rsp, 32 ; reserve space for call arguments
+    sub rsp, 32 ; reserve shadow space and 2 arguments
     mov rbx, 0
     mov rcx, rbx ; arg 0
     mov rbx, 5
@@ -106,7 +106,7 @@ test:
     mov rbp, rsp ; stack frame
     mov BYTE [rbp + 16], cl ; push arg 0 
     mov DWORD [rbp + 24], edx ; push arg 1 
-    sub rsp, 16 ; reserve stack space for locals
+    sub rsp, 16 ; reserve stack space for 1 locals
     movsx rbx, BYTE [rbp + 16] ; get value of 'ret_arg'
     cmp rbx, 0
     je L_else10

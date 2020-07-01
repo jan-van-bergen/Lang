@@ -6,7 +6,7 @@ SECTION .code
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    sub rsp, 16 ; reserve stack space for locals
+    sub rsp, 16 ; reserve stack space for 1 locals
     lea rdi, QWORD [rbp + -16] ; zero initialize test
     xor rax, rax
     mov ecx, 16

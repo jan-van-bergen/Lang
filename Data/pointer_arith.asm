@@ -12,17 +12,17 @@ EXTERN HeapFree
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    sub rsp, 32 ; reserve stack space for locals
+    sub rsp, 32 ; reserve stack space for 4 locals
     mov rbx, 20
     lea r10, QWORD [rbp + -32] ; get address of 'len'
     mov DWORD [r10], ebx
-    sub rsp, 32 ; reserve space for call arguments
+    sub rsp, 32 ; reserve shadow space and 0 arguments
     call GetProcessHeap
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     lea r10, QWORD [rbp + -24] ; get address of 'heap'
     mov QWORD [r10], rbx
-    sub rsp, 32 ; reserve space for call arguments
+    sub rsp, 32 ; reserve shadow space and 3 arguments
     mov rbx, QWORD [rbp + -24] ; get value of 'heap'
     mov rcx, rbx ; arg 0
     mov rbx, 0

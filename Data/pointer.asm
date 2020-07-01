@@ -7,7 +7,6 @@ bla:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
     mov QWORD [rbp + 16], rcx ; push arg 0 
-    sub rsp, 0 ; reserve stack space for locals
     mov rbx, QWORD [rbp + 16] ; get value of 'ptr'
     mov r10, 4321
     mov DWORD [rbx], r10d
@@ -21,7 +20,7 @@ deref:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
     mov QWORD [rbp + 16], rcx ; push arg 0 
-    sub rsp, 16 ; reserve stack space for locals
+    sub rsp, 16 ; reserve stack space for 1 locals
     mov DWORD [rbp + -16], 0 ; zero initialize local
     mov rbx, QWORD [rbp + 16] ; get value of 'ptr'
     mov r10, 21
@@ -29,7 +28,7 @@ deref:
     lea rbx, QWORD [rbp + -16] ; get address of 'local'
     mov r10, 1234
     mov DWORD [rbx], r10d
-    sub rsp, 32 ; reserve space for call arguments
+    sub rsp, 32 ; reserve shadow space and 1 arguments
     lea rbx, QWORD [rbp + -16] ; addrof local
     mov rcx, rbx ; arg 0
     call bla
@@ -44,7 +43,7 @@ deref:
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    sub rsp, 32 ; reserve stack space for locals
+    sub rsp, 32 ; reserve stack space for 3 locals
     mov rbx, 42
     lea r10, QWORD [rbp + -32] ; get address of 'a'
     mov DWORD [r10], ebx
@@ -56,7 +55,7 @@ main:
     lea rbx, QWORD [rbp + -16] ; get address of 'p2'
     mov r10, QWORD [rbp + -24] ; get value of 'p'
     mov QWORD [rbx], r10
-    sub rsp, 32 ; reserve space for call arguments
+    sub rsp, 32 ; reserve shadow space and 1 arguments
     mov rbx, QWORD [rbp + -16] ; get value of 'p2'
     mov rcx, rbx ; arg 0
     call deref

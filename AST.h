@@ -86,8 +86,8 @@ typedef enum AST_Statement_Type {
 	AST_STATEMENT_BLOCK,
 
 	AST_STATEMENT_EXPR,
-	AST_STATEMENT_DECL_VAR,
-	AST_STATEMENT_DECL_FUNC,
+	AST_STATEMENT_DEF_VAR,
+	AST_STATEMENT_DEF_FUNC,
 	AST_STATEMENT_EXTERN,
 	AST_STATEMENT_IF,
 	AST_STATEMENT_WHILE,
@@ -96,13 +96,13 @@ typedef enum AST_Statement_Type {
 	AST_STATEMENT_RETURN
 } AST_Statement_Type;
 
-typedef struct AST_Decl_Arg {
+typedef struct AST_Def_Arg {
 	char const * name;
 	Type       * type;
-	struct AST_Decl_Arg * next;
-} AST_Decl_Arg;
+	struct AST_Def_Arg * next;
+} AST_Def_Arg;
 
-typedef struct AST_Decl_Func {
+typedef struct AST_Def_Func {
 	char const * name;
 	Type       * return_type;
 
@@ -113,9 +113,9 @@ typedef struct AST_Decl_Func {
 
 	int arg_count;
 
-	struct AST_Decl_Arg  * args;
+	struct AST_Def_Arg  * args;
 	struct AST_Statement * body;
-} AST_Decl_Func;
+} AST_Def_Func;
 
 typedef struct AST_Statement {
 	AST_Statement_Type type;
@@ -143,16 +143,16 @@ typedef struct AST_Statement {
 			struct AST_Expression * expr;
 		} stat_expr;
 
-		struct Decl_Var {
+		struct Def_Var {
 			char const * name;
 			Type       * type;
 
 			struct AST_Expression * assign;
-		} stat_decl_var;
+		} stat_def_var;
 
-		AST_Decl_Func stat_decl_func;
+		AST_Def_Func stat_def_func;
 
-		AST_Decl_Func stat_extern;
+		AST_Def_Func stat_extern;
 
 		struct If {
 			struct AST_Expression * condition;

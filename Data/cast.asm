@@ -6,7 +6,7 @@ SECTION .code
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    sub rsp, 32 ; reserve stack space for locals
+    sub rsp, 32 ; reserve stack space for 3 locals
     mov rbx, 1234
     lea r10, QWORD [rbp + -32] ; get address of 'i'
     mov DWORD [r10], ebx

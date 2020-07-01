@@ -9,7 +9,6 @@ assert:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
     mov BYTE [rbp + 16], cl ; push arg 0 
-    sub rsp, 0 ; reserve stack space for locals
     movsx rbx, BYTE [rbp + 16] ; get value of 'expression'
     test rbx, rbx
     jne L_lnot_false_0
@@ -20,7 +19,7 @@ assert:
     L_lnot_exit_0:
     cmp rbx, 0
     je L_exit1
-        sub rsp, 32 ; reserve space for call arguments
+        sub rsp, 32 ; reserve shadow space and 1 arguments
         mov rbx, 1
         mov rcx, rbx ; arg 0
         call ExitProcess
@@ -36,7 +35,7 @@ assert:
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    sub rsp, 16 ; reserve stack space for locals
+    sub rsp, 16 ; reserve stack space for 1 locals
     mov BYTE [rbp + -16], 0 ; zero initialize a
     mov rbx, 1
     mov r10, 0
@@ -51,7 +50,7 @@ main:
     L_lor_exit_2:
     lea r10, QWORD [rbp + -16] ; get address of 'a'
     mov BYTE [r10], bl
-    sub rsp, 32 ; reserve space for call arguments
+    sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, BYTE [rbp + -16] ; get value of 'a'
     mov r10, 1
     cmp rbx, r10
@@ -78,7 +77,7 @@ main:
     L_land_exit_5:
     lea r10, QWORD [rbp + -16] ; get address of 'a'
     mov BYTE [r10], bl
-    sub rsp, 32 ; reserve space for call arguments
+    sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, BYTE [rbp + -16] ; get value of 'a'
     mov r10, 0
     cmp rbx, r10
@@ -112,7 +111,7 @@ main:
     L_lor_exit_9:
     lea rbx, QWORD [rbp + -16] ; get address of 'a'
     mov BYTE [rbx], r10b
-    sub rsp, 32 ; reserve space for call arguments
+    sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, BYTE [rbp + -16] ; get value of 'a'
     mov r10, 1
     cmp rbx, r10

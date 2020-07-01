@@ -26,8 +26,8 @@ typedef struct Context {
 
 	Scope * current_scope;
 
-	int              function_decl_count;
-	AST_Decl_Func ** function_decls;
+	int              function_def_count;
+	AST_Def_Func ** function_defs;
 
 	char * code;
 	int    code_len;
@@ -38,7 +38,7 @@ typedef struct Context {
 	int           data_seg_cap;
 } Context;
 
-static void context_init(Context * ctx, AST_Decl_Func ** function_decls, int function_decl_count) {
+static void context_init(Context * ctx, AST_Def_Func ** function_defs, int function_def_count) {
 	ctx->scratch_reg_mask = 0;
 
 	ctx->indent = 0;
@@ -50,8 +50,8 @@ static void context_init(Context * ctx, AST_Decl_Func ** function_decls, int fun
 
 	ctx->current_scope = NULL;
 
-	ctx->function_decl_count = function_decl_count;
-	ctx->function_decls      = function_decls;
+	ctx->function_def_count = function_def_count;
+	ctx->function_defs      = function_defs;
 
 	ctx->code_len = 0;
 	ctx->code_cap = 512;
@@ -103,10 +103,10 @@ static void variable_get_address(Variable const * var, char * address, int addre
 	}
 }
 
-static AST_Decl_Func * context_get_function_decl(Context * ctx, char const * name) {
-	for (int i = 0; i < ctx->function_decl_count; i++) {
-		if (strcmp(ctx->function_decls[i]->name, name) == 0) {
-			return ctx->function_decls[i];
+static AST_Def_Func * context_get_function_def(Context * ctx, char const * name) {
+	for (int i = 0; i < ctx->function_def_count; i++) {
+		if (strcmp(ctx->function_defs[i]->name, name) == 0) {
+			return ctx->function_defs[i];
 		}
 	}
 
@@ -896,28 +896,28 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 		call_arg = call_arg->next;
 	}
 
-	// Get function declaration
-	AST_Decl_Func * function_decl = context_get_function_decl(ctx, expr->expr_call.function_name);
-	AST_Decl_Arg  * decl_arg = function_decl->args;
+	// Get function definition
+	AST_Def_Func * def_func = context_get_function_def(ctx, expr->expr_call.function_name);
+	AST_Def_Arg  * def_arg  = def_func->args;
 
-	if (call_arg_count != function_decl->arg_count) {
+	if (call_arg_count != def_func->arg_count) {
 		type_error("Incorrect number of arguments");
 	}
 
 	// Count total size (in bytes) of arguments
 	int arg_size = 0;
-	int decl_arg_count = 0;
+	int def_arg_count = 0;
 
-	while (decl_arg) {
-		if (decl_arg_count < 4) {
+	while (def_arg) {
+		if (def_arg_count < 4) {
 			arg_size += 8;
 		} else {
-			align(&arg_size, type_get_align(decl_arg->type, ctx->current_scope));
-			arg_size += type_get_size(decl_arg->type, ctx->current_scope);
+			align(&arg_size, type_get_align(def_arg->type, ctx->current_scope));
+			arg_size += type_get_size(def_arg->type, ctx->current_scope);
 		}
 
-		decl_arg_count++;
-		decl_arg = decl_arg->next;
+		def_arg_count++;
+		def_arg = def_arg->next;
 	}
 
 	if (arg_size < 32) {
@@ -935,17 +935,17 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 	int arg_offset = 0;
 
 	call_arg = expr->expr_call.args;
-	decl_arg = function_decl->args;
+	def_arg = def_func->args;
 
 	while (call_arg) {
 		Result result_arg = codegen_expression(ctx, call_arg->expr);
 
-		if (!types_unifiable(result_arg.type, decl_arg->type)) {
+		if (!types_unifiable(result_arg.type, def_arg->type)) {
 			char str_type_given   [128];
 			char str_type_expected[128];
 
 			type_to_string(result_arg.type, str_type_given,    sizeof(str_type_given));
-			type_to_string(decl_arg->type,  str_type_expected, sizeof(str_type_expected));
+			type_to_string(def_arg->type,  str_type_expected, sizeof(str_type_expected));
 
 			type_error("Argument %i in function call to '%s' has incorrect type. Given type: '%s', expected type: '%s'",
 				arg_index + 1, expr->expr_call.function_name, str_type_given, str_type_expected
@@ -959,15 +959,15 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 		} else {
 			context_emit_code(ctx, "mov QWORD [rsp + %i], %s ; arg %i\n", arg_offset, get_reg_name_scratch(result_arg.reg, 8), arg_index);
 
-			align(&arg_offset, type_get_align(decl_arg->type, ctx->current_scope));
-			arg_offset += type_get_size(decl_arg->type, ctx->current_scope);
+			align(&arg_offset, type_get_align(def_arg->type, ctx->current_scope));
+			arg_offset += type_get_size(def_arg->type, ctx->current_scope);
 		}
 
 		context_reg_free(ctx, result_arg.reg);
 
 		arg_index++;
 		call_arg = call_arg->next;
-		decl_arg = decl_arg->next;
+		def_arg = def_arg->next;
 	}
 
 	context_emit_code(ctx, "call %s\n", expr->expr_call.function_name);
@@ -976,7 +976,7 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 
 	Result result;
 	result.reg = context_reg_request(ctx);
-	result.type = function_decl->return_type;
+	result.type = def_func->return_type;
 
 	context_emit_code(ctx, "mov %s, rax ; get return value\n", get_reg_name_scratch(result.reg, 8));
 
@@ -1016,16 +1016,16 @@ static void codegen_statement_expression(Context * ctx, AST_Statement const * st
 	context_reg_free(ctx, result.reg);
 }
 
-static void codegen_statement_decl_var(Context * ctx, AST_Statement const * stat) {
-	assert(stat->type == AST_STATEMENT_DECL_VAR);
+static void codegen_statement_def_var(Context * ctx, AST_Statement const * stat) {
+	assert(stat->type == AST_STATEMENT_DEF_VAR);
 
-	char const * var_name = stat->stat_decl_var.name;
+	char const * var_name = stat->stat_def_var.name;
 	
 	Variable const * var = scope_get_variable(ctx->current_scope, var_name);
 
 	if (scope_is_global(ctx->current_scope)) {
-		if (stat->stat_decl_var.assign) {
-			AST_Expression const * literal      = stat->stat_decl_var.assign->expr_op_bin.expr_right;
+		if (stat->stat_def_var.assign) {
+			AST_Expression const * literal      = stat->stat_def_var.assign->expr_op_bin.expr_right;
 			Token_Type             literal_type = literal->expr_const.token.type;
 			
 			if (literal->type != AST_EXPRESSION_CONST) {
@@ -1061,8 +1061,8 @@ static void codegen_statement_decl_var(Context * ctx, AST_Statement const * stat
 
 		int type_size = type_get_size(var->type, ctx->current_scope);
 
-		if (stat->stat_decl_var.assign) {
-			Result result = codegen_expression(ctx, stat->stat_decl_var.assign);
+		if (stat->stat_def_var.assign) {
+			Result result = codegen_expression(ctx, stat->stat_def_var.assign);
 
 			context_reg_free(ctx, result.reg);
 		} else {
@@ -1080,20 +1080,20 @@ static void codegen_statement_decl_var(Context * ctx, AST_Statement const * stat
 	}
 }
 
-static void codegen_statement_decl_func(Context * ctx, AST_Statement const * stat) {
-	assert(stat->type == AST_STATEMENT_DECL_FUNC);
+static void codegen_statement_def_func(Context * ctx, AST_Statement const * stat) {
+	assert(stat->type == AST_STATEMENT_DEF_FUNC);
 
-	context_emit_code(ctx, "%s:\n", stat->stat_decl_func.name);
+	context_emit_code(ctx, "%s:\n", stat->stat_def_func.name);
 	ctx->indent++;
 
 	context_emit_code(ctx, "push rbp ; save RBP\n");
 	context_emit_code(ctx, "mov rbp, rsp ; stack frame\n");
 
-	Scope * scope_args = stat->stat_decl_func.scope_args;
+	Scope * scope_args = stat->stat_def_func.scope_args;
 	
 	// Push arguments on stack
 	int            arg_index = 0;
-	AST_Decl_Arg * arg = stat->stat_decl_func.args;
+	AST_Def_Arg * arg = stat->stat_def_func.args;
 	
 	while (arg) {
 		Variable * var = scope_get_variable(scope_args, arg->name);
@@ -1109,7 +1109,7 @@ static void codegen_statement_decl_func(Context * ctx, AST_Statement const * sta
 	}
 	
 	// Reserve space on stack for local variables
-	Variable_Buffer * stack_frame = stat->stat_decl_func.buffer_vars;
+	Variable_Buffer * stack_frame = stat->stat_def_func.buffer_vars;
 	
 	int stack_frame_size_aligned = (stack_frame->size + 15) & ~15; // Round up to next 16 byte border
 
@@ -1122,10 +1122,10 @@ static void codegen_statement_decl_func(Context * ctx, AST_Statement const * sta
 	}
 
 	// Function body
-	codegen_statement(ctx, stat->stat_decl_func.body);
+	codegen_statement(ctx, stat->stat_def_func.body);
 
 	context_emit_code(ctx, "xor rax, rax ; Default return value 0\n");
-	context_emit_code(ctx, "L_function_%s_exit:\n", stat->stat_decl_func.name);
+	context_emit_code(ctx, "L_function_%s_exit:\n", stat->stat_def_func.name);
 	context_emit_code(ctx, "mov rsp, rbp\n");
 	context_emit_code(ctx, "pop rbp\n");
 	context_emit_code(ctx, "ret\n");
@@ -1265,9 +1265,9 @@ static void codegen_statement(Context * ctx, AST_Statement const * stat) {
 
 		case AST_STATEMENT_EXPR: codegen_statement_expression(ctx, stat); break;
 
-		case AST_STATEMENT_DECL_VAR:  codegen_statement_decl_var (ctx, stat); break;
-		case AST_STATEMENT_DECL_FUNC: codegen_statement_decl_func(ctx, stat); break;
-		case AST_STATEMENT_EXTERN:    codegen_statement_extern   (ctx, stat); break;
+		case AST_STATEMENT_DEF_VAR:  codegen_statement_def_var (ctx, stat); break;
+		case AST_STATEMENT_DEF_FUNC: codegen_statement_def_func(ctx, stat); break;
+		case AST_STATEMENT_EXTERN:   codegen_statement_extern  (ctx, stat); break;
 
 		case AST_STATEMENT_IF:    codegen_statement_if   (ctx, stat); break;
 		case AST_STATEMENT_WHILE: codegen_statement_while(ctx, stat); break;
@@ -1280,9 +1280,9 @@ static void codegen_statement(Context * ctx, AST_Statement const * stat) {
 	}
 }
 
-char const * codegen_program(AST_Statement const * program, AST_Decl_Func ** function_decls, int function_decl_count) {
+char const * codegen_program(AST_Statement const * program, AST_Def_Func ** function_defs, int function_def_count) {
 	Context ctx;
-	context_init(&ctx, function_decls, function_decl_count);
+	context_init(&ctx, function_defs, function_def_count);
 
 	char const asm_init[] =
 		"; Generated by Lang compiler\n\n"
