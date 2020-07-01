@@ -145,16 +145,16 @@ print:
     call GetStdHandle
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov QWORD [rbp + -8], rbx; initialize std_handle
-    mov DWORD [rbp + -12], 0; zero initialize bytes_written
+    mov QWORD [rbp + -16], rbx; initialize std_handle
+    mov DWORD [rbp + -8], 0 ; zero initialize bytes_written
     sub rsp, 48 ; reserve space for call arguments
-    mov rbx, QWORD [rbp + -8] ; get value of std_handle
+    mov rbx, QWORD [rbp + -16] ; get value of std_handle
     mov rcx, rbx ; arg 0
     mov rbx, QWORD [rbp + 16] ; get value of str
     mov rdx, rbx ; arg 1
     movsx rbx, DWORD [rbp + 24] ; get value of str_len
     mov r8, rbx ; arg 2
-    lea rbx, QWORD [rbp + -12] ; addrof bytes_written
+    lea rbx, QWORD [rbp + -8] ; addrof bytes_written
     mov r9, rbx ; arg 3
     mov rbx, 0
     mov QWORD [rsp + 32], rbx ; arg 4
@@ -173,10 +173,10 @@ strlen:
     mov QWORD [rbp + 16], rcx ; push arg 0 
     sub rsp, 16 ; reserve stack space for locals
     mov rbx, 0
-    mov DWORD [rbp + -4], ebx; initialize len
+    mov DWORD [rbp + -16], ebx; initialize len
     L_loop9:
     mov rbx, QWORD [rbp + 16] ; get value of str
-    movsx r10, DWORD [rbp + -4] ; get value of len
+    movsx r10, DWORD [rbp + -16] ; get value of len
     add rbx, r10
     movsx rbx, BYTE [rbx]
     mov r10, 0
@@ -189,14 +189,14 @@ strlen:
     L11:
     cmp rbx, 0
     je L_exit9
-        movsx rbx, DWORD [rbp + -4] ; get value of len
+        movsx rbx, DWORD [rbp + -16] ; get value of len
         mov r10, 1
         add rbx, r10
-        lea r10, QWORD [rbp + -4] ; get address of len
+        lea r10, QWORD [rbp + -16] ; get address of len
         mov DWORD [r10], ebx
     jmp L_loop9
     L_exit9:
-    movsx rbx, DWORD [rbp + -4] ; get value of len
+    movsx rbx, DWORD [rbp + -16] ; get value of len
     mov rax, rbx ; return via rax
     jmp L_function_strlen_exit
     xor rax, rax ; Default return value 0
@@ -215,69 +215,69 @@ main:
     call malloc
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov QWORD [rbp + -8], rbx; initialize mem
-    mov rbx, QWORD [rbp + -8] ; get value of mem
+    mov QWORD [rbp + -32], rbx; initialize mem
+    mov rbx, QWORD [rbp + -32] ; get value of mem
     mov r10, 0
     add rbx, r10
     mov r10, 66
     mov BYTE [rbx], r10b
-    mov rbx, QWORD [rbp + -8] ; get value of mem
+    mov rbx, QWORD [rbp + -32] ; get value of mem
     mov r10, 1
     add rbx, r10
     mov r10, 114
     mov BYTE [rbx], r10b
-    mov rbx, QWORD [rbp + -8] ; get value of mem
+    mov rbx, QWORD [rbp + -32] ; get value of mem
     mov r10, 2
     add rbx, r10
     mov r10, 117
     mov BYTE [rbx], r10b
-    mov rbx, QWORD [rbp + -8] ; get value of mem
+    mov rbx, QWORD [rbp + -32] ; get value of mem
     mov r10, 3
     add rbx, r10
     mov r10, 104
     mov BYTE [rbx], r10b
-    mov rbx, QWORD [rbp + -8] ; get value of mem
+    mov rbx, QWORD [rbp + -32] ; get value of mem
     mov r10, 4
     add rbx, r10
     mov r10, 84
     mov BYTE [rbx], r10b
-    mov rbx, QWORD [rbp + -8] ; get value of mem
+    mov rbx, QWORD [rbp + -32] ; get value of mem
     mov r10, 5
     add rbx, r10
     mov r10, 101
     mov BYTE [rbx], r10b
-    mov rbx, QWORD [rbp + -8] ; get value of mem
+    mov rbx, QWORD [rbp + -32] ; get value of mem
     mov r10, 6
     add rbx, r10
     mov r10, 115
     mov BYTE [rbx], r10b
-    mov rbx, QWORD [rbp + -8] ; get value of mem
+    mov rbx, QWORD [rbp + -32] ; get value of mem
     mov r10, 7
     add rbx, r10
     mov r10, 116
     mov BYTE [rbx], r10b
-    mov rbx, QWORD [rbp + -8] ; get value of mem
+    mov rbx, QWORD [rbp + -32] ; get value of mem
     mov r10, 8
     add rbx, r10
     mov r10, 0
     mov BYTE [rbx], r10b
     sub rsp, 32 ; reserve space for call arguments
-    mov rbx, QWORD [rbp + -8] ; get value of mem
+    mov rbx, QWORD [rbp + -32] ; get value of mem
     mov rcx, rbx ; arg 0
     call strlen
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov DWORD [rbp + -12], ebx; initialize str_len
+    mov DWORD [rbp + -24], ebx; initialize str_len
     sub rsp, 32 ; reserve space for call arguments
-    mov rbx, QWORD [rbp + -8] ; get value of mem
+    mov rbx, QWORD [rbp + -32] ; get value of mem
     mov rcx, rbx ; arg 0
-    movsx rbx, DWORD [rbp + -12] ; get value of str_len
+    movsx rbx, DWORD [rbp + -24] ; get value of str_len
     mov rdx, rbx ; arg 1
     call print
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     sub rsp, 32 ; reserve space for call arguments
-    mov rbx, QWORD [rbp + -8] ; get value of mem
+    mov rbx, QWORD [rbp + -32] ; get value of mem
     mov rcx, rbx ; arg 0
     call free
     add rsp, 32 ; pop arguments
@@ -288,48 +288,48 @@ main:
     call malloc
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov QWORD [rbp + -24], rbx; initialize mem2
-    mov rbx, QWORD [rbp + -24] ; get value of mem2
+    mov QWORD [rbp + -16], rbx; initialize mem2
+    mov rbx, QWORD [rbp + -16] ; get value of mem2
     mov r10, 0
     add rbx, r10
     mov r10, 1
     mov BYTE [rbx], r10b
-    mov rbx, QWORD [rbp + -24] ; get value of mem2
+    mov rbx, QWORD [rbp + -16] ; get value of mem2
     mov r10, 1
     add rbx, r10
     mov r10, 2
     mov BYTE [rbx], r10b
-    mov rbx, QWORD [rbp + -24] ; get value of mem2
+    mov rbx, QWORD [rbp + -16] ; get value of mem2
     mov r10, 2
     add rbx, r10
     mov r10, 3
     mov BYTE [rbx], r10b
-    mov rbx, QWORD [rbp + -24] ; get value of mem2
+    mov rbx, QWORD [rbp + -16] ; get value of mem2
     mov r10, 3
     add rbx, r10
     mov r10, 4
     mov BYTE [rbx], r10b
-    mov rbx, QWORD [rbp + -24] ; get value of mem2
+    mov rbx, QWORD [rbp + -16] ; get value of mem2
     mov r10, 4
     add rbx, r10
     mov r10, 0
     mov BYTE [rbx], r10b
-    mov rbx, QWORD [rbp + -24] ; get value of mem2
+    mov rbx, QWORD [rbp + -16] ; get value of mem2
     mov r10, 5
     add rbx, r10
     mov r10, 0
     mov BYTE [rbx], r10b
-    mov rbx, QWORD [rbp + -24] ; get value of mem2
+    mov rbx, QWORD [rbp + -16] ; get value of mem2
     mov r10, 6
     add rbx, r10
     mov r10, 0
     mov BYTE [rbx], r10b
-    mov rbx, QWORD [rbp + -24] ; get value of mem2
+    mov rbx, QWORD [rbp + -16] ; get value of mem2
     mov r10, 7
     add rbx, r10
     mov r10, 0
     mov BYTE [rbx], r10b
-    mov rbx, QWORD [rbp + -24] ; get value of mem2
+    mov rbx, QWORD [rbp + -16] ; get value of mem2
     movsx rbx, DWORD [rbx]
     mov rax, rbx ; return via rax
     jmp L_function_main_exit

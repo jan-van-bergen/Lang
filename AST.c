@@ -39,15 +39,32 @@ static void print_call_args(AST_Call_Arg const * arg) {
 static void print_expression(AST_Expression const * expr) {
 	switch(expr->expr_type) {
 		case AST_EXPRESSION_CONST: {
-			char token_string[128];
-			token_to_string(&expr->expr_const.token, token_string, sizeof(token_string));
-			printf("%s", token_string);
+			char str_token[128];
+			token_to_string(&expr->expr_const.token, str_token, sizeof(str_token));
+			printf("%s", str_token);
 
 			break;
 		}
 
 		case AST_EXPRESSION_VAR: {
 			printf("%s", expr->expr_var.name);
+
+			break;
+		}
+
+		case AST_EXPRESSION_STRUCT_MEMBER: {
+			print_expression(expr->expr_struct_member.expr);
+			printf(".%s", expr->expr_struct_member.member_name);
+
+			break;
+		}
+
+		case AST_EXPRESSION_CAST: {
+			char str_type[128];
+			type_to_string(expr->expr_cast.new_type, str_type, sizeof(str_type));
+
+			printf("cast(%s) ", str_type);
+			print_expression(expr->expr_cast.expr);
 
 			break;
 		}
@@ -106,9 +123,15 @@ static void print_expression(AST_Expression const * expr) {
 
 static void print_statement(AST_Statement const * stat, int indent) {
 	switch (stat->stat_type) {
+		case AST_STATEMENT_PROGRAM: {
+			print_statement(stat->stat_program.stat, indent);
+
+			break;
+		}
+
 		case AST_STATEMENTS: {
-			print_statement(stat->stat_stats.head, indent);
-			print_statement(stat->stat_stats.cons, indent);
+			if (stat->stat_stats.head) print_statement(stat->stat_stats.head, indent);
+			if (stat->stat_stats.cons) print_statement(stat->stat_stats.cons, indent);
 
 			break;
 		}
@@ -296,6 +319,12 @@ void ast_free_statement(AST_Statement * stat) {
 	if (stat == NULL) return;
 
 	switch (stat->stat_type) {
+		case AST_STATEMENT_PROGRAM: {
+			ast_free_statement(stat->stat_program.stat);
+
+			break;
+		}
+
 		case AST_STATEMENTS: {
 			if (stat->stat_stats.head) ast_free_statement(stat->stat_stats.head);
 			if (stat->stat_stats.cons) ast_free_statement(stat->stat_stats.cons);

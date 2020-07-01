@@ -8,32 +8,32 @@ main:
     mov rbp, rsp ; stack frame
     sub rsp, 32 ; reserve stack space for locals
     mov rbx, 1234
-    mov DWORD [rbp + -4], ebx; initialize i
-    lea rbx, QWORD [rbp + -4] ; addrof i
-    mov QWORD [rbp + -16], rbx; initialize ptr_int
-    mov rbx, QWORD [rbp + -16] ; get value of ptr_int
-    mov QWORD [rbp + -24], rbx; initialize ptr_char
-    mov rbx, QWORD [rbp + -24] ; get value of ptr_char
+    mov DWORD [rbp + -32], ebx; initialize i
+    lea rbx, QWORD [rbp + -32] ; addrof i
+    mov QWORD [rbp + -24], rbx; initialize ptr_int
+    mov rbx, QWORD [rbp + -24] ; get value of ptr_int
+    mov QWORD [rbp + -16], rbx; initialize ptr_char
+    mov rbx, QWORD [rbp + -16] ; get value of ptr_char
     mov r10, 0
     add rbx, r10
     mov r10, 13
     mov BYTE [rbx], r10b
-    mov rbx, QWORD [rbp + -24] ; get value of ptr_char
+    mov rbx, QWORD [rbp + -16] ; get value of ptr_char
     mov r10, 1
     add rbx, r10
     mov r10, 12
     mov BYTE [rbx], r10b
-    mov rbx, QWORD [rbp + -24] ; get value of ptr_char
+    mov rbx, QWORD [rbp + -16] ; get value of ptr_char
     mov r10, 2
     add rbx, r10
     mov r10, 11
     mov BYTE [rbx], r10b
-    mov rbx, QWORD [rbp + -24] ; get value of ptr_char
+    mov rbx, QWORD [rbp + -16] ; get value of ptr_char
     mov r10, 3
     add rbx, r10
     mov r10, 10
     mov BYTE [rbx], r10b
-    movsx rbx, DWORD [rbp + -4] ; get value of i
+    movsx rbx, DWORD [rbp + -32] ; get value of i
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
     xor rax, rax ; Default return value 0

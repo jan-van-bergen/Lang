@@ -226,7 +226,7 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 	if (match_length = lexer_match(lexer, "continue")) { token->type = TOKEN_KEYWORD_CONTINUE; lexer->index += match_length; return; }
 	if (match_length = lexer_match(lexer, "func"))     { token->type = TOKEN_KEYWORD_FUNC;     lexer->index += match_length; return; }
 	if (match_length = lexer_match(lexer, "return"))   { token->type = TOKEN_KEYWORD_RETURN;   lexer->index += match_length; return; }
-	//if (match_length = lexer_match(lexer, "struct")) { token->type = TOKEN_KEYWORD_STRUCT; lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "struct"))   { token->type = TOKEN_KEYWORD_STRUCT;   lexer->index += match_length; return; }
 
 	// Bitshift Operators
 	if (match_length = lexer_match(lexer, "<<")) { token->type = TOKEN_OPERATOR_SHIFT_LEFT;  lexer->index += match_length; return; }
@@ -259,6 +259,8 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 	if (match_length = lexer_match(lexer, "->")) { token->type = TOKEN_ARROW; lexer->index += match_length; return; }
 
 	switch (curr) {
+		case '.': token->type = TOKEN_DOT; lexer_next(lexer); return;
+
 		case '(': token->type = TOKEN_PARENTESES_OPEN;  lexer_next(lexer); return;
 		case ')': token->type = TOKEN_PARENTESES_CLOSE; lexer_next(lexer); return;
 

@@ -31,14 +31,14 @@ two:
     call one
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov DWORD [rbp + -4], ebx; initialize local
+    mov DWORD [rbp + -16], ebx; initialize local
     sub rsp, 32 ; reserve space for call arguments
     movsx rbx, DWORD [rbp + 24] ; get value of b
     mov rcx, rbx ; arg 0
     call one
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movsx r10, DWORD [rbp + -4] ; get value of local
+    movsx r10, DWORD [rbp + -16] ; get value of local
     add rbx, r10
     mov rax, rbx ; return via rax
     jmp L_function_two_exit
@@ -107,17 +107,17 @@ main:
     call two
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov DWORD [rbp + -4], ebx; initialize bla
+    mov DWORD [rbp + -16], ebx; initialize bla
     sub rsp, 32 ; reserve space for call arguments
-    movsx rbx, DWORD [rbp + -4] ; get value of bla
+    movsx rbx, DWORD [rbp + -16] ; get value of bla
     mov rcx, rbx ; arg 0
     call one
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov DWORD [rbp + -8], ebx; initialize tmp
+    mov DWORD [rbp + -12], ebx; initialize tmp
     sub rsp, 32 ; reserve space for call arguments
     sub rsp, 32 ; reserve space for call arguments
-    movsx rbx, DWORD [rbp + -4] ; get value of bla
+    movsx rbx, DWORD [rbp + -16] ; get value of bla
     mov rcx, rbx ; arg 0
     call one
     add rsp, 32 ; pop arguments

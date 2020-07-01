@@ -12,8 +12,8 @@ void parser_init(Parser * parser, Token const * tokens, int token_count) {
 
 	parser->index = 0;
 
-	parser->current_stack_frame = NULL;
-	parser->current_scope       = NULL;
+	parser->current_variable_buffer = NULL;
+	parser->current_scope         = NULL;
 
 	parser->functions_len = 0;
 	parser->functions_cap = 16;
@@ -106,6 +106,10 @@ static bool parser_match_statement_decl_func(Parser const * parser) {
 	return parser_match(parser, TOKEN_KEYWORD_FUNC);
 }
 
+static bool parser_match_statement_decl_struct(Parser const * parser) {
+	return parser_match(parser, TOKEN_KEYWORD_STRUCT);
+}
+
 static bool parser_match_statement_extern(Parser const * parser) {
 	return parser_match(parser, TOKEN_KEYWORD_EXTERN);
 }
@@ -139,7 +143,8 @@ static bool parser_match_statement(Parser const * parser) {
 		parser_match_statement_expr(parser) ||
 		parser_match_statement_decl_var   (parser) ||
 		parser_match_statement_decl_func  (parser) ||
-		parser_match_statement_extern   (parser) ||
+		parser_match_statement_decl_struct(parser) ||
+		parser_match_statement_extern(parser) ||
 		parser_match_statement_if   (parser) ||
 		parser_match_statement_while(parser) ||
 		parser_match_statement_break   (parser) ||
@@ -179,7 +184,8 @@ static Type * parser_parse_type(Parser * parser) {
 	} else if (strcmp(identifier, "bool") == 0) {
 		type->type = TYPE_BOOL;
 	} else {
-		abort(); // Invalid primitive type!
+		type->type        = TYPE_STRUCT;
+		type->struct_name = identifier;
 	}
 
 	while (parser_match(parser, TOKEN_OPERATOR_MULTIPLY)) {
@@ -297,8 +303,29 @@ static AST_Expression * parser_parse_expression_elementary(Parser * parser) {
 	}
 }
 
+static AST_Expression * parser_parse_expression_dot(Parser * parser) {
+	AST_Expression * lhs = parser_parse_expression_elementary(parser);
+	
+	// Left Associative
+	while (parser_match(parser, TOKEN_DOT)) {
+		parser_advance(parser);
+
+		AST_Expression * expr = malloc(sizeof(AST_Expression));
+		expr->expr_type = AST_EXPRESSION_STRUCT_MEMBER;
+
+		expr->expr_struct_member.expr = lhs;
+		expr->expr_struct_member.member_name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
+		
+		expr->height = expr->expr_struct_member.expr->height + 1;
+
+		lhs = expr;
+	}
+
+	return lhs;
+}
+
 static AST_Expression * parser_parse_expression_postfix(Parser * parser) {
-	AST_Expression * operand =  parser_parse_expression_elementary(parser);
+	AST_Expression * operand =  parser_parse_expression_dot(parser);
 
 	if (parser_match(parser, TOKEN_OPERATOR_INC) ||
 		parser_match(parser, TOKEN_OPERATOR_DEC)
@@ -520,11 +547,6 @@ static AST_Expression * parser_parse_expression_assign(Parser * parser) {
 
 	// Right Associative
 	if (parser_match(parser, TOKEN_ASSIGN)) {
-		if (lhs->expr_type != AST_EXPRESSION_VAR && lhs->expr_type != AST_EXPRESSION_OPERATOR_PRE) {
-			printf("ERROR: Left hand operand of '=' operator must be a variable!\n");
-			abort();
-		}
-
 		AST_Expression * expression = malloc(sizeof(AST_Expression));
 		expression->expr_type = AST_EXPRESSION_OPERATOR_BIN;
 
@@ -636,9 +658,17 @@ static AST_Statement * parser_parse_statement_decl_func(Parser * parser) {
 	AST_Statement * func = malloc(sizeof(AST_Statement));
 	func->stat_type = AST_STATEMENT_DECL_FUNC;
 
-	// Push Stack Frame
-	Stack_Frame * prev_stack_frame = parser->current_stack_frame;
-	parser->current_stack_frame = make_stack_frame(func_name);
+	func->stat_decl_func.buffer_args = make_variable_buffer(func_name);
+	func->stat_decl_func.buffer_vars = make_variable_buffer(func_name);
+
+	func->stat_decl_func.scope_args = make_scope(func->stat_decl_func.buffer_args);
+	func->stat_decl_func.scope_args->prev = parser->current_scope;
+	func->stat_decl_func.scope_args->variable_buffer->size = 16; // Bias by 16 to account for return address and RBP on stack
+
+	Variable_Buffer * prev_variable_buffer = parser->current_variable_buffer;
+
+	parser->current_variable_buffer = func->stat_decl_func.buffer_args;
+	parser->current_scope           = func->stat_decl_func.scope_args;
 
 	func->stat_decl_func.name = func_name;
 	func->stat_decl_func.args = parser_parse_decl_args(parser, &func->stat_decl_func.arg_count);
@@ -653,19 +683,58 @@ static AST_Statement * parser_parse_statement_decl_func(Parser * parser) {
 
 	parser_add_function_type(parser, &func->stat_decl_func);
 
+	parser->current_variable_buffer = func->stat_decl_func.buffer_vars;
+
 	func->stat_decl_func.body = parser_parse_statement_block(parser);
 	
 	AST_Decl_Arg * arg = func->stat_decl_func.args;
 	while (arg) {
-		scope_add_arg(func->stat_decl_func.body->stat_block.scope, arg->name, arg->type);
+		scope_add_arg(func->stat_decl_func.scope_args, arg->name, arg->type);
 		
 		arg = arg->next;
 	}
 
-	// Pop Stack Frame
-	parser->current_stack_frame = prev_stack_frame;
+	parser->current_variable_buffer = prev_variable_buffer; // Pop Variable Buffer
+	parser->current_scope = parser->current_scope->prev;
 
 	return func;
+}
+
+static AST_Statement * parser_parse_statement_decl_struct(Parser * parser) {
+	parser_match_and_advance(parser, TOKEN_KEYWORD_STRUCT);
+
+	char const * name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
+
+	if (parser->current_scope->struct_defs_len == parser->current_scope->struct_defs_cap) {
+		parser->current_scope->struct_defs_cap *= 2;
+		parser->current_scope->struct_defs = realloc(parser->current_scope->struct_defs, parser->current_scope->struct_defs_cap * sizeof(Struct_Definition));
+	}
+	
+	Struct_Definition * struct_def = &parser->current_scope->struct_defs[parser->current_scope->struct_defs_len++];
+	struct_def->name = name;
+	struct_def->members = make_variable_buffer(name);
+	struct_def->member_scope = make_scope(struct_def->members);
+	struct_def->member_scope->prev = parser->current_scope;
+	
+	parser_match_and_advance(parser, TOKEN_BRACES_OPEN);
+
+	while (parser_match(parser, TOKEN_IDENTIFIER)) {
+		char const * member_name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
+
+		parser_match_and_advance(parser, TOKEN_COLON);
+
+		Type * member_type = parser_parse_type(parser);
+
+		parser_match_and_advance(parser, TOKEN_SEMICOLON);
+
+		scope_add_var(struct_def->member_scope, member_name, member_type);
+	}
+	
+	align(&struct_def->members->size, struct_def->members->align);
+
+	parser_match_and_advance(parser, TOKEN_BRACES_CLOSE);
+
+	return NULL;
 }
 
 static AST_Statement * parser_parse_statement_extern(Parser * parser) {
@@ -773,7 +842,7 @@ static AST_Statement * parser_parse_statement_block(Parser * parser) {
 
 	AST_Statement * block = malloc(sizeof(AST_Statement));
 	block->stat_type = AST_STATEMENT_BLOCK;
-	block->stat_block.scope = make_scope(parser->current_stack_frame);
+	block->stat_block.scope = make_scope(parser->current_variable_buffer);
 
 	// Push Scope
 	block->stat_block.scope->prev = parser->current_scope;
@@ -800,6 +869,8 @@ static AST_Statement * parser_parse_statement(Parser * parser) {
 		return parser_parse_statement_decl_var(parser);
 	} else if (parser_match_statement_decl_func(parser)) {
 		return parser_parse_statement_decl_func(parser);
+	} else if (parser_match_statement_decl_struct(parser)) {
+		return parser_parse_statement_decl_struct(parser);
 	} else if (parser_match_statement_extern(parser)) {
 		return parser_parse_statement_extern(parser);
 	} else if (parser_match_statement_if(parser)) {
@@ -838,13 +909,15 @@ static AST_Statement * parser_parse_statements(Parser * parser) {
 
 AST_Statement * parser_parse_program(Parser * parser) {
 	AST_Statement * program = malloc(sizeof(AST_Statement));
-	program->stat_type = AST_STATEMENT_BLOCK;
+	program->stat_type = AST_STATEMENT_PROGRAM;
 
-	parser->current_stack_frame = make_stack_frame(NULL);
-	parser->current_scope       = make_scope(parser->current_stack_frame);
+	program->stat_program.globals      = make_variable_buffer(NULL);
+	program->stat_program.global_scope = make_scope(program->stat_program.globals);
+	
+	parser->current_variable_buffer = program->stat_program.globals;
+	parser->current_scope         = program->stat_program.global_scope;
 
-	program->stat_block.scope = parser->current_scope;
-	program->stat_block.stat  = parser_parse_statements(parser);
+	program->stat_program.stat = parser_parse_statements(parser);
 
 	parser_match_and_advance(parser, TOKEN_EOF);
 

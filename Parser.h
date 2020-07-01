@@ -9,8 +9,8 @@ typedef struct Parser {
 
 	int index;
 
-	Stack_Frame * current_stack_frame;
-	Scope       * current_scope;
+	Variable_Buffer * current_variable_buffer;
+	Scope           * current_scope;
 
 	int              functions_len;
 	int              functions_cap;

@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "Scope.h"
+
 static Type type_void = { TYPE_VOID, NULL };
 
 static Type type_i8   = { TYPE_I8,  NULL };
@@ -64,11 +66,13 @@ void type_to_string(Type const * type, char * string, int string_size) {
 			break;
 		}
 
+		case TYPE_STRUCT: sprintf_s(string, string_size, "%s", type->struct_name); break;
+
 		default: abort();
 	}
 }
 
-int type_get_size(Type const * type) {
+int type_get_size(Type const * type, Scope * scope) {
 	switch (type->type) {
 		case TYPE_VOID: abort(); // Invalid!
 
@@ -86,11 +90,13 @@ int type_get_size(Type const * type) {
 
 		case TYPE_POINTER: return 8;
 
+		case TYPE_STRUCT: return scope_get_struct_def(scope, type->struct_name)->members->size;
+
 		default: abort();
 	}
 }
 
-int type_get_align(Type const * type) {
+int type_get_align(Type const * type, Scope * scope) {
 	switch (type->type) {
 		case TYPE_VOID: abort(); // Invalid!
 
@@ -107,6 +113,8 @@ int type_get_align(Type const * type) {
 		case TYPE_BOOL: return 1;
 
 		case TYPE_POINTER: return 8;
+
+		case TYPE_STRUCT: return scope_get_struct_def(scope, type->struct_name)->members->align;
 
 		default: abort();
 	}
@@ -144,8 +152,16 @@ bool type_is_pointer(Type const * type) {
 	return type->type == TYPE_POINTER;
 }
 
-bool is_void_pointer(Type const * type) {
+bool type_is_struct(Type const * type) {
+	return type->type == TYPE_STRUCT;
+}
+
+bool type_is_void_pointer(Type const * type) {
 	return type_is_pointer(type) && type_is_void(type->ptr);
+}
+
+bool type_is_primitive(Type const * type) {
+	return type_is_void(type) || type_is_integral(type) || type_is_boolean(type) || type_is_pointer(type);
 }
 
 
@@ -169,22 +185,26 @@ bool types_unifiable(Type const * a, Type const * b) {
 		return types_equal(a->ptr, b->ptr);
 	}
 
+	if (a->type == TYPE_STRUCT && b->type == TYPE_STRUCT) {
+		return strcmp(a->struct_name, b->struct_name) == 0;
+	}
+
 	return a->type == b->type;
 }
 
-Type * types_unify(Type const * a, Type const * b) {
+Type * types_unify(Type const * a, Type const * b, Scope * scope) {
 	if (types_equal(a, b)) return a;
 
 	if (type_is_integral(a) && type_is_integral(b)) {
-		int size_a = type_get_size(a);
-		int size_b = type_get_size(b);
+		int size_a = type_get_size(a, scope);
+		int size_b = type_get_size(b, scope);
 
 		return size_a >= size_b ? a : b;
 	}
 
 	if (type_is_pointer(a) && type_is_pointer(b)) {
-		if (is_void_pointer(a)) return b;
-		if (is_void_pointer(b)) return a;
+		if (type_is_void_pointer(a)) return b;
+		if (type_is_void_pointer(b)) return a;
 	}
 
 	char str_type_a[128];

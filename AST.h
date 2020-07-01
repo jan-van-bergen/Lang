@@ -7,6 +7,7 @@
 typedef enum AST_Expression_Type {
 	AST_EXPRESSION_CONST,
 	AST_EXPRESSION_VAR,
+	AST_EXPRESSION_STRUCT_MEMBER,
 	AST_EXPRESSION_CAST,
 	AST_EXPRESSION_ASSIGN,
 	AST_EXPRESSION_OPERATOR_BIN,
@@ -35,6 +36,11 @@ typedef struct AST_Expression {
 		struct Var {
 			char const * name;
 		} expr_var;
+
+		struct Struct_Member {
+			struct AST_Expression * expr;
+			char const            * member_name;
+		} expr_struct_member;
 
 		struct Cast {
 			Type * new_type;
@@ -69,6 +75,8 @@ typedef struct AST_Expression {
 } AST_Expression;
 
 typedef enum AST_Statement_Type {
+	AST_STATEMENT_PROGRAM,
+
 	AST_STATEMENTS,
 	AST_STATEMENT_BLOCK,
 
@@ -93,6 +101,11 @@ typedef struct AST_Decl_Func {
 	char const * name;
 	Type       * return_type;
 
+	Variable_Buffer * buffer_args;
+	Variable_Buffer * buffer_vars;
+
+	Scope * scope_args;
+
 	int arg_count;
 
 	struct AST_Decl_Arg  * args;
@@ -103,6 +116,13 @@ typedef struct AST_Statement {
 	AST_Statement_Type stat_type;
 
 	union {
+		struct Program {
+			Variable_Buffer * globals;
+			Scope           * global_scope;
+
+			struct AST_Statement * stat;
+		} stat_program;
+
 		struct Statements {
 			struct AST_Statement * head;
 			struct AST_Statement * cons;

@@ -47,7 +47,7 @@ factorial_loop:
     mov DWORD [rbp + 16], ecx ; push arg 0 
     sub rsp, 16 ; reserve stack space for locals
     mov rbx, 1
-    mov DWORD [rbp + -4], ebx; initialize result
+    mov DWORD [rbp + -16], ebx; initialize result
     L_loop3:
     movsx rbx, DWORD [rbp + 16] ; get value of n
     mov r10, 0
@@ -60,10 +60,10 @@ factorial_loop:
     L5:
     cmp rbx, 0
     je L_exit3
-        movsx rbx, DWORD [rbp + -4] ; get value of result
+        movsx rbx, DWORD [rbp + -16] ; get value of result
         movsx r10, DWORD [rbp + 16] ; get value of n
         imul rbx, r10
-        lea r10, QWORD [rbp + -4] ; get address of result
+        lea r10, QWORD [rbp + -16] ; get address of result
         mov DWORD [r10], ebx
         movsx rbx, DWORD [rbp + 16] ; get value of n
         mov r10, 1
@@ -72,7 +72,7 @@ factorial_loop:
         mov DWORD [r10], ebx
     jmp L_loop3
     L_exit3:
-    movsx rbx, DWORD [rbp + -4] ; get value of result
+    movsx rbx, DWORD [rbp + -16] ; get value of result
     mov rax, rbx ; return via rax
     jmp L_function_factorial_loop_exit
     xor rax, rax ; Default return value 0
@@ -86,23 +86,23 @@ main:
     mov rbp, rsp ; stack frame
     sub rsp, 16 ; reserve stack space for locals
     mov rbx, 5
-    mov DWORD [rbp + -4], ebx; initialize arg
+    mov DWORD [rbp + -16], ebx; initialize arg
     sub rsp, 32 ; reserve space for call arguments
-    movsx rbx, DWORD [rbp + -4] ; get value of arg
+    movsx rbx, DWORD [rbp + -16] ; get value of arg
     mov rcx, rbx ; arg 0
     call factorial_recursive
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov DWORD [rbp + -8], ebx; initialize a
+    mov DWORD [rbp + -12], ebx; initialize a
     sub rsp, 32 ; reserve space for call arguments
-    movsx rbx, DWORD [rbp + -4] ; get value of arg
+    movsx rbx, DWORD [rbp + -16] ; get value of arg
     mov rcx, rbx ; arg 0
     call factorial_loop
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov DWORD [rbp + -12], ebx; initialize b
-    movsx rbx, DWORD [rbp + -8] ; get value of a
-    movsx r10, DWORD [rbp + -12] ; get value of b
+    mov DWORD [rbp + -8], ebx; initialize b
+    movsx rbx, DWORD [rbp + -12] ; get value of a
+    movsx r10, DWORD [rbp + -8] ; get value of b
     cmp rbx, r10
     jne L6
     mov rbx, 1

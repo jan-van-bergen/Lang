@@ -1,0 +1,15 @@
+struct Bla {
+	b: int;
+	l: u64;
+	a: i8;
+}
+
+let globla: Bla;
+
+func main() -> int {
+	globla.b = 3;
+	globla.l = 5;
+	globla.a = 7;
+	
+	return globla.b + globla.l + globla.a;
+}

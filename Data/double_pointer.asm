@@ -10,15 +10,15 @@ abc:
     mov DWORD [rbp + 24], edx ; push arg 1 
     sub rsp, 32 ; reserve stack space for locals
     lea rbx, QWORD [rbp + 16] ; addrof a
-    mov QWORD [rbp + -8], rbx; initialize ptr_a
+    mov QWORD [rbp + -32], rbx; initialize ptr_a
     lea rbx, QWORD [rbp + 24] ; addrof b
-    mov QWORD [rbp + -16], rbx; initialize ptr_b
-    lea rbx, QWORD [rbp + -8] ; addrof ptr_a
-    mov QWORD [rbp + -24], rbx; initialize ptr_ptr
-    mov rbx, QWORD [rbp + -24] ; get value of ptr_ptr
-    mov r10, QWORD [rbp + -16] ; get value of ptr_b
+    mov QWORD [rbp + -24], rbx; initialize ptr_b
+    lea rbx, QWORD [rbp + -32] ; addrof ptr_a
+    mov QWORD [rbp + -16], rbx; initialize ptr_ptr
+    mov rbx, QWORD [rbp + -16] ; get value of ptr_ptr
+    mov r10, QWORD [rbp + -24] ; get value of ptr_b
     mov QWORD [rbx], r10
-    mov rbx, QWORD [rbp + -24] ; get value of ptr_ptr
+    mov rbx, QWORD [rbp + -16] ; get value of ptr_ptr
     mov rbx, QWORD [rbx]
     movsx rbx, DWORD [rbx]
     mov rax, rbx ; return via rax

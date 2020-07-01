@@ -20,19 +20,15 @@ static void run_test(char const * filename, int expected_exit_code, char const *
 
 	int exit_code = system(cmd);
 
-	// Check exit code
-	if (exit_code == expected_exit_code) {
-		printf("Testcase SUCCESS: '%s' Exit code was %i\n", filename, exit_code);
-	} else {
-		printf("Testcase FAILED:  '%s' Exit code was %i, expected %i.\n", filename, exit_code, expected_exit_code);
-
-		__debugbreak();
-	}
-
-	// Check output
 	char const * output = read_file(file_out);
 
-	if (strcmp(output, expected_output) != 0) {
+	if (exit_code == expected_exit_code && strcmp(output, expected_output) == 0) {
+		printf("Testcase SUCCESS: '%s' Exit code was %i, output was: '%s'\n", filename, exit_code, output);
+	} else {
+		printf("Testcase FAILED:  '%s' Exit code was %i, expected %i.\n", filename, exit_code, expected_exit_code);
+		printf("Output:   %s\n", output);
+		printf("Expected: %s\n", expected_output);
+
 		__debugbreak();
 	}
 
@@ -56,4 +52,7 @@ void run_tests() {
 	run_test("Data\\heap.lang",         67305985, "BruhTest");
 	run_test("Data\\scope.lang",               3, "");
 	run_test("Data\\cast.lang",       0x0a0b0c0d, "");
+	run_test("Data\\struct.lang",              4, "");
+	run_test("Data\\struct_nested.lang",       4, "");
+	run_test("Data\\struct_global.lang",      15, "");
 }

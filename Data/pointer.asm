@@ -22,15 +22,15 @@ deref:
     mov rbp, rsp ; stack frame
     mov QWORD [rbp + 16], rcx ; push arg 0 
     sub rsp, 16 ; reserve stack space for locals
-    mov DWORD [rbp + -4], 0; zero initialize local
+    mov DWORD [rbp + -16], 0 ; zero initialize local
     mov rbx, QWORD [rbp + 16] ; get value of ptr
     mov r10, 21
     mov DWORD [rbx], r10d
-    lea rbx, QWORD [rbp + -4] ; get address of local
+    lea rbx, QWORD [rbp + -16] ; get address of local
     mov r10, 1234
     mov DWORD [rbx], r10d
     sub rsp, 32 ; reserve space for call arguments
-    lea rbx, QWORD [rbp + -4] ; addrof local
+    lea rbx, QWORD [rbp + -16] ; addrof local
     mov rcx, rbx ; arg 0
     call bla
     add rsp, 32 ; pop arguments
@@ -46,22 +46,22 @@ main:
     mov rbp, rsp ; stack frame
     sub rsp, 32 ; reserve stack space for locals
     mov rbx, 42
-    mov DWORD [rbp + -4], ebx; initialize a
-    mov QWORD [rbp + -16], 0; zero initialize p
-    lea rbx, QWORD [rbp + -4] ; addrof a
-    lea r10, QWORD [rbp + -16] ; get address of p
+    mov DWORD [rbp + -32], ebx; initialize a
+    mov QWORD [rbp + -24], 0 ; zero initialize p
+    lea rbx, QWORD [rbp + -32] ; addrof a
+    lea r10, QWORD [rbp + -24] ; get address of p
     mov QWORD [r10], rbx
-    mov QWORD [rbp + -24], 0; zero initialize p2
-    lea rbx, QWORD [rbp + -24] ; get address of p2
-    mov r10, QWORD [rbp + -16] ; get value of p
+    mov QWORD [rbp + -16], 0 ; zero initialize p2
+    lea rbx, QWORD [rbp + -16] ; get address of p2
+    mov r10, QWORD [rbp + -24] ; get value of p
     mov QWORD [rbx], r10
     sub rsp, 32 ; reserve space for call arguments
-    mov rbx, QWORD [rbp + -24] ; get value of p2
+    mov rbx, QWORD [rbp + -16] ; get value of p2
     mov rcx, rbx ; arg 0
     call deref
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movsx rbx, DWORD [rbp + -4] ; get value of a
+    movsx rbx, DWORD [rbp + -32] ; get value of a
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
     xor rax, rax ; Default return value 0

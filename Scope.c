@@ -3,18 +3,19 @@
 #include <assert.h>
 #include <string.h>
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 
-static int stack_frame_add_variable(Stack_Frame * frame, char const * name, Type * type, bool is_global) {
-	if (frame->vars_len == frame->vars_cap) {
-		frame->vars_cap *= 2;
-		frame->vars = realloc(frame->vars, frame->vars_cap * sizeof(Variable));
+static int variable_buffer_add_variable(Variable_Buffer * buf, char const * name, Type * type, bool is_global) {
+	if (buf->vars_len == buf->vars_cap) {
+		buf->vars_cap *= 2;
+		buf->vars = realloc(buf->vars, buf->vars_cap * sizeof(Variable));
 	}
 
-	int index = frame->vars_len++;
+	int index = buf->vars_len++;
 	
-	Variable * var = &frame->vars[index];
+	Variable * var = &buf->vars[index];
 	var->name = name;
 	var->type = type;
 	var->is_global = is_global;
@@ -22,29 +23,26 @@ static int stack_frame_add_variable(Stack_Frame * frame, char const * name, Type
 	return index;
 }
 
-Stack_Frame * make_stack_frame(char const * function_name) {
-	Stack_Frame * frame = malloc(sizeof(Stack_Frame));
-	frame->function_name = function_name;
+Variable_Buffer * make_variable_buffer(char const * name) {
+	Variable_Buffer * buf = malloc(sizeof(Variable_Buffer));
+	buf->name = name;
 
-	frame->vars_len = 0;
-	frame->vars_cap = 16;
-	frame->vars = malloc(frame->vars_cap * sizeof(Variable));
+	buf->vars_len = 0;
+	buf->vars_cap = 16;
+	buf->vars = malloc(buf->vars_cap * sizeof(Variable));
 
-	frame->arg_size = 0;
-	frame->var_size = 0;
+	buf->size  = 0;
+	buf->align = 0;
 
-	frame->curr_arg_offset = 16; // Bias by 8 to account for return address and RBP on stack
-	frame->curr_var_offset = 0;
-
-	return frame;
+	return buf;
 }
 
-void free_stack_frame(Stack_Frame * stack_frame) {
-	free(stack_frame->vars);
-	free(stack_frame);
+void free_variable_buffer(Variable_Buffer * list) {
+	free(list->vars);
+	free(list);
 }
 
-Scope * make_scope(Stack_Frame * stack_frame) {
+Scope * make_scope(Variable_Buffer * buf) {
 	Scope * scope = malloc(sizeof(Scope));
 	scope->prev = NULL;
 
@@ -52,8 +50,12 @@ Scope * make_scope(Stack_Frame * stack_frame) {
 	scope->indices_cap = 16;
 	scope->indices = malloc(scope->indices_cap * sizeof(int));
 
-	scope->stack_frame = stack_frame;
+	scope->variable_buffer = buf;
 	
+	scope->struct_defs_len = 0;
+	scope->struct_defs_cap = 16;
+	scope->struct_defs = malloc(scope->struct_defs_cap * sizeof(Struct_Definition));
+
 	return scope;
 }
 
@@ -69,7 +71,7 @@ bool scope_is_global(Scope const * scope) {
 void scope_add_arg(Scope * scope, char const * name, Type * type) {
 	assert(!scope_is_global(scope));
 
-	int index = stack_frame_add_variable(scope->stack_frame, name, type, false);
+	int index = variable_buffer_add_variable(scope->variable_buffer, name, type, false);
 	
 	if (scope->indices_len == scope->indices_cap) {
 		scope->indices_cap *= 2;
@@ -78,12 +80,28 @@ void scope_add_arg(Scope * scope, char const * name, Type * type) {
 
 	scope->indices[scope->indices_len++] = index;
 
-	Variable * arg = &scope->stack_frame->vars[index];
-	scope->stack_frame->arg_size += type_get_size(arg->type);
+	Variable * arg = &scope->variable_buffer->vars[index];
+	
+	int arg_size  = type_get_size (arg->type, scope);
+	int arg_align = type_get_align(arg->type, scope);
+
+	if (scope->indices_len <= 4) { // First 4 arguments will be put into shadow space by callee
+		arg_size  = 8;
+		arg_align = 8;
+	}
+
+	align(&scope->variable_buffer->size, arg_align);
+		
+	arg->offset = scope->variable_buffer->size;
+	scope->variable_buffer->size += arg_size;
+
+	if (scope->variable_buffer->align < arg_align) {
+		scope->variable_buffer->align = arg_align;
+	}
 }
 
 void scope_add_var(Scope * scope, char const * name, Type * type) {
-	int index = stack_frame_add_variable(scope->stack_frame, name, type, scope_is_global(scope));
+	int index = variable_buffer_add_variable(scope->variable_buffer, name, type, scope_is_global(scope));
 
 	if (scope->indices_len == scope->indices_cap) {
 		scope->indices_cap *= 2;
@@ -92,24 +110,55 @@ void scope_add_var(Scope * scope, char const * name, Type * type) {
 
 	scope->indices[scope->indices_len++] = index;
 
-	Variable * var = &scope->stack_frame->vars[index];
-	scope->stack_frame->var_size += type_get_size(var->type);
+	Variable * var = &scope->variable_buffer->vars[index];
+
+	int var_size  = type_get_size (var->type, scope);
+	int var_align = type_get_align(var->type, scope);
+
+	align(&scope->variable_buffer->size, var_align);
+
+	var->offset = scope->variable_buffer->size;
+	scope->variable_buffer->size += var_size;
+
+	if (scope->variable_buffer->align < var_align) {
+		scope->variable_buffer->align = var_align;
+	}
 }
 
 Variable * scope_get_variable(Scope const * scope, char const * name) {
 	while (true) {
-		Stack_Frame const * frame = scope->stack_frame;
+		Variable_Buffer const * buf = scope->variable_buffer;
 
 		for (int i = 0; i < scope->indices_len; i++) {
 			int index = scope->indices[i];
 
-			if (strcmp(frame->vars[index].name, name) == 0) {
-				return frame->vars + index;
+			if (strcmp(buf->vars[index].name, name) == 0) {
+				return buf->vars + index;
 			}
 		}
 
 		scope = scope->prev;
 
-		if (scope == NULL) abort(); // Variable not found!
+		if (scope == NULL) {
+			printf("Error: Variable '%s' not defined or is not in scope!", name);
+			abort();
+		}
+	}
+}
+
+Struct_Definition * scope_get_struct_def(Scope const * scope, char const * name) {
+	while (true) {
+		for (int i = 0; i < scope->struct_defs_len; i++) {
+			if (strcmp(scope->struct_defs[i].name, name) == 0) {
+				return scope->struct_defs + i;
+			}
+		}
+
+		scope = scope->prev;
+
+		if (scope == NULL) {
+			printf("ERROR: Struct '%s' not defined or is not in scope!", name);
+			abort();
+		}
 	}
 }

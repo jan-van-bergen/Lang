@@ -13,16 +13,16 @@ main:
     cdq
     idiv r10
     mov rbx, rdx
-    mov DWORD [rbp + -4], ebx; initialize a
+    mov DWORD [rbp + -16], ebx; initialize a
     mov rbx, 3
     mov r10, 5
     mov rax, rbx
     cdq
     idiv r10
     mov rbx, rdx
-    mov DWORD [rbp + -8], ebx; initialize b
-    movsx rbx, DWORD [rbp + -4] ; get value of a
-    movsx r10, DWORD [rbp + -8] ; get value of b
+    mov DWORD [rbp + -12], ebx; initialize b
+    movsx rbx, DWORD [rbp + -16] ; get value of a
+    movsx r10, DWORD [rbp + -12] ; get value of b
     mov rax, rbx
     cdq
     idiv r10

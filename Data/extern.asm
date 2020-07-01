@@ -19,30 +19,30 @@ main:
     call GetStdHandle
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov QWORD [rbp + -8], rbx; initialize std_handle
+    mov QWORD [rbp + -16], rbx; initialize std_handle
     sub rsp, 32 ; reserve space for call arguments
     lea rbx, QWORD [REL string] ; get address of string
     mov rcx, rbx ; arg 0
     call strlen
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov DWORD [rbp + -12], ebx; initialize str_len
-    mov DWORD [rbp + -16], 0; zero initialize bytes_written
+    mov DWORD [rbp + -8], ebx; initialize str_len
+    mov DWORD [rbp + -4], 0 ; zero initialize bytes_written
     sub rsp, 48 ; reserve space for call arguments
-    mov rbx, QWORD [rbp + -8] ; get value of std_handle
+    mov rbx, QWORD [rbp + -16] ; get value of std_handle
     mov rcx, rbx ; arg 0
     lea rbx, QWORD [REL string] ; get address of string
     mov rdx, rbx ; arg 1
-    movsx rbx, DWORD [rbp + -12] ; get value of str_len
+    movsx rbx, DWORD [rbp + -8] ; get value of str_len
     mov r8, rbx ; arg 2
-    lea rbx, QWORD [rbp + -16] ; addrof bytes_written
+    lea rbx, QWORD [rbp + -4] ; addrof bytes_written
     mov r9, rbx ; arg 3
     mov rbx, 0
     mov QWORD [rsp + 32], rbx ; arg 4
     call WriteFile
     add rsp, 48 ; pop arguments
     mov rbx, rax ; get return value
-    movsx rbx, DWORD [rbp + -16] ; get value of bytes_written
+    movsx rbx, DWORD [rbp + -4] ; get value of bytes_written
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
     xor rax, rax ; Default return value 0

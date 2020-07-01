@@ -12,39 +12,50 @@ typedef struct Variable {
 	int offset;
 } Variable;
 
-typedef struct Stack_Frame {
-	char const * function_name;
+typedef struct Variable_Buffer {
+	char const * name;
 
 	int        vars_len;
 	int        vars_cap;
 	Variable * vars;
 
-	int arg_size; // In bytes
-	int var_size;
+	int size;  // Total span in bytes (including padding due to alignment)
+	int align; // Alignment of largest element
+} Variable_Buffer;
 
-	int curr_arg_offset; // Used during codegen
-	int curr_var_offset;
-} Stack_Frame;
+Variable_Buffer * make_variable_buffer(char const * name);
+void              free_variable_buffer(Variable_Buffer * variable_buffer);
 
-Stack_Frame * make_stack_frame(char const * function_name);
-void          free_stack_frame(Stack_Frame * stack_frame);
+
+typedef struct Struct_Definition {
+	char const * name;
+
+	struct Variable_Buffer * members;
+	struct Scope           * member_scope;
+} Struct_Definition;
+
 
 typedef struct Scope {
 	struct Scope * prev;
 
 	int   indices_len;
 	int   indices_cap;
-	int * indices;
+	int * indices; // Index into the Stack_Frame's Variable array
 
-	Stack_Frame * stack_frame;
+	Variable_Buffer * variable_buffer;
+
+	int                 struct_defs_len;
+	int                 struct_defs_cap;
+	Struct_Definition * struct_defs;
 } Scope;
 
-Scope * make_scope(Stack_Frame * stack_frame);
+Scope * make_scope(Variable_Buffer * variable_buffer);
 void    free_scope(Scope * scope);
 
 bool scope_is_global(Scope const * scope);
 
-void scope_add_var(Scope * scope, char const * name, Type * type);
 void scope_add_arg(Scope * scope, char const * name, Type * type);
+void scope_add_var(Scope * scope, char const * name, Type * type);
 
-Variable * scope_get_variable(Scope const * scope, char const * name);
+Variable          * scope_get_variable  (Scope const * scope, char const * name);
+Struct_Definition * scope_get_struct_def(Scope const * scope, char const * name);

@@ -1,0 +1,26 @@
+struct Test {
+	a: i64;
+	b: i32;
+	c: i32;
+}
+
+func main() -> int {
+	let test: Test;
+	test.a = 3;
+	test.b = 4;
+	test.c = 5;
+	
+	return test.b;
+}
+
+// func ref() -> int {
+	// let test_a: i64;
+	// let test_b: i32;
+	// let test_c: i32;
+	
+	// test_a = 3;
+	// test_b = 4;
+	// test_c = 5;
+
+	// return test_b;
+// }

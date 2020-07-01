@@ -1,0 +1,21 @@
+struct Nested {
+	b: i32;
+	c: i64;
+}
+
+func main() -> int {
+	struct Test {
+		a: u8;
+		n: Nested;
+	}
+
+	let test: Test;
+	test.a   = 3;
+	test.n.b = 4;
+	test.n.c = 5;
+	
+	let nest: Nested;
+	nest = test.n; // Struct assigment does copy
+	
+	return nest.b;
+}

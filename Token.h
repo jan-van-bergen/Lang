@@ -8,6 +8,8 @@ typedef enum Token_Type {
 	TOKEN_LITERAL_BOOL,
 	TOKEN_LITERAL_STRING,
 
+	TOKEN_DOT,
+
 	TOKEN_KEYWORD_LET,      // let
 	TOKEN_KEYWORD_CAST,     // cast()
 	TOKEN_KEYWORD_EXTERN,   // extern
@@ -19,7 +21,7 @@ typedef enum Token_Type {
 	TOKEN_KEYWORD_CONTINUE, // continue
 	TOKEN_KEYWORD_FUNC,     // func
 	TOKEN_KEYWORD_RETURN,   // return
-	//TOKEN_KEYWORD_STRUCT, // struct
+	TOKEN_KEYWORD_STRUCT,   // struct
 		
 	TOKEN_PARENTESES_OPEN,  // (
 	TOKEN_PARENTESES_CLOSE, // )

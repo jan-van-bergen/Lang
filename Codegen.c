@@ -71,7 +71,8 @@ static int context_reg_request(Context * ctx) {
 		}
 	}
 
-	abort(); // No registers available!
+	printf("ERROR: Out of registers!");
+	abort();
 }
 
 static void context_reg_free(Context * ctx, int reg) {
@@ -94,33 +95,6 @@ static void context_flag_unset(Context * ctx, Context_Flags flag) {
 	ctx->flags &= ~flag;
 }
 
-static Variable * context_decl_arg(Context * ctx, const char * name, int arg_index) {
-	assert(ctx->current_scope);
-
-	Variable * var = scope_get_variable(ctx->current_scope, name);
-
-	var->offset = ctx->current_scope->stack_frame->curr_arg_offset;
-	if (arg_index < 4) {
-		ctx->current_scope->stack_frame->curr_arg_offset += 8;
-	} else {
-		align(&ctx->current_scope->stack_frame->curr_arg_offset, type_get_align(var->type));
-		ctx->current_scope->stack_frame->curr_arg_offset += type_get_size(var->type);
-	}
-
-	return var;
-}
-
-static void context_decl_var(Context * ctx, const char * name) {
-	assert(ctx->current_scope);
-
-	Variable * var = scope_get_variable(ctx->current_scope, name);
-
-	align(&ctx->current_scope->stack_frame->curr_var_offset, type_get_align(var->type));
-	ctx->current_scope->stack_frame->curr_var_offset += type_get_size(var->type);
-
-	var->offset = -ctx->current_scope->stack_frame->curr_var_offset;
-}
-
 static void variable_get_address(Variable const * var, char * address, int address_size) {
 	if (var->is_global) {
 		sprintf_s(address, address_size, "REL %s", var->name); // Globals by name
@@ -136,7 +110,22 @@ static AST_Decl_Func * context_get_function_decl(Context * ctx, char const * nam
 		}
 	}
 
-	abort(); // Undefined function name!
+	printf("ERROR: Function '%s' is not defined or not in scope!");
+	abort();
+}
+
+static void type_error(char const * msg, ...) {
+	va_list args;
+	va_start(args, msg);
+
+	char str_error[512];
+	vsprintf_s(str_error, sizeof(str_error), msg, args);
+
+	printf("TYPE ERROR: %s\n", str_error);
+
+	va_end(args);
+	
+	abort();
 }
 
 static void context_emit_code(Context * ctx, char const * fmt, ...) {
@@ -173,18 +162,33 @@ static void context_emit_code(Context * ctx, char const * fmt, ...) {
 }
 
 // Adds global variable to data segment
-static void context_add_global(Context * ctx, char const * var_name, int value) {
+static void context_add_global(Context * ctx, Variable * var, int value) {
 	if (ctx->data_seg_len == ctx->data_seg_cap) {
 		ctx->data_seg_cap *= 2;
 		ctx->data_seg_vals = realloc(ctx->data_seg_vals, ctx->data_seg_cap * sizeof(char const *));
 	}
 
-	int var_name_len = strlen(var_name);
+	int var_name_len = strlen(var->name);
 
 	int    global_size = var_name_len + 5 + 32;
 	char * global = malloc(global_size);
 
-	sprintf_s(global, global_size, "%s dq %i", var_name, value);
+	if (type_is_struct(var->type)) {
+		if (value != 0) {
+			type_error("Cannot initialize global struct variable '%s' with value '%i'", var->name, value);
+		}
+
+		// Fill struct with 0 quad words
+		sprintf_s(global, global_size, "%s dq 0", var->name);
+
+		int struct_size = type_get_size(var->type, ctx->current_scope) / 8;
+
+		for (int i = 1; i < struct_size; i++) {
+			strcat_s(global, global_size, ", 0");
+		}
+	} else {
+		sprintf_s(global, global_size, "%s dq %i", var->name, value);
+	}
 
 	ctx->data_seg_vals[ctx->data_seg_len++] = global;
 }
@@ -235,20 +239,6 @@ static void context_add_string_literal(Context * ctx, char const * str_name, cha
 	ctx->data_seg_vals[ctx->data_seg_len++] = str_lit_cpy;
 }
 
-static void type_error(char const * msg, ...) {
-	va_list args;
-	va_start(args, msg);
-
-	char str_error[512];
-	vsprintf_s(str_error, sizeof(str_error), msg, args);
-
-	printf("TYPE ERROR: %s\n", str_error);
-
-	va_end(args);
-	
-	abort();
-}
-
 // Result of an AST_Expression
 typedef struct Result {
 	int    reg;
@@ -292,12 +282,10 @@ static char const * get_reg_name_call(int reg_index, int size) {
 
 static char const * get_word_name(int size) {
 	switch (size) {
-		case 1: return "BYTE";
-		case 2: return "WORD";
-		case 4: return "DWORD";
-		case 8: return "QWORD";
-
-		default: abort();
+		case 1:  return "BYTE";
+		case 2:  return "WORD";
+		case 4:  return "DWORD";
+		default: return "QWORD";
 	}
 }
 
@@ -388,11 +376,55 @@ static Result codegen_expression_var(Context * ctx, AST_Expression const * expr)
 	if (ctx->flags & CTX_FLAG_VAR_BY_ADDRESS || is_global_char_ptr) {
 		context_emit_code(ctx, "lea %s, QWORD [%s] ; get address of %s\n", get_reg_name_scratch(result.reg, 8), var_address, var_name);
 	} else {
-		int type_size = type_get_size(result.type);
+		int type_size = type_get_size(result.type, ctx->current_scope);
+
 		if (type_size < 8) {
 			context_emit_code(ctx, "movsx %s, %s [%s] ; get value of %s\n", get_reg_name_scratch(result.reg, 8), get_word_name(type_size), var_address, var_name); // Mov with Sign Extension
 		} else {
 			context_emit_code(ctx, "mov %s, %s [%s] ; get value of %s\n",   get_reg_name_scratch(result.reg, 8), get_word_name(type_size), var_address, var_name);
+		}
+	}
+
+	return result;
+}
+
+static Result codege_expression_struct_member(Context * ctx, AST_Expression * expr) {
+	assert(expr->expr_type == AST_EXPRESSION_STRUCT_MEMBER);
+
+	bool var_by_address = ctx->flags & CTX_FLAG_VAR_BY_ADDRESS; 
+
+	// Evaluate LHS by address
+	context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS);
+	Result result = codegen_expression(ctx, expr->expr_struct_member.expr);
+
+	if (result.type->type != TYPE_STRUCT) {
+		char str_type[128];
+		type_to_string(result.type, str_type, sizeof(str_type));
+
+		type_error("Operator '.' requires left operand to be a struct type. Type was '%s'", str_type);
+	}
+
+	// Lookup the struct member by name
+	Struct_Definition * struct_def = scope_get_struct_def(ctx->current_scope, result.type->struct_name);
+	Variable          * var_member = scope_get_variable(struct_def->member_scope, expr->expr_struct_member.member_name);
+
+	context_emit_code(ctx, "add %s, %i ; member offset '%s'\n", get_reg_name_scratch(result.reg, 8), var_member->offset, var_member->name);
+	
+	result.type = var_member->type;
+
+	// Check if we need to return by value
+	if (!var_by_address) {
+		context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
+
+		// Structs are allways returned by address
+		if (!type_is_struct(result.type)) {
+			int type_size = type_get_size(result.type, struct_def->member_scope);
+
+			if (type_size < 8) {
+				context_emit_code(ctx, "movsx %s, %s [%s]\n", get_reg_name_scratch(result.reg, 8), get_word_name(type_size), get_reg_name_scratch(result.reg, 8));
+			} else {
+				context_emit_code(ctx, "mov %s, %s [%s]\n",   get_reg_name_scratch(result.reg, 8), get_word_name(type_size), get_reg_name_scratch(result.reg, 8));
+			}
 		}
 	}
 
@@ -445,6 +477,13 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 
 	// Assignment operator is handled separately, because it needs the lhs by address
 	if (operator == TOKEN_ASSIGN) {
+		if (expr_left->expr_type != AST_EXPRESSION_VAR && 
+			expr_left->expr_type != AST_EXPRESSION_OPERATOR_PRE &&
+			expr_left->expr_type != AST_EXPRESSION_STRUCT_MEMBER
+		) {
+			type_error("Operator '=' requires left operand to be assignable");
+		}
+
 		// Traverse tallest subtree first
 		if (expr->expr_op_bin.expr_left->height >= expr->expr_op_bin.expr_right->height) {
 			// Evaluate lhs by address
@@ -462,8 +501,8 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
 		}
 
-		int type_size_left  = type_get_size(result_left .type);
-		int type_size_right = type_get_size(result_right.type);
+		int type_size_left  = type_get_size(result_left .type, ctx->current_scope);
+		int type_size_right = type_get_size(result_right.type, ctx->current_scope);
 
 		if (!types_unifiable(result_left.type, result_right.type)) {
 			char str_type_left [128];
@@ -472,7 +511,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			type_to_string(result_left .type, str_type_left,  sizeof(str_type_left));
 			type_to_string(result_right.type, str_type_right, sizeof(str_type_right));
 
-			type_error("Cannot assign type '%s' to type '%s'", str_type_right, str_type_left);
+			type_error("Cannot assign instance of type '%s' a value of type '%s'", str_type_left, str_type_right);
 		} else if (type_size_right > type_size_left) {
 			char str_type_left [128];
 			char str_type_right[128];
@@ -483,11 +522,20 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			type_error("Implicit narrowing conversion from type '%s' to '%s' is not allowed. Explicit cast required", str_type_right, str_type_left);
 		}
 
-		context_emit_code(ctx, "mov %s [%s], %s\n", get_word_name(type_size_left), get_reg_name_scratch(result_left.reg, 8), get_reg_name_scratch(result_right.reg, type_size_left));
+		if (type_is_primitive(result_left.type) && type_is_primitive(result_right.type)) {
+			context_emit_code(ctx, "mov %s [%s], %s\n", get_word_name(type_size_left), get_reg_name_scratch(result_left.reg, 8), get_reg_name_scratch(result_right.reg, type_size_left));
+		} else if (type_is_struct(result_left.type) && type_is_struct(result_right.type)) {
+			int struct_size = type_get_size(result_left.type, ctx->current_scope);
+
+			context_emit_code(ctx, "mov rdi, %s\n", get_reg_name_scratch(result_left .reg, 8));
+			context_emit_code(ctx, "mov rsi, %s\n", get_reg_name_scratch(result_right.reg, 8));
+			context_emit_code(ctx, "mov ecx, %i\n", struct_size);
+			context_emit_code(ctx, "rep movsb\n");			
+		}
 
 		context_reg_free(ctx, result_right.reg);
 
-		result_left.type = types_unify(result_left.type, result_right.type);
+		result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
 
 		return result_left;
 	}
@@ -510,7 +558,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			context_emit_code(ctx, "add %s, %s\n", reg_name_left, reg_name_right);
 
 			if (type_is_integral(result_left.type) && type_is_integral(result_right.type)) { // integral + integral --> integral
-				result_left.type = types_unify(result_left.type, result_right.type);
+				result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
 			} else if (type_is_pointer(result_left.type) && type_is_integral(result_right.type)) { // pointer + integral --> pointer
 				// Resulting type is pointer, do nothing
 			} else {
@@ -524,7 +572,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			context_emit_code(ctx, "sub %s, %s\n", reg_name_left, reg_name_right);
 
 			if (type_is_integral(result_left.type) && type_is_integral(result_right.type)) { // integral - integral --> integral
-				result_left.type = types_unify(result_left.type, result_right.type);
+				result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
 			} else if (type_is_pointer(result_left.type) && type_is_integral(result_right.type)) { // pointer - integral --> pointer
 				// Resulting type is pointer, do nothing
 			} else if (type_is_pointer(result_left.type) && type_is_pointer(result_right.type) && types_unifiable(result_left.type, result_right.type)) { // pointer - pointer --> integral
@@ -540,7 +588,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			context_emit_code(ctx, "imul %s, %s\n", reg_name_left, reg_name_right);
 
 			if (type_is_integral(result_left.type) && type_is_integral(result_right.type)) {
-				result_left.type = types_unify(result_left.type, result_right.type);
+				result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
 			} else {
 				type_error("Operator '*' only works with integral types");
 			}
@@ -555,7 +603,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			context_emit_code(ctx, "mov %s, rax\n", reg_name_left);
 
 			if (type_is_integral(result_left.type) && type_is_integral(result_right.type)) {
-				result_left.type = types_unify(result_left.type, result_right.type);
+				result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
 			} else {
 				type_error("Operator '/' only works with integral types");
 			}
@@ -570,7 +618,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			context_emit_code(ctx, "mov %s, rdx\n", reg_name_left); // RDX contains remainder after division
 
 			if (type_is_integral(result_left.type) && type_is_integral(result_right.type)) {
-				result_left.type = types_unify(result_left.type, result_right.type);
+				result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
 			} else {
 				type_error("Operator '%' only works with integral types");
 			}
@@ -720,8 +768,10 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 
 	// Check if this is a pointer operator
 	if (operator == TOKEN_OPERATOR_BITWISE_AND) {
-		if (operand->expr_type != AST_EXPRESSION_VAR) abort(); // Can only take address of variable
-		
+		if (operand->expr_type != AST_EXPRESSION_VAR) {
+			type_error("Operator '&' can only take address of a variable");
+		}
+
 		char     const * var_name = operand->expr_var.name;
 		Variable const * var = scope_get_variable(ctx->current_scope, var_name);
 		
@@ -755,7 +805,8 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 		if (var_by_address) {
 			context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS); // Reset if this flag was previously set
 		} else {
-			int type_size = type_get_size(result.type);
+			int type_size = type_get_size(result.type, ctx->current_scope);
+
 			if (type_size < 8) {
 				context_emit_code(ctx, "movsx %s, %s [%s]\n", get_reg_name_scratch(result.reg, 8), get_word_name(type_size), get_reg_name_scratch(result.reg, 8));
 			} else {
@@ -842,8 +893,8 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 		if (decl_arg_count < 4) {
 			arg_size += 8;
 		} else {
-			align(&arg_size, type_get_align(decl_arg->type));
-			arg_size += type_get_size(decl_arg->type);
+			align(&arg_size, type_get_align(decl_arg->type, ctx->current_scope));
+			arg_size += type_get_size(decl_arg->type, ctx->current_scope);
 		}
 
 		decl_arg_count++;
@@ -889,8 +940,8 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 		} else {
 			context_emit_code(ctx, "mov QWORD [rsp + %i], %s ; arg %i\n", arg_offset, get_reg_name_scratch(result_arg.reg, 8), arg_index);
 
-			align(&arg_offset, type_get_align(decl_arg->type));
-			arg_offset += type_get_size(decl_arg->type);
+			align(&arg_offset, type_get_align(decl_arg->type, ctx->current_scope));
+			arg_offset += type_get_size(decl_arg->type, ctx->current_scope);
 		}
 
 		context_reg_free(ctx, result_arg.reg);
@@ -915,8 +966,10 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 
 static Result codegen_expression(Context * ctx, AST_Expression const * expr) {
 	switch (expr->expr_type) {
-		case AST_EXPRESSION_CONST: return codegen_expression_const(ctx, expr);
-		case AST_EXPRESSION_VAR:   return codegen_expression_var  (ctx, expr);
+		case AST_EXPRESSION_CONST:         return codegen_expression_const       (ctx, expr);
+		case AST_EXPRESSION_VAR:           return codegen_expression_var         (ctx, expr);
+		case AST_EXPRESSION_STRUCT_MEMBER: return codege_expression_struct_member(ctx, expr);
+		
 		case AST_EXPRESSION_CAST:  return codegen_expression_cast (ctx, expr);
 
 		case AST_EXPRESSION_OPERATOR_BIN:  return codegen_expression_op_bin (ctx, expr);
@@ -948,21 +1001,24 @@ static void codegen_statement_decl_var(Context * ctx, AST_Statement const * stat
 
 	char const * var_name = stat->stat_decl_var.name;
 	
-	context_decl_var(ctx, var_name);
+	Variable const * var = scope_get_variable(ctx->current_scope, var_name);
 
 	if (scope_is_global(ctx->current_scope)) {
 		if (stat->stat_decl_var.value) {
 			AST_Expression const * literal      = stat->stat_decl_var.value;
 			Token_Type             literal_type = literal->expr_const.token.type;
 			
-			if (literal->expr_type != AST_EXPRESSION_CONST) abort(); // Globals can only be initialized to constant values
+			if (literal->expr_type != AST_EXPRESSION_CONST) {
+				printf("ERROR: Globals can only be initialized to constant values! Variable name: '%s'", var_name); 
+				abort();
+			}
 
 			int    global_definition_asm_size = 128;
 			char * global_definition_asm = malloc(global_definition_asm_size);
 
 			switch (literal_type) {
 				case TOKEN_LITERAL_INT: {
-					context_add_global(ctx, var_name, literal->expr_const.token.value_int);
+					context_add_global(ctx, var, literal->expr_const.token.value_int);
 
 					break;
 				}
@@ -977,15 +1033,13 @@ static void codegen_statement_decl_var(Context * ctx, AST_Statement const * stat
 				default: abort();
 			}
 		} else {
-			context_add_global(ctx, var_name, 0);
+			context_add_global(ctx, var, 0);
 		}
 	} else {
-		Variable const * var = scope_get_variable(ctx->current_scope, var_name);
-
 		char var_address[32];
 		variable_get_address(var, var_address, sizeof(var_address));
 
-		int type_size = type_get_size(var->type);
+		int type_size = type_get_size(var->type, ctx->current_scope);
 
 		if (stat->stat_decl_var.value) {
 			Result result = codegen_expression(ctx, stat->stat_decl_var.value);
@@ -998,7 +1052,16 @@ static void codegen_statement_decl_var(Context * ctx, AST_Statement const * stat
 
 			context_reg_free(ctx, result.reg);
 		} else {
-			context_emit_code(ctx, "mov %s [%s], 0; zero initialize %s\n", get_word_name(type_size), var_address, var_name);
+			if (type_is_struct(var->type)) {
+				int struct_size = type_get_size(var->type, ctx->current_scope);
+
+				context_emit_code(ctx, "lea rdi, QWORD [%s] ; zero initialize %s\n", var_address, var_name);
+				context_emit_code(ctx, "xor rax, rax\n");
+				context_emit_code(ctx, "mov ecx, %i\n", struct_size);
+				context_emit_code(ctx, "rep stosb\n");
+			} else {
+				context_emit_code(ctx, "mov %s [%s], 0 ; zero initialize %s\n", get_word_name(type_size), var_address, var_name);
+			}
 		}
 	}
 }
@@ -1012,19 +1075,17 @@ static void codegen_statement_decl_func(Context * ctx, AST_Statement const * sta
 	context_emit_code(ctx, "push rbp ; save RBP\n");
 	context_emit_code(ctx, "mov rbp, rsp ; stack frame\n");
 
-	// Temporarily set scope to the function's body scope, in order to access arguments
-	Scope * scope = stat->stat_decl_func.body->stat_block.scope;
-	ctx->current_scope = scope;
+	Scope * scope_args = stat->stat_decl_func.scope_args;
 	
 	// Push arguments on stack
 	int            arg_index = 0;
 	AST_Decl_Arg * arg = stat->stat_decl_func.args;
 	
 	while (arg) {
-		Variable * var = context_decl_arg(ctx, arg->name, arg_index);
+		Variable * var = scope_get_variable(scope_args, arg->name);
 
 		if (arg_index < 4) {
-			int type_size = type_get_size(var->type);
+			int type_size = type_get_size(var->type, scope_args);
 
 			context_emit_code(ctx, "mov %s [rbp + %i], %s ; push arg %i \n", get_word_name(type_size), var->offset, get_reg_name_call(arg_index, type_size), arg_index);
 		}
@@ -1033,11 +1094,14 @@ static void codegen_statement_decl_func(Context * ctx, AST_Statement const * sta
 		arg = arg->next;
 	}
 	
-	ctx->current_scope = ctx->current_scope->prev;
-	
 	// Reserve space on stack for local variables
-	int stack_frame_size         = scope->stack_frame->var_size;
-	int stack_frame_size_aligned = ((stack_frame_size + 15) & ~15); // Round up to next 16 byte border
+	Variable_Buffer * stack_frame = stat->stat_decl_func.buffer_vars;
+	
+	int stack_frame_size_aligned = (stack_frame->size + 15) & ~15; // Round up to next 16 byte border
+
+	for (int i = 0; i < stack_frame->vars_len; i++) {
+		stack_frame->vars[i].offset -= stack_frame_size_aligned;
+	}
 
 	context_emit_code(ctx, "sub rsp, %i ; reserve stack space for locals\n", stack_frame_size_aligned);
 
@@ -1050,6 +1114,8 @@ static void codegen_statement_decl_func(Context * ctx, AST_Statement const * sta
 	context_emit_code(ctx, "pop rbp\n");
 	context_emit_code(ctx, "ret\n");
 	context_emit_code(ctx, "\n");
+	
+	ctx->current_scope = ctx->current_scope->prev;
 
 	ctx->indent--;
 }
@@ -1118,7 +1184,10 @@ static void codegen_statement_while(Context * ctx, AST_Statement const * stat) {
 static void codegen_statement_break(Context * ctx, AST_Statement const * stat) {
 	assert(stat->stat_type == AST_STATEMENT_BREAK);
 
-	if (ctx->current_loop_label == -1) abort();
+	if (ctx->current_loop_label == -1) {
+		printf("ERROR: Cannot use 'break' outside of loop!");
+		abort();
+	}
 
 	context_emit_code(ctx, "jmp L_exit%i\n", ctx->current_loop_label);
 }
@@ -1126,7 +1195,10 @@ static void codegen_statement_break(Context * ctx, AST_Statement const * stat) {
 static void codegen_statement_continue(Context * ctx, AST_Statement const * stat) {
 	assert(stat->stat_type == AST_STATEMENT_CONTINUE);
 	
-	if (ctx->current_loop_label == -1) abort();
+	if (ctx->current_loop_label == -1) {
+		printf("ERROR: Cannot use 'continue' outside of loop!");
+		abort();
+	}
 	
 	context_emit_code(ctx, "jmp L_loop%i\n", ctx->current_loop_label);
 }
@@ -1137,13 +1209,17 @@ static void codegen_statement_return(Context * ctx, AST_Statement const * stat) 
 	if (stat->stat_return.expr) {
 		Result result = codegen_expression(ctx, stat->stat_return.expr);
 
+		if (type_is_struct(result.type)) {
+			type_error("Cannot return structs by value from function");
+		}
+
 		context_emit_code(ctx, "mov rax, %s ; return via rax\n", get_reg_name_scratch(result.reg, 8));
 		context_reg_free(ctx, result.reg);
 	} else {
 		context_emit_code(ctx, "mov rax, 0\n");
 	}
 	
-	context_emit_code(ctx, "jmp L_function_%s_exit\n", ctx->current_scope->stack_frame->function_name);
+	context_emit_code(ctx, "jmp L_function_%s_exit\n", ctx->current_scope->variable_buffer->name);
 }
 
 static void codegen_statement_block(Context * ctx, AST_Statement const * stat) {
@@ -1156,8 +1232,18 @@ static void codegen_statement_block(Context * ctx, AST_Statement const * stat) {
 	ctx->current_scope = ctx->current_scope->prev;
 }
 
+static void codegen_statement_program(Context * ctx, AST_Statement const * stat) {
+	assert(stat->stat_type == AST_STATEMENT_PROGRAM);
+
+	ctx->current_scope = stat->stat_program.global_scope;
+
+	codegen_statement(ctx, stat->stat_program.stat);
+}
+
 static void codegen_statement(Context * ctx, AST_Statement const * stat) {
 	switch (stat->stat_type) {
+		case AST_STATEMENT_PROGRAM: codegen_statement_program(ctx, stat); break;
+
 		case AST_STATEMENTS:      codegen_statement_statements(ctx, stat); break;
 		case AST_STATEMENT_BLOCK: codegen_statement_block     (ctx, stat); break;
 
