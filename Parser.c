@@ -14,19 +14,6 @@ void parser_init(Parser * parser, Token const * tokens, int token_count) {
 
 	parser->current_variable_buffer = NULL;
 	parser->current_scope         = NULL;
-
-	parser->functions_len = 0;
-	parser->functions_cap = 16;
-	parser->functions = malloc(parser->functions_cap * sizeof(AST_Def_Func *));
-}
-
-static void parser_add_function_type(Parser * parser, AST_Def_Func * function) {
-	if (parser->functions_len == parser->functions_cap) {
-		parser->functions_cap *= 2;
-		parser->functions = realloc(parser->functions, parser->functions_cap * sizeof(AST_Def_Func *));
-	}
-
-	parser->functions[parser->functions_len++] = function;
 }
 
 static void parser_error(Parser * parser) {
@@ -691,27 +678,27 @@ static AST_Statement * parser_parse_statement_def_func(Parser * parser) {
 
 	Variable_Buffer * prev_variable_buffer = parser->current_variable_buffer;
 
+	func->stat_def_func.function_def = scope_add_function_def(parser->current_scope);
+
 	parser->current_variable_buffer = func->stat_def_func.buffer_args;
 	parser->current_scope           = func->stat_def_func.scope_args;
 
-	func->stat_def_func.name = func_name;
-	func->stat_def_func.args = parser_parse_def_args(parser, &func->stat_def_func.arg_count);
+	func->stat_def_func.function_def->name = func_name;
+	func->stat_def_func.function_def->args = parser_parse_def_args(parser, &func->stat_def_func.function_def->arg_count);
 
 	if (parser_match(parser, TOKEN_ARROW)) {
 		parser_advance(parser);
 
-		func->stat_def_func.return_type = parser_parse_type(parser);
+		func->stat_def_func.function_def->return_type = parser_parse_type(parser);
 	} else {
-		func->stat_def_func.return_type = make_type_void();
+		func->stat_def_func.function_def->return_type = make_type_void();
 	}
-
-	parser_add_function_type(parser, &func->stat_def_func);
 
 	parser->current_variable_buffer = func->stat_def_func.buffer_vars;
 
 	func->stat_def_func.body = parser_parse_statement_block(parser);
 	
-	AST_Def_Arg * arg = func->stat_def_func.args;
+	AST_Def_Arg * arg = func->stat_def_func.function_def->args;
 	while (arg) {
 		scope_add_arg(func->stat_def_func.scope_args, arg->name, arg->type);
 		
@@ -729,12 +716,7 @@ static AST_Statement * parser_parse_statement_def_struct(Parser * parser) {
 
 	char const * name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
 
-	if (parser->current_scope->struct_defs_len == parser->current_scope->struct_defs_cap) {
-		parser->current_scope->struct_defs_cap *= 2;
-		parser->current_scope->struct_defs = realloc(parser->current_scope->struct_defs, parser->current_scope->struct_defs_cap * sizeof(Struct_Definition));
-	}
-	
-	Struct_Definition * struct_def = &parser->current_scope->struct_defs[parser->current_scope->struct_defs_len++];
+	Struct_Def * struct_def = scope_add_struct_def(parser->current_scope);
 	struct_def->name = name;
 	struct_def->members = make_variable_buffer(name);
 	struct_def->member_scope = make_scope(struct_def->members);
@@ -766,18 +748,17 @@ static AST_Statement * parser_parse_statement_extern(Parser * parser) {
 	decl_extern->type = AST_STATEMENT_EXTERN;
 
 	parser_match_and_advance(parser, TOKEN_KEYWORD_EXTERN);
-	decl_extern->stat_extern.name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
-	decl_extern->stat_extern.args = parser_parse_def_args(parser, &decl_extern->stat_extern.arg_count);
+	decl_extern->stat_extern.function_def = scope_add_function_def(parser->current_scope);
+	decl_extern->stat_extern.function_def->name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
+	decl_extern->stat_extern.function_def->args = parser_parse_def_args(parser, &decl_extern->stat_extern.function_def->arg_count);
 	
 	if (parser_match(parser, TOKEN_ARROW)) {
 		parser_advance(parser);
 
-		decl_extern->stat_extern.return_type = parser_parse_type(parser);
+		decl_extern->stat_extern.function_def->return_type = parser_parse_type(parser);
 	} else {
-		decl_extern->stat_extern.return_type = make_type_void();
+		decl_extern->stat_extern.function_def->return_type = make_type_void();
 	}
-
-	parser_add_function_type(parser, &decl_extern->stat_extern);
 
 	parser_match_and_advance(parser, TOKEN_SEMICOLON);
 

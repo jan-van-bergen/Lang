@@ -162,14 +162,14 @@ static void print_statement(AST_Statement const * stat, int indent) {
 
 		case AST_STATEMENT_DEF_FUNC: {
 			print_indent(indent);
-			printf("func %s(", stat->stat_def_func.name);
+			printf("func %s(", stat->stat_def_func.function_def->name);
 
-			if (stat->stat_def_func.args) {
-				print_def_args(stat->stat_def_func.args);
+			if (stat->stat_def_func.function_def->args) {
+				print_def_args(stat->stat_def_func.function_def->args);
 			}
 
 			char str_type[128];
-			type_to_string(stat->stat_def_func.return_type, str_type, sizeof(str_type));
+			type_to_string(stat->stat_def_func.function_def->return_type, str_type, sizeof(str_type));
 
 			printf(") -> %s {\n", str_type);
 
@@ -183,7 +183,7 @@ static void print_statement(AST_Statement const * stat, int indent) {
 
 		case AST_STATEMENT_EXTERN: {
 			print_indent(indent);
-			printf("extern %s\n", stat->stat_extern.name);
+			printf("extern %s\n", stat->stat_extern.function_def->name);
 
 			break;
 		}
@@ -349,17 +349,17 @@ void ast_free_statement(AST_Statement * stat) {
 		}
 
 		case AST_STATEMENT_DEF_FUNC: {
-			free(stat->stat_def_func.name);
+			free(stat->stat_def_func.function_def->name);
 			//free(stat->stat_def_func.return_type);
 
-			ast_free_def_args(stat->stat_def_func.args);
+			ast_free_def_args(stat->stat_def_func.function_def->args);
 			ast_free_statement(stat->stat_def_func.body);
 
 			break;
 		}
 
 		case AST_STATEMENT_EXTERN: {
-			free(stat->stat_extern.name);
+			free(stat->stat_extern.function_def->name);
 
 			break;
 		}

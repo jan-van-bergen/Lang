@@ -26,9 +26,6 @@ typedef struct Context {
 
 	Scope * current_scope;
 
-	int              function_def_count;
-	AST_Def_Func ** function_defs;
-
 	char * code;
 	int    code_len;
 	int    code_cap;
@@ -38,7 +35,7 @@ typedef struct Context {
 	int           data_seg_cap;
 } Context;
 
-static void context_init(Context * ctx, AST_Def_Func ** function_defs, int function_def_count) {
+static void context_init(Context * ctx) {
 	ctx->scratch_reg_mask = 0;
 
 	ctx->indent = 0;
@@ -49,9 +46,6 @@ static void context_init(Context * ctx, AST_Def_Func ** function_defs, int funct
 	ctx->flags = 0;
 
 	ctx->current_scope = NULL;
-
-	ctx->function_def_count = function_def_count;
-	ctx->function_defs      = function_defs;
 
 	ctx->code_len = 0;
 	ctx->code_cap = 512;
@@ -101,17 +95,6 @@ static void variable_get_address(Variable const * var, char * address, int addre
 	} else {
 		sprintf_s(address, address_size, "rbp + %i", var->offset); // Locals / Arguments relative to stack frame pointer
 	}
-}
-
-static AST_Def_Func * context_get_function_def(Context * ctx, char const * name) {
-	for (int i = 0; i < ctx->function_def_count; i++) {
-		if (strcmp(ctx->function_defs[i]->name, name) == 0) {
-			return ctx->function_defs[i];
-		}
-	}
-
-	printf("ERROR: Function '%s' is not defined or not in scope!");
-	abort();
 }
 
 static void type_error(char const * msg, ...) {
@@ -405,7 +388,7 @@ static Result codege_expression_struct_member(Context * ctx, AST_Expression * ex
 	}
 
 	// Lookup the struct member by name
-	Struct_Definition * struct_def = scope_get_struct_def(ctx->current_scope, result.type->struct_name);
+	Struct_Def * struct_def = scope_get_struct_def(ctx->current_scope, result.type->struct_name);
 	Variable          * var_member = scope_get_variable(struct_def->member_scope, expr->expr_struct_member.member_name);
 
 	context_emit_code(ctx, "add %s, %i ; member offset '%s'\n", get_reg_name_scratch(result.reg, 8), var_member->offset, var_member->name);
@@ -897,7 +880,7 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 	}
 
 	// Get function definition
-	AST_Def_Func * def_func = context_get_function_def(ctx, expr->expr_call.function_name);
+	Function_Def * def_func = scope_get_function_def(ctx->current_scope, expr->expr_call.function_name);
 	AST_Def_Arg  * def_arg  = def_func->args;
 
 	if (call_arg_count != def_func->arg_count) {
@@ -912,8 +895,11 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 		if (def_arg_count < 4) {
 			arg_size += 8;
 		} else {
-			align(&arg_size, type_get_align(def_arg->type, ctx->current_scope));
-			arg_size += type_get_size(def_arg->type, ctx->current_scope);
+			int type_size  = type_get_size(def_arg->type, ctx->current_scope);
+			int type_align = type_get_align(def_arg->type, ctx->current_scope);
+
+			align(&arg_size, type_align);
+			arg_size += type_size;
 		}
 
 		def_arg_count++;
@@ -1083,7 +1069,7 @@ static void codegen_statement_def_var(Context * ctx, AST_Statement const * stat)
 static void codegen_statement_def_func(Context * ctx, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_DEF_FUNC);
 
-	context_emit_code(ctx, "%s:\n", stat->stat_def_func.name);
+	context_emit_code(ctx, "%s:\n", stat->stat_def_func.function_def->name);
 	ctx->indent++;
 
 	context_emit_code(ctx, "push rbp ; save RBP\n");
@@ -1093,7 +1079,7 @@ static void codegen_statement_def_func(Context * ctx, AST_Statement const * stat
 	
 	// Push arguments on stack
 	int            arg_index = 0;
-	AST_Def_Arg * arg = stat->stat_def_func.args;
+	AST_Def_Arg * arg = stat->stat_def_func.function_def->args;
 	
 	while (arg) {
 		Variable * var = scope_get_variable(scope_args, arg->name);
@@ -1125,7 +1111,7 @@ static void codegen_statement_def_func(Context * ctx, AST_Statement const * stat
 	codegen_statement(ctx, stat->stat_def_func.body);
 
 	context_emit_code(ctx, "xor rax, rax ; Default return value 0\n");
-	context_emit_code(ctx, "L_function_%s_exit:\n", stat->stat_def_func.name);
+	context_emit_code(ctx, "L_function_%s_exit:\n", stat->stat_def_func.function_def->name);
 	context_emit_code(ctx, "mov rsp, rbp\n");
 	context_emit_code(ctx, "pop rbp\n");
 	context_emit_code(ctx, "ret\n");
@@ -1139,7 +1125,7 @@ static void codegen_statement_def_func(Context * ctx, AST_Statement const * stat
 static void codegen_statement_extern(Context * ctx, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_EXTERN);
 
-	context_emit_code(ctx, "EXTERN %s\n\n", stat->stat_extern.name);
+	context_emit_code(ctx, "EXTERN %s\n\n", stat->stat_extern.function_def->name);
 }
 
 static void codegen_statement_if(Context * ctx, AST_Statement const * stat) {
@@ -1280,9 +1266,9 @@ static void codegen_statement(Context * ctx, AST_Statement const * stat) {
 	}
 }
 
-char const * codegen_program(AST_Statement const * program, AST_Def_Func ** function_defs, int function_def_count) {
+char const * codegen_program(AST_Statement const * program) {
 	Context ctx;
-	context_init(&ctx, function_defs, function_def_count);
+	context_init(&ctx);
 
 	char const asm_init[] =
 		"; Generated by Lang compiler\n\n"

@@ -102,21 +102,6 @@ typedef struct AST_Def_Arg {
 	struct AST_Def_Arg * next;
 } AST_Def_Arg;
 
-typedef struct AST_Def_Func {
-	char const * name;
-	Type       * return_type;
-
-	Variable_Buffer * buffer_args;
-	Variable_Buffer * buffer_vars;
-
-	Scope * scope_args;
-
-	int arg_count;
-
-	struct AST_Def_Arg  * args;
-	struct AST_Statement * body;
-} AST_Def_Func;
-
 typedef struct AST_Statement {
 	AST_Statement_Type type;
 
@@ -150,9 +135,20 @@ typedef struct AST_Statement {
 			struct AST_Expression * assign;
 		} stat_def_var;
 
-		AST_Def_Func stat_def_func;
+		struct Def_Func {
+			Function_Def * function_def;
 
-		AST_Def_Func stat_extern;
+			Variable_Buffer * buffer_args;
+			Variable_Buffer * buffer_vars;
+
+			Scope * scope_args;
+
+			struct AST_Statement * body;
+		} stat_def_func;
+
+		struct Extern {
+			Function_Def * function_def;
+		} stat_extern;
 
 		struct If {
 			struct AST_Expression * condition;

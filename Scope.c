@@ -54,7 +54,11 @@ Scope * make_scope(Variable_Buffer * buf) {
 	
 	scope->struct_defs_len = 0;
 	scope->struct_defs_cap = 16;
-	scope->struct_defs = malloc(scope->struct_defs_cap * sizeof(Struct_Definition));
+	scope->struct_defs = malloc(scope->struct_defs_cap * sizeof(Struct_Def));
+
+	scope->function_defs_len = 0;
+	scope->function_defs_cap = 16;
+	scope->function_defs = malloc(scope->function_defs_cap * sizeof(Function_Def));
 
 	return scope;
 }
@@ -125,6 +129,24 @@ void scope_add_var(Scope * scope, char const * name, Type * type) {
 	}
 }
 
+Struct_Def * scope_add_struct_def(Scope * scope) {
+	if (scope->struct_defs_len == scope->struct_defs_cap) {
+		scope->struct_defs_cap *= 2;
+		scope->struct_defs = realloc(scope->struct_defs, scope->struct_defs_cap * sizeof(Struct_Def));
+	}
+	
+	return scope->struct_defs + scope->struct_defs_len++;
+}
+
+Function_Def * scope_add_function_def(Scope * scope) {
+	if (scope->function_defs_len == scope->function_defs_cap) {
+		scope->function_defs_cap *= 2;
+		scope->function_defs = realloc(scope->function_defs, scope->function_defs_cap * sizeof(Struct_Def));
+	}
+	
+	return scope->function_defs + scope->function_defs_len++;
+}
+
 Variable * scope_get_variable(Scope const * scope, char const * name) {
 	while (true) {
 		Variable_Buffer const * buf = scope->variable_buffer;
@@ -146,7 +168,7 @@ Variable * scope_get_variable(Scope const * scope, char const * name) {
 	}
 }
 
-Struct_Definition * scope_get_struct_def(Scope const * scope, char const * name) {
+Struct_Def * scope_get_struct_def(Scope const * scope, char const * name) {
 	while (true) {
 		for (int i = 0; i < scope->struct_defs_len; i++) {
 			if (strcmp(scope->struct_defs[i].name, name) == 0) {
@@ -158,6 +180,23 @@ Struct_Definition * scope_get_struct_def(Scope const * scope, char const * name)
 
 		if (scope == NULL) {
 			printf("ERROR: Struct '%s' not defined or is not in scope!", name);
+			abort();
+		}
+	}
+}
+
+Function_Def * scope_get_function_def(Scope * scope, char const * name) {
+	while (true) {
+		for (int i = 0; i < scope->function_defs_len; i++) {
+			if (strcmp(scope->function_defs[i].name, name) == 0) {
+				return scope->function_defs + i;
+			}
+		}
+	
+		scope = scope->prev;
+
+		if (scope == NULL) {
+			printf("ERROR: Function '%s' is not defined or not in scope!", name);
 			abort();
 		}
 	}
