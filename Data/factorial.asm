@@ -47,7 +47,8 @@ factorial_loop:
     mov DWORD [rbp + 16], ecx ; push arg 0 
     sub rsp, 16 ; reserve stack space for locals
     mov rbx, 1
-    mov DWORD [rbp + -16], ebx; initialize result
+    lea r10, QWORD [rbp + -16] ; get address of result
+    mov DWORD [r10], ebx
     L_loop3:
     movsx rbx, DWORD [rbp + 16] ; get value of n
     mov r10, 0
@@ -86,21 +87,24 @@ main:
     mov rbp, rsp ; stack frame
     sub rsp, 16 ; reserve stack space for locals
     mov rbx, 5
-    mov DWORD [rbp + -16], ebx; initialize arg
+    lea r10, QWORD [rbp + -16] ; get address of arg
+    mov DWORD [r10], ebx
     sub rsp, 32 ; reserve space for call arguments
     movsx rbx, DWORD [rbp + -16] ; get value of arg
     mov rcx, rbx ; arg 0
     call factorial_recursive
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov DWORD [rbp + -12], ebx; initialize a
+    lea r10, QWORD [rbp + -12] ; get address of a
+    mov DWORD [r10], ebx
     sub rsp, 32 ; reserve space for call arguments
     movsx rbx, DWORD [rbp + -16] ; get value of arg
     mov rcx, rbx ; arg 0
     call factorial_loop
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov DWORD [rbp + -8], ebx; initialize b
+    lea r10, QWORD [rbp + -8] ; get address of b
+    mov DWORD [r10], ebx
     movsx rbx, DWORD [rbp + -12] ; get value of a
     movsx r10, DWORD [rbp + -8] ; get value of b
     cmp rbx, r10

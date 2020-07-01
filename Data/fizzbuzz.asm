@@ -21,7 +21,8 @@ print:
     call GetStdHandle
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov QWORD [rbp + -16], rbx; initialize std_handle
+    lea r10, QWORD [rbp + -16] ; get address of std_handle
+    mov QWORD [r10], rbx
     mov DWORD [rbp + -8], 0 ; zero initialize bytes_written
     sub rsp, 48 ; reserve space for call arguments
     mov rbx, QWORD [rbp + -16] ; get value of std_handle
@@ -49,9 +50,11 @@ print_num:
     mov DWORD [rbp + 16], ecx ; push arg 0 
     sub rsp, 32 ; reserve stack space for locals
     lea rbx, [REL str_lit_1]
-    mov QWORD [rbp + -32], rbx; initialize num_str
+    lea r10, QWORD [rbp + -32] ; get address of num_str
+    mov QWORD [r10], rbx
     mov rbx, 0
-    mov DWORD [rbp + -24], ebx; initialize idx
+    lea r10, QWORD [rbp + -24] ; get address of idx
+    mov DWORD [r10], ebx
     L_loop0:
     movsx rbx, DWORD [rbp + 16] ; get value of num
     mov r10, 0
@@ -64,13 +67,15 @@ print_num:
     L2:
     cmp rbx, 0
     je L_exit0
-        movsx rbx, DWORD [rbp + 16] ; get value of num
-        mov r10, 10
-        mov rax, rbx
+        lea rbx, QWORD [rbp + -20] ; get address of digit
+        movsx r10, DWORD [rbp + 16] ; get value of num
+        mov r11, 10
+        mov rax, r10
         cdq
-        idiv r10
-        mov rbx, rdx
-        mov BYTE [rbp + -20], bl; initialize digit
+        idiv r11
+        mov r10, rdx
+        and r10, 0xff
+        mov BYTE [rbx], r10b
         mov rbx, QWORD [rbp + -32] ; get value of num_str
         movsx r10, DWORD [rbp + -24] ; get value of idx
         add rbx, r10
@@ -94,7 +99,8 @@ print_num:
     jmp L_loop0
     L_exit0:
     mov rbx, 0
-    mov DWORD [rbp + -16], ebx; initialize i
+    lea r10, QWORD [rbp + -16] ; get address of i
+    mov DWORD [r10], ebx
     L_loop3:
     movsx rbx, DWORD [rbp + -24] ; get value of idx
     mov r10, 2
@@ -116,7 +122,8 @@ print_num:
         movsx r10, DWORD [rbp + -16] ; get value of i
         add rbx, r10
         movsx rbx, BYTE [rbx]
-        mov BYTE [rbp + -12], bl; initialize tmp
+        lea r10, QWORD [rbp + -12] ; get address of tmp
+        mov BYTE [r10], bl
         mov rbx, QWORD [rbp + -32] ; get value of num_str
         movsx r10, DWORD [rbp + -24] ; get value of idx
         add rbx, r10
@@ -172,7 +179,8 @@ fizzbuzz:
     mov DWORD [rbp + 16], ecx ; push arg 0 
     sub rsp, 16 ; reserve stack space for locals
     mov rbx, 1
-    mov DWORD [rbp + -16], ebx; initialize i
+    lea r10, QWORD [rbp + -16] ; get address of i
+    mov DWORD [r10], ebx
     L_loop6:
     movsx rbx, DWORD [rbp + -16] ; get value of i
     movsx r10, DWORD [rbp + 16] ; get value of n
@@ -199,7 +207,8 @@ fizzbuzz:
         L9:
         mov rbx, 0
         L10:
-        mov BYTE [rbp + -12], bl; initialize divisible_by_3
+        lea r10, QWORD [rbp + -12] ; get address of divisible_by_3
+        mov BYTE [r10], bl
         movsx rbx, DWORD [rbp + -16] ; get value of i
         mov r10, 5
         mov rax, rbx
@@ -214,7 +223,8 @@ fizzbuzz:
         L11:
         mov rbx, 0
         L12:
-        mov BYTE [rbp + -11], bl; initialize divisible_by_5
+        lea r10, QWORD [rbp + -11] ; get address of divisible_by_5
+        mov BYTE [r10], bl
         movsx rbx, BYTE [rbp + -11] ; get value of divisible_by_5
         movsx r10, BYTE [rbp + -12] ; get value of divisible_by_3
         test rbx, rbx

@@ -19,14 +19,16 @@ main:
     call GetStdHandle
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov QWORD [rbp + -16], rbx; initialize std_handle
+    lea r10, QWORD [rbp + -16] ; get address of std_handle
+    mov QWORD [r10], rbx
     sub rsp, 32 ; reserve space for call arguments
     lea rbx, QWORD [REL string] ; get address of string
     mov rcx, rbx ; arg 0
     call strlen
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov DWORD [rbp + -8], ebx; initialize str_len
+    lea r10, QWORD [rbp + -8] ; get address of str_len
+    mov DWORD [r10], ebx
     mov DWORD [rbp + -4], 0 ; zero initialize bytes_written
     sub rsp, 48 ; reserve space for call arguments
     mov rbx, QWORD [rbp + -16] ; get value of std_handle

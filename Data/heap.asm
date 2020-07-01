@@ -145,7 +145,8 @@ print:
     call GetStdHandle
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov QWORD [rbp + -16], rbx; initialize std_handle
+    lea r10, QWORD [rbp + -16] ; get address of std_handle
+    mov QWORD [r10], rbx
     mov DWORD [rbp + -8], 0 ; zero initialize bytes_written
     sub rsp, 48 ; reserve space for call arguments
     mov rbx, QWORD [rbp + -16] ; get value of std_handle
@@ -173,7 +174,8 @@ strlen:
     mov QWORD [rbp + 16], rcx ; push arg 0 
     sub rsp, 16 ; reserve stack space for locals
     mov rbx, 0
-    mov DWORD [rbp + -16], ebx; initialize len
+    lea r10, QWORD [rbp + -16] ; get address of len
+    mov DWORD [r10], ebx
     L_loop9:
     mov rbx, QWORD [rbp + 16] ; get value of str
     movsx r10, DWORD [rbp + -16] ; get value of len
@@ -215,7 +217,8 @@ main:
     call malloc
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov QWORD [rbp + -32], rbx; initialize mem
+    lea r10, QWORD [rbp + -32] ; get address of mem
+    mov QWORD [r10], rbx
     mov rbx, QWORD [rbp + -32] ; get value of mem
     mov r10, 0
     add rbx, r10
@@ -267,7 +270,8 @@ main:
     call strlen
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov DWORD [rbp + -24], ebx; initialize str_len
+    lea r10, QWORD [rbp + -24] ; get address of str_len
+    mov DWORD [r10], ebx
     sub rsp, 32 ; reserve space for call arguments
     mov rbx, QWORD [rbp + -32] ; get value of mem
     mov rcx, rbx ; arg 0
@@ -288,7 +292,8 @@ main:
     call malloc
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov QWORD [rbp + -16], rbx; initialize mem2
+    lea r10, QWORD [rbp + -16] ; get address of mem2
+    mov QWORD [r10], rbx
     mov rbx, QWORD [rbp + -16] ; get value of mem2
     mov r10, 0
     add rbx, r10

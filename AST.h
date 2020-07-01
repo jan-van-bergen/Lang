@@ -142,7 +142,7 @@ typedef struct AST_Statement {
 			char const * name;
 			Type       * type;
 
-			struct AST_Expression * value;
+			struct AST_Expression * assign;
 		} stat_decl_var;
 
 		AST_Decl_Func stat_decl_func;

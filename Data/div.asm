@@ -8,16 +8,19 @@ main:
     mov rbp, rsp ; stack frame
     sub rsp, 16 ; reserve stack space for locals
     mov rbx, 48
-    mov DWORD [rbp + -16], ebx; initialize a
+    lea r10, QWORD [rbp + -16] ; get address of a
+    mov DWORD [r10], ebx
     mov rbx, 3
-    mov DWORD [rbp + -12], ebx; initialize b
+    lea r10, QWORD [rbp + -12] ; get address of b
+    mov DWORD [r10], ebx
     movsx rbx, DWORD [rbp + -16] ; get value of a
     movsx r10, DWORD [rbp + -12] ; get value of b
     mov rax, rbx
     cdq
     idiv r10
     mov rbx, rax
-    mov DWORD [rbp + -8], ebx; initialize c
+    lea r10, QWORD [rbp + -8] ; get address of c
+    mov DWORD [r10], ebx
     movsx rbx, DWORD [rbp + -8] ; get value of c
     mov r10, 16
     cmp rbx, r10

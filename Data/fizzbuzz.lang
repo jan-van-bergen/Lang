@@ -16,7 +16,7 @@ func print_num(num: int) -> void {
 	let idx: int = 0;
 
 	while (num > 0) {
-		let digit: char = num % 10;
+		let digit: char = cast(char) (num % 10);
 		
 		*(num_str + idx) = digit + 48;
 		

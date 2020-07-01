@@ -599,9 +599,21 @@ static AST_Statement * parser_parse_statement_decl_var(Parser * parser) {
 	if (parser_match(parser, TOKEN_ASSIGN)) {
 		parser_advance(parser);
 
-		decl->stat_decl_var.value = parser_parse_expression(parser);
+		AST_Expression * lhs = malloc(sizeof(AST_Expression));
+		lhs->expr_type = AST_EXPRESSION_VAR;
+		lhs->expr_var.name = var_name;
+
+		AST_Expression * rhs = parser_parse_expression(parser);
+		
+		AST_Expression * assign = malloc(sizeof(AST_Expression));
+		assign->expr_type = AST_EXPRESSION_OPERATOR_BIN;
+		assign->expr_op_bin.token.type = TOKEN_ASSIGN;
+		assign->expr_op_bin.expr_left  = lhs;
+		assign->expr_op_bin.expr_right = rhs;
+
+		decl->stat_decl_var.assign = assign;
 	} else {
-		decl->stat_decl_var.value = NULL;
+		decl->stat_decl_var.assign = NULL;
 	}
 
 	parser_match_and_advance(parser, TOKEN_SEMICOLON);

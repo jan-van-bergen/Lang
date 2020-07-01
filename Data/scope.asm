@@ -15,7 +15,8 @@ main:
     call test
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov DWORD [rbp + -32], ebx; initialize a
+    lea r10, QWORD [rbp + -32] ; get address of a
+    mov DWORD [r10], ebx
     sub rsp, 32 ; reserve space for call arguments
     mov rbx, 0
     mov rcx, rbx ; arg 0
@@ -24,7 +25,8 @@ main:
     call test
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov DWORD [rbp + -28], ebx; initialize b
+    lea r10, QWORD [rbp + -28] ; get address of b
+    mov DWORD [r10], ebx
     movsx rbx, DWORD [rbp + -32] ; get value of a
     mov r10, 5
     cmp rbx, r10
@@ -59,9 +61,11 @@ main:
         jmp L_function_main_exit
     L_exit5:
     mov rbx, 3
-    mov DWORD [rbp + -24], ebx; initialize common_name
+    lea r10, QWORD [rbp + -24] ; get address of common_name
+    mov DWORD [r10], ebx
     mov rbx, 0
-    mov DWORD [rbp + -20], ebx; initialize outter
+    lea r10, QWORD [rbp + -20] ; get address of outter
+    mov DWORD [r10], ebx
     mov rbx, 1
     cmp rbx, 0
     je L_exit6
@@ -112,7 +116,8 @@ test:
     jmp L_exit10
     L_else10:
         mov rbx, 3
-        mov DWORD [rbp + -16], ebx; initialize arg
+        lea r10, QWORD [rbp + -16] ; get address of arg
+        mov DWORD [r10], ebx
         movsx rbx, DWORD [rbp + -16] ; get value of arg
         mov rax, rbx ; return via rax
         jmp L_function_test_exit

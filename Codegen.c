@@ -1004,8 +1004,8 @@ static void codegen_statement_decl_var(Context * ctx, AST_Statement const * stat
 	Variable const * var = scope_get_variable(ctx->current_scope, var_name);
 
 	if (scope_is_global(ctx->current_scope)) {
-		if (stat->stat_decl_var.value) {
-			AST_Expression const * literal      = stat->stat_decl_var.value;
+		if (stat->stat_decl_var.assign) {
+			AST_Expression const * literal      = stat->stat_decl_var.assign->expr_op_bin.expr_right;
 			Token_Type             literal_type = literal->expr_const.token.type;
 			
 			if (literal->expr_type != AST_EXPRESSION_CONST) {
@@ -1017,12 +1017,13 @@ static void codegen_statement_decl_var(Context * ctx, AST_Statement const * stat
 			char * global_definition_asm = malloc(global_definition_asm_size);
 
 			switch (literal_type) {
-				case TOKEN_LITERAL_INT: {
+				case TOKEN_LITERAL_INT: 
+				case TOKEN_LITERAL_BOOL: {
 					context_add_global(ctx, var, literal->expr_const.token.value_int);
 
 					break;
 				}
-				//case TOKEN_LITERAL_BOOL: sprintf_s(value, value_size, "%s db %c\n", literal->expr_const.token.value_char); break;
+				// sprintf_s(value, value_size, "%s db %c\n", literal->expr_const.token.value_char); break;
 
 				case TOKEN_LITERAL_STRING: {
 					context_add_string_literal(ctx, var_name, literal->expr_const.token.value_str);
@@ -1041,14 +1042,8 @@ static void codegen_statement_decl_var(Context * ctx, AST_Statement const * stat
 
 		int type_size = type_get_size(var->type, ctx->current_scope);
 
-		if (stat->stat_decl_var.value) {
-			Result result = codegen_expression(ctx, stat->stat_decl_var.value);
-
-			context_emit_code(ctx, "mov %s [%s], %s; initialize %s\n", get_word_name(type_size), var_address, get_reg_name_scratch(result.reg, type_size), var_name);
-
-			if (!types_unifiable(var->type, result.type)) {
-				type_error("Incorrect type used for variable initialization");
-			}
+		if (stat->stat_decl_var.assign) {
+			Result result = codegen_expression(ctx, stat->stat_decl_var.assign);
 
 			context_reg_free(ctx, result.reg);
 		} else {

@@ -13,14 +13,16 @@ main:
     cdq
     idiv r10
     mov rbx, rdx
-    mov DWORD [rbp + -16], ebx; initialize a
+    lea r10, QWORD [rbp + -16] ; get address of a
+    mov DWORD [r10], ebx
     mov rbx, 3
     mov r10, 5
     mov rax, rbx
     cdq
     idiv r10
     mov rbx, rdx
-    mov DWORD [rbp + -12], ebx; initialize b
+    lea r10, QWORD [rbp + -12] ; get address of b
+    mov DWORD [r10], ebx
     movsx rbx, DWORD [rbp + -16] ; get value of a
     movsx r10, DWORD [rbp + -12] ; get value of b
     mov rax, rbx

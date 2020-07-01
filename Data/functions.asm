@@ -31,7 +31,8 @@ two:
     call one
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov DWORD [rbp + -16], ebx; initialize local
+    lea r10, QWORD [rbp + -16] ; get address of local
+    mov DWORD [r10], ebx
     sub rsp, 32 ; reserve space for call arguments
     movsx rbx, DWORD [rbp + 24] ; get value of b
     mov rcx, rbx ; arg 0
@@ -107,14 +108,16 @@ main:
     call two
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov DWORD [rbp + -16], ebx; initialize bla
+    lea r10, QWORD [rbp + -16] ; get address of bla
+    mov DWORD [r10], ebx
     sub rsp, 32 ; reserve space for call arguments
     movsx rbx, DWORD [rbp + -16] ; get value of bla
     mov rcx, rbx ; arg 0
     call one
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    mov DWORD [rbp + -12], ebx; initialize tmp
+    lea r10, QWORD [rbp + -12] ; get address of tmp
+    mov DWORD [r10], ebx
     sub rsp, 32 ; reserve space for call arguments
     sub rsp, 32 ; reserve space for call arguments
     movsx rbx, DWORD [rbp + -16] ; get value of bla

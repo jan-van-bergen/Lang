@@ -8,7 +8,8 @@ main:
     mov rbp, rsp ; stack frame
     sub rsp, 16 ; reserve stack space for locals
     mov rbx, 1
-    mov DWORD [rbp + -16], ebx; initialize a
+    lea r10, QWORD [rbp + -16] ; get address of a
+    mov DWORD [r10], ebx
     mov DWORD [rbp + -12], 0 ; zero initialize b
     movsx rbx, DWORD [rbp + -16] ; get value of a
     mov r10, 0

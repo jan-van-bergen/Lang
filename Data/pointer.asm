@@ -46,7 +46,8 @@ main:
     mov rbp, rsp ; stack frame
     sub rsp, 32 ; reserve stack space for locals
     mov rbx, 42
-    mov DWORD [rbp + -32], ebx; initialize a
+    lea r10, QWORD [rbp + -32] ; get address of a
+    mov DWORD [r10], ebx
     mov QWORD [rbp + -24], 0 ; zero initialize p
     lea rbx, QWORD [rbp + -32] ; addrof a
     lea r10, QWORD [rbp + -24] ; get address of p
