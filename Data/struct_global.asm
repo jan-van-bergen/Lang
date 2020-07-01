@@ -7,26 +7,26 @@ main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
     sub rsp, 0 ; reserve stack space for locals
-    lea rbx, QWORD [REL globla] ; get address of globla
+    lea rbx, QWORD [REL globla] ; get address of 'globla'
     add rbx, 0 ; member offset 'b'
     mov r10, 3
     mov DWORD [rbx], r10d
-    lea rbx, QWORD [REL globla] ; get address of globla
+    lea rbx, QWORD [REL globla] ; get address of 'globla'
     add rbx, 8 ; member offset 'l'
     mov r10, 5
     mov QWORD [rbx], r10
-    lea rbx, QWORD [REL globla] ; get address of globla
+    lea rbx, QWORD [REL globla] ; get address of 'globla'
     add rbx, 16 ; member offset 'a'
     mov r10, 7
     mov BYTE [rbx], r10b
-    lea rbx, QWORD [REL globla] ; get address of globla
+    lea rbx, QWORD [REL globla] ; get address of 'globla'
     add rbx, 0 ; member offset 'b'
     movsx rbx, DWORD [rbx]
-    lea r10, QWORD [REL globla] ; get address of globla
+    lea r10, QWORD [REL globla] ; get address of 'globla'
     add r10, 8 ; member offset 'l'
     mov r10, QWORD [r10]
     add rbx, r10
-    lea r10, QWORD [REL globla] ; get address of globla
+    lea r10, QWORD [REL globla] ; get address of 'globla'
     add r10, 16 ; member offset 'a'
     movsx r10, BYTE [r10]
     add rbx, r10

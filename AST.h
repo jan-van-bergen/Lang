@@ -9,6 +9,7 @@ typedef enum AST_Expression_Type {
 	AST_EXPRESSION_VAR,
 	AST_EXPRESSION_STRUCT_MEMBER,
 	AST_EXPRESSION_CAST,
+	AST_EXPRESSION_SIZEOF,
 	AST_EXPRESSION_ASSIGN,
 	AST_EXPRESSION_OPERATOR_BIN,
 	AST_EXPRESSION_OPERATOR_PRE,
@@ -24,7 +25,7 @@ typedef struct AST_Call_Arg {
 } AST_Call_Arg;
 
 typedef struct AST_Expression {
-	AST_Expression_Type expr_type;
+	AST_Expression_Type type;
 
 	int height;
 
@@ -46,6 +47,10 @@ typedef struct AST_Expression {
 			Type * new_type;
 			struct AST_Expression * expr;
 		} expr_cast;
+
+		struct Sizeof {
+			Type * type;
+		} expr_sizeof;
 
 		struct Op_Bin {
 			Token token;
@@ -113,7 +118,7 @@ typedef struct AST_Decl_Func {
 } AST_Decl_Func;
 
 typedef struct AST_Statement {
-	AST_Statement_Type stat_type;
+	AST_Statement_Type type;
 
 	union {
 		struct Program {

@@ -11,19 +11,19 @@ main:
     xor rax, rax
     mov ecx, 16
     rep stosb
-    lea rbx, QWORD [rbp + -16] ; get address of test
+    lea rbx, QWORD [rbp + -16] ; get address of 'test'
     add rbx, 0 ; member offset 'a'
     mov r10, 3
     mov QWORD [rbx], r10
-    lea rbx, QWORD [rbp + -16] ; get address of test
+    lea rbx, QWORD [rbp + -16] ; get address of 'test'
     add rbx, 8 ; member offset 'b'
     mov r10, 4
     mov DWORD [rbx], r10d
-    lea rbx, QWORD [rbp + -16] ; get address of test
+    lea rbx, QWORD [rbp + -16] ; get address of 'test'
     add rbx, 12 ; member offset 'c'
     mov r10, 5
     mov DWORD [rbx], r10d
-    lea rbx, QWORD [rbp + -16] ; get address of test
+    lea rbx, QWORD [rbp + -16] ; get address of 'test'
     add rbx, 8 ; member offset 'b'
     movsx rbx, DWORD [rbx]
     mov rax, rbx ; return via rax

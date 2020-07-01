@@ -290,7 +290,7 @@ static char const * get_word_name(int size) {
 }
 
 static Result codegen_expression_const(Context * ctx, AST_Expression const * expr) {
-	assert(expr->expr_type == AST_EXPRESSION_CONST);
+	assert(expr->type == AST_EXPRESSION_CONST);
 
 	Result result;
 	result.reg = context_reg_request(ctx);
@@ -356,7 +356,7 @@ static Result codegen_expression_const(Context * ctx, AST_Expression const * exp
 }
 
 static Result codegen_expression_var(Context * ctx, AST_Expression const * expr) {
-	assert(expr->expr_type == AST_EXPRESSION_VAR);
+	assert(expr->type == AST_EXPRESSION_VAR);
 
 	char     const * var_name = expr->expr_var.name;
 	Variable const * var = scope_get_variable(ctx->current_scope, var_name);
@@ -374,14 +374,14 @@ static Result codegen_expression_var(Context * ctx, AST_Expression const * expr)
 		var->type->ptr->type == TYPE_U8;
 
 	if (ctx->flags & CTX_FLAG_VAR_BY_ADDRESS || is_global_char_ptr) {
-		context_emit_code(ctx, "lea %s, QWORD [%s] ; get address of %s\n", get_reg_name_scratch(result.reg, 8), var_address, var_name);
+		context_emit_code(ctx, "lea %s, QWORD [%s] ; get address of '%s'\n", get_reg_name_scratch(result.reg, 8), var_address, var_name);
 	} else {
 		int type_size = type_get_size(result.type, ctx->current_scope);
 
 		if (type_size < 8) {
-			context_emit_code(ctx, "movsx %s, %s [%s] ; get value of %s\n", get_reg_name_scratch(result.reg, 8), get_word_name(type_size), var_address, var_name); // Mov with Sign Extension
+			context_emit_code(ctx, "movsx %s, %s [%s] ; get value of '%s'\n", get_reg_name_scratch(result.reg, 8), get_word_name(type_size), var_address, var_name); // Mov with Sign Extension
 		} else {
-			context_emit_code(ctx, "mov %s, %s [%s] ; get value of %s\n",   get_reg_name_scratch(result.reg, 8), get_word_name(type_size), var_address, var_name);
+			context_emit_code(ctx, "mov %s, %s [%s] ; get value of '%s'\n",   get_reg_name_scratch(result.reg, 8), get_word_name(type_size), var_address, var_name);
 		}
 	}
 
@@ -389,7 +389,7 @@ static Result codegen_expression_var(Context * ctx, AST_Expression const * expr)
 }
 
 static Result codege_expression_struct_member(Context * ctx, AST_Expression * expr) {
-	assert(expr->expr_type == AST_EXPRESSION_STRUCT_MEMBER);
+	assert(expr->type == AST_EXPRESSION_STRUCT_MEMBER);
 
 	bool var_by_address = ctx->flags & CTX_FLAG_VAR_BY_ADDRESS; 
 
@@ -432,7 +432,7 @@ static Result codege_expression_struct_member(Context * ctx, AST_Expression * ex
 }
 
 static Result codegen_expression_cast(Context * ctx, AST_Expression * expr) {
-	assert(expr->expr_type == AST_EXPRESSION_CAST);
+	assert(expr->type == AST_EXPRESSION_CAST);
 
 	Result result = codegen_expression(ctx, expr->expr_cast.expr);
 
@@ -447,6 +447,25 @@ static Result codegen_expression_cast(Context * ctx, AST_Expression * expr) {
 	}
 
 	result.type = expr->expr_cast.new_type;
+
+	return result;
+}
+
+static Result codegen_expression_sizeof(Context * ctx, AST_Expression * expr) {
+	assert(expr->type == AST_EXPRESSION_SIZEOF);
+
+	Type * type = expr->expr_sizeof.type;
+
+	Result result;
+	result.reg  = context_reg_request(ctx);
+	result.type = make_type_u32();
+
+	int size = type_get_size(type, ctx->current_scope);
+
+	char str_type[128];
+	type_to_string(type, str_type, sizeof(str_type));
+
+	context_emit_code(ctx, "mov %s, %i ; sizeof '%s'\n", get_reg_name_scratch(result.reg, 8), size, str_type);
 
 	return result;
 }
@@ -466,7 +485,7 @@ static void codegen_compare_branch(Context * ctx, char const * jump_instruction,
 }
 
 static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * expr) {
-	assert(expr->expr_type == AST_EXPRESSION_OPERATOR_BIN);
+	assert(expr->type == AST_EXPRESSION_OPERATOR_BIN);
 
 	Token_Type operator = expr->expr_op_bin.token.type;
 		
@@ -477,9 +496,9 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 
 	// Assignment operator is handled separately, because it needs the lhs by address
 	if (operator == TOKEN_ASSIGN) {
-		if (expr_left->expr_type != AST_EXPRESSION_VAR && 
-			expr_left->expr_type != AST_EXPRESSION_OPERATOR_PRE &&
-			expr_left->expr_type != AST_EXPRESSION_STRUCT_MEMBER
+		if (expr_left->type != AST_EXPRESSION_VAR && 
+			expr_left->type != AST_EXPRESSION_OPERATOR_PRE &&
+			expr_left->type != AST_EXPRESSION_STRUCT_MEMBER
 		) {
 			type_error("Operator '=' requires left operand to be assignable");
 		}
@@ -759,7 +778,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 }
 
 static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * expr) {
-	assert(expr->expr_type == AST_EXPRESSION_OPERATOR_PRE);
+	assert(expr->type == AST_EXPRESSION_OPERATOR_PRE);
 
 	AST_Expression * operand  = expr->expr_op_pre.expr;
 	Token_Type       operator = expr->expr_op_pre.token.type;
@@ -768,7 +787,7 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 
 	// Check if this is a pointer operator
 	if (operator == TOKEN_OPERATOR_BITWISE_AND) {
-		if (operand->expr_type != AST_EXPRESSION_VAR) {
+		if (operand->type != AST_EXPRESSION_VAR) {
 			type_error("Operator '&' can only take address of a variable");
 		}
 
@@ -866,7 +885,7 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 }
 
 static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr) {
-	assert(expr->expr_type == AST_EXPRESSION_CALL_FUNC);
+	assert(expr->type == AST_EXPRESSION_CALL_FUNC);
 	
 	// Count call arguments
 	int            call_arg_count = 0;
@@ -965,12 +984,13 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 }
 
 static Result codegen_expression(Context * ctx, AST_Expression const * expr) {
-	switch (expr->expr_type) {
+	switch (expr->type) {
 		case AST_EXPRESSION_CONST:         return codegen_expression_const       (ctx, expr);
 		case AST_EXPRESSION_VAR:           return codegen_expression_var         (ctx, expr);
 		case AST_EXPRESSION_STRUCT_MEMBER: return codege_expression_struct_member(ctx, expr);
 		
-		case AST_EXPRESSION_CAST:  return codegen_expression_cast (ctx, expr);
+		case AST_EXPRESSION_CAST:   return codegen_expression_cast  (ctx, expr);
+		case AST_EXPRESSION_SIZEOF: return codegen_expression_sizeof(ctx, expr);
 
 		case AST_EXPRESSION_OPERATOR_BIN:  return codegen_expression_op_bin (ctx, expr);
 		case AST_EXPRESSION_OPERATOR_PRE:  return codegen_expression_op_pre (ctx, expr);
@@ -983,21 +1003,21 @@ static Result codegen_expression(Context * ctx, AST_Expression const * expr) {
 }
 
 static void codegen_statement_statements(Context * ctx, AST_Statement const * stat) {
-	assert(stat->stat_type == AST_STATEMENTS);
+	assert(stat->type == AST_STATEMENTS);
 
 	if (stat->stat_stats.head) codegen_statement(ctx, stat->stat_stats.head);
 	if (stat->stat_stats.cons) codegen_statement(ctx, stat->stat_stats.cons);
 }
 
 static void codegen_statement_expression(Context * ctx, AST_Statement const * stat) {
-	assert(stat->stat_type == AST_STATEMENT_EXPR);
+	assert(stat->type == AST_STATEMENT_EXPR);
 
 	Result result = codegen_expression(ctx, stat->stat_expr.expr);
 	context_reg_free(ctx, result.reg);
 }
 
 static void codegen_statement_decl_var(Context * ctx, AST_Statement const * stat) {
-	assert(stat->stat_type == AST_STATEMENT_DECL_VAR);
+	assert(stat->type == AST_STATEMENT_DECL_VAR);
 
 	char const * var_name = stat->stat_decl_var.name;
 	
@@ -1008,7 +1028,7 @@ static void codegen_statement_decl_var(Context * ctx, AST_Statement const * stat
 			AST_Expression const * literal      = stat->stat_decl_var.assign->expr_op_bin.expr_right;
 			Token_Type             literal_type = literal->expr_const.token.type;
 			
-			if (literal->expr_type != AST_EXPRESSION_CONST) {
+			if (literal->type != AST_EXPRESSION_CONST) {
 				printf("ERROR: Globals can only be initialized to constant values! Variable name: '%s'", var_name); 
 				abort();
 			}
@@ -1023,7 +1043,6 @@ static void codegen_statement_decl_var(Context * ctx, AST_Statement const * stat
 
 					break;
 				}
-				// sprintf_s(value, value_size, "%s db %c\n", literal->expr_const.token.value_char); break;
 
 				case TOKEN_LITERAL_STRING: {
 					context_add_string_literal(ctx, var_name, literal->expr_const.token.value_str);
@@ -1062,7 +1081,7 @@ static void codegen_statement_decl_var(Context * ctx, AST_Statement const * stat
 }
 
 static void codegen_statement_decl_func(Context * ctx, AST_Statement const * stat) {
-	assert(stat->stat_type == AST_STATEMENT_DECL_FUNC);
+	assert(stat->type == AST_STATEMENT_DECL_FUNC);
 
 	context_emit_code(ctx, "%s:\n", stat->stat_decl_func.name);
 	ctx->indent++;
@@ -1116,13 +1135,13 @@ static void codegen_statement_decl_func(Context * ctx, AST_Statement const * sta
 }
 
 static void codegen_statement_extern(Context * ctx, AST_Statement const * stat) {
-	assert(stat->stat_type == AST_STATEMENT_EXTERN);
+	assert(stat->type == AST_STATEMENT_EXTERN);
 
 	context_emit_code(ctx, "EXTERN %s\n\n", stat->stat_extern.name);
 }
 
 static void codegen_statement_if(Context * ctx, AST_Statement const * stat) {
-	assert(stat->stat_type == AST_STATEMENT_IF);
+	assert(stat->type == AST_STATEMENT_IF);
 
 	Result result = codegen_expression(ctx, stat->stat_if.condition);
 	context_reg_free(ctx, result.reg);
@@ -1155,7 +1174,7 @@ static void codegen_statement_if(Context * ctx, AST_Statement const * stat) {
 }
 
 static void codegen_statement_while(Context * ctx, AST_Statement const * stat) {
-	assert(stat->stat_type == AST_STATEMENT_WHILE);
+	assert(stat->type == AST_STATEMENT_WHILE);
 
 	int label = context_new_label(ctx);
 	context_emit_code(ctx, "L_loop%i:\n", label);
@@ -1177,7 +1196,7 @@ static void codegen_statement_while(Context * ctx, AST_Statement const * stat) {
 }
 
 static void codegen_statement_break(Context * ctx, AST_Statement const * stat) {
-	assert(stat->stat_type == AST_STATEMENT_BREAK);
+	assert(stat->type == AST_STATEMENT_BREAK);
 
 	if (ctx->current_loop_label == -1) {
 		printf("ERROR: Cannot use 'break' outside of loop!");
@@ -1188,7 +1207,7 @@ static void codegen_statement_break(Context * ctx, AST_Statement const * stat) {
 }
 
 static void codegen_statement_continue(Context * ctx, AST_Statement const * stat) {
-	assert(stat->stat_type == AST_STATEMENT_CONTINUE);
+	assert(stat->type == AST_STATEMENT_CONTINUE);
 	
 	if (ctx->current_loop_label == -1) {
 		printf("ERROR: Cannot use 'continue' outside of loop!");
@@ -1199,7 +1218,7 @@ static void codegen_statement_continue(Context * ctx, AST_Statement const * stat
 }
 
 static void codegen_statement_return(Context * ctx, AST_Statement const * stat) {
-	assert(stat->stat_type == AST_STATEMENT_RETURN);
+	assert(stat->type == AST_STATEMENT_RETURN);
 
 	if (stat->stat_return.expr) {
 		Result result = codegen_expression(ctx, stat->stat_return.expr);
@@ -1218,7 +1237,7 @@ static void codegen_statement_return(Context * ctx, AST_Statement const * stat) 
 }
 
 static void codegen_statement_block(Context * ctx, AST_Statement const * stat) {
-	assert(stat->stat_type == AST_STATEMENT_BLOCK);
+	assert(stat->type == AST_STATEMENT_BLOCK);
 
 	ctx->current_scope = stat->stat_block.scope;
 
@@ -1228,7 +1247,7 @@ static void codegen_statement_block(Context * ctx, AST_Statement const * stat) {
 }
 
 static void codegen_statement_program(Context * ctx, AST_Statement const * stat) {
-	assert(stat->stat_type == AST_STATEMENT_PROGRAM);
+	assert(stat->type == AST_STATEMENT_PROGRAM);
 
 	ctx->current_scope = stat->stat_program.global_scope;
 
@@ -1236,7 +1255,7 @@ static void codegen_statement_program(Context * ctx, AST_Statement const * stat)
 }
 
 static void codegen_statement(Context * ctx, AST_Statement const * stat) {
-	switch (stat->stat_type) {
+	switch (stat->type) {
 		case AST_STATEMENT_PROGRAM: codegen_statement_program(ctx, stat); break;
 
 		case AST_STATEMENTS:      codegen_statement_statements(ctx, stat); break;

@@ -10,7 +10,7 @@ assert:
     mov rbp, rsp ; stack frame
     mov BYTE [rbp + 16], cl ; push arg 0 
     sub rsp, 0 ; reserve stack space for locals
-    movsx rbx, BYTE [rbp + 16] ; get value of expression
+    movsx rbx, BYTE [rbp + 16] ; get value of 'expression'
     test rbx, rbx
     jne L_lnot_false_0
     mov rbx, 1
@@ -49,10 +49,10 @@ main:
     L_lor_true_2:
     mov rbx, 1
     L_lor_exit_2:
-    lea r10, QWORD [rbp + -16] ; get address of a
+    lea r10, QWORD [rbp + -16] ; get address of 'a'
     mov BYTE [r10], bl
     sub rsp, 32 ; reserve space for call arguments
-    movsx rbx, BYTE [rbp + -16] ; get value of a
+    movsx rbx, BYTE [rbp + -16] ; get value of 'a'
     mov r10, 1
     cmp rbx, r10
     jne L3
@@ -76,10 +76,10 @@ main:
     L_land_false_5:
     mov rbx, 0
     L_land_exit_5:
-    lea r10, QWORD [rbp + -16] ; get address of a
+    lea r10, QWORD [rbp + -16] ; get address of 'a'
     mov BYTE [r10], bl
     sub rsp, 32 ; reserve space for call arguments
-    movsx rbx, BYTE [rbp + -16] ; get value of a
+    movsx rbx, BYTE [rbp + -16] ; get value of 'a'
     mov r10, 0
     cmp rbx, r10
     jne L6
@@ -92,7 +92,7 @@ main:
     call assert
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movsx rbx, BYTE [rbp + -16] ; get value of a
+    movsx rbx, BYTE [rbp + -16] ; get value of 'a'
     test rbx, rbx
     jne L_lnot_false_8
     mov rbx, 1
@@ -100,7 +100,7 @@ main:
     L_lnot_false_8:
     mov rbx, 0
     L_lnot_exit_8:
-    movsx r10, BYTE [rbp + -16] ; get value of a
+    movsx r10, BYTE [rbp + -16] ; get value of 'a'
     test r10, r10
     jne L_lor_true_9
     test rbx, rbx
@@ -110,10 +110,10 @@ main:
     L_lor_true_9:
     mov r10, 1
     L_lor_exit_9:
-    lea rbx, QWORD [rbp + -16] ; get address of a
+    lea rbx, QWORD [rbp + -16] ; get address of 'a'
     mov BYTE [rbx], r10b
     sub rsp, 32 ; reserve space for call arguments
-    movsx rbx, BYTE [rbp + -16] ; get value of a
+    movsx rbx, BYTE [rbp + -16] ; get value of 'a'
     mov r10, 1
     cmp rbx, r10
     jne L10

@@ -8,7 +8,7 @@ factorial_recursive:
     mov rbp, rsp ; stack frame
     mov DWORD [rbp + 16], ecx ; push arg 0 
     sub rsp, 0 ; reserve stack space for locals
-    movsx rbx, DWORD [rbp + 16] ; get value of n
+    movsx rbx, DWORD [rbp + 16] ; get value of 'n'
     mov r10, 0
     cmp rbx, r10
     jne L0
@@ -24,14 +24,14 @@ factorial_recursive:
         jmp L_function_factorial_recursive_exit
     L_exit2:
     sub rsp, 32 ; reserve space for call arguments
-    movsx rbx, DWORD [rbp + 16] ; get value of n
+    movsx rbx, DWORD [rbp + 16] ; get value of 'n'
     mov r10, 1
     sub rbx, r10
     mov rcx, rbx ; arg 0
     call factorial_recursive
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movsx r10, DWORD [rbp + 16] ; get value of n
+    movsx r10, DWORD [rbp + 16] ; get value of 'n'
     imul r10, rbx
     mov rax, r10 ; return via rax
     jmp L_function_factorial_recursive_exit
@@ -47,10 +47,10 @@ factorial_loop:
     mov DWORD [rbp + 16], ecx ; push arg 0 
     sub rsp, 16 ; reserve stack space for locals
     mov rbx, 1
-    lea r10, QWORD [rbp + -16] ; get address of result
+    lea r10, QWORD [rbp + -16] ; get address of 'result'
     mov DWORD [r10], ebx
     L_loop3:
-    movsx rbx, DWORD [rbp + 16] ; get value of n
+    movsx rbx, DWORD [rbp + 16] ; get value of 'n'
     mov r10, 0
     cmp rbx, r10
     jle L4
@@ -61,19 +61,19 @@ factorial_loop:
     L5:
     cmp rbx, 0
     je L_exit3
-        movsx rbx, DWORD [rbp + -16] ; get value of result
-        movsx r10, DWORD [rbp + 16] ; get value of n
+        movsx rbx, DWORD [rbp + -16] ; get value of 'result'
+        movsx r10, DWORD [rbp + 16] ; get value of 'n'
         imul rbx, r10
-        lea r10, QWORD [rbp + -16] ; get address of result
+        lea r10, QWORD [rbp + -16] ; get address of 'result'
         mov DWORD [r10], ebx
-        movsx rbx, DWORD [rbp + 16] ; get value of n
+        movsx rbx, DWORD [rbp + 16] ; get value of 'n'
         mov r10, 1
         sub rbx, r10
-        lea r10, QWORD [rbp + 16] ; get address of n
+        lea r10, QWORD [rbp + 16] ; get address of 'n'
         mov DWORD [r10], ebx
     jmp L_loop3
     L_exit3:
-    movsx rbx, DWORD [rbp + -16] ; get value of result
+    movsx rbx, DWORD [rbp + -16] ; get value of 'result'
     mov rax, rbx ; return via rax
     jmp L_function_factorial_loop_exit
     xor rax, rax ; Default return value 0
@@ -87,26 +87,26 @@ main:
     mov rbp, rsp ; stack frame
     sub rsp, 16 ; reserve stack space for locals
     mov rbx, 5
-    lea r10, QWORD [rbp + -16] ; get address of arg
+    lea r10, QWORD [rbp + -16] ; get address of 'arg'
     mov DWORD [r10], ebx
     sub rsp, 32 ; reserve space for call arguments
-    movsx rbx, DWORD [rbp + -16] ; get value of arg
+    movsx rbx, DWORD [rbp + -16] ; get value of 'arg'
     mov rcx, rbx ; arg 0
     call factorial_recursive
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    lea r10, QWORD [rbp + -12] ; get address of a
+    lea r10, QWORD [rbp + -12] ; get address of 'a'
     mov DWORD [r10], ebx
     sub rsp, 32 ; reserve space for call arguments
-    movsx rbx, DWORD [rbp + -16] ; get value of arg
+    movsx rbx, DWORD [rbp + -16] ; get value of 'arg'
     mov rcx, rbx ; arg 0
     call factorial_loop
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    lea r10, QWORD [rbp + -8] ; get address of b
+    lea r10, QWORD [rbp + -8] ; get address of 'b'
     mov DWORD [r10], ebx
-    movsx rbx, DWORD [rbp + -12] ; get value of a
-    movsx r10, DWORD [rbp + -8] ; get value of b
+    movsx rbx, DWORD [rbp + -12] ; get value of 'a'
+    movsx r10, DWORD [rbp + -8] ; get value of 'b'
     cmp rbx, r10
     jne L6
     mov rbx, 1

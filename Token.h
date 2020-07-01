@@ -12,6 +12,7 @@ typedef enum Token_Type {
 
 	TOKEN_KEYWORD_LET,      // let
 	TOKEN_KEYWORD_CAST,     // cast()
+	TOKEN_KEYWORD_SIZEOF,   // sizeof
 	TOKEN_KEYWORD_EXTERN,   // extern
 	TOKEN_KEYWORD_IF,       // if
 	TOKEN_KEYWORD_ELSE,     // else

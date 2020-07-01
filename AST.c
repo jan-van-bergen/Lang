@@ -37,7 +37,7 @@ static void print_call_args(AST_Call_Arg const * arg) {
 }
 
 static void print_expression(AST_Expression const * expr) {
-	switch(expr->expr_type) {
+	switch(expr->type) {
 		case AST_EXPRESSION_CONST: {
 			char str_token[128];
 			token_to_string(&expr->expr_const.token, str_token, sizeof(str_token));
@@ -122,7 +122,7 @@ static void print_expression(AST_Expression const * expr) {
 }
 
 static void print_statement(AST_Statement const * stat, int indent) {
-	switch (stat->stat_type) {
+	switch (stat->type) {
 		case AST_STATEMENT_PROGRAM: {
 			print_statement(stat->stat_program.stat, indent);
 
@@ -282,7 +282,7 @@ static void ast_free_call_args(AST_Call_Arg * arg) {
 static void ast_free_expression(AST_Expression * expr) {
 	if (expr == NULL) return;
 
-	switch (expr->expr_type) {
+	switch (expr->type) {
 		case AST_EXPRESSION_CONST: break;
 		case AST_EXPRESSION_VAR:   break;
 
@@ -318,7 +318,7 @@ static void ast_free_expression(AST_Expression * expr) {
 void ast_free_statement(AST_Statement * stat) {
 	if (stat == NULL) return;
 
-	switch (stat->stat_type) {
+	switch (stat->type) {
 		case AST_STATEMENT_PROGRAM: {
 			ast_free_statement(stat->stat_program.stat);
 

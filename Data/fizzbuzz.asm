@@ -16,20 +16,20 @@ print:
     mov DWORD [rbp + 24], edx ; push arg 1 
     sub rsp, 16 ; reserve stack space for locals
     sub rsp, 32 ; reserve space for call arguments
-    movsx rbx, DWORD [REL STD_OUTPUT_HANDLE] ; get value of STD_OUTPUT_HANDLE
+    movsx rbx, DWORD [REL STD_OUTPUT_HANDLE] ; get value of 'STD_OUTPUT_HANDLE'
     mov rcx, rbx ; arg 0
     call GetStdHandle
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    lea r10, QWORD [rbp + -16] ; get address of std_handle
+    lea r10, QWORD [rbp + -16] ; get address of 'std_handle'
     mov QWORD [r10], rbx
     mov DWORD [rbp + -8], 0 ; zero initialize bytes_written
     sub rsp, 48 ; reserve space for call arguments
-    mov rbx, QWORD [rbp + -16] ; get value of std_handle
+    mov rbx, QWORD [rbp + -16] ; get value of 'std_handle'
     mov rcx, rbx ; arg 0
-    mov rbx, QWORD [rbp + 16] ; get value of str
+    mov rbx, QWORD [rbp + 16] ; get value of 'str'
     mov rdx, rbx ; arg 1
-    movsx rbx, DWORD [rbp + 24] ; get value of str_len
+    movsx rbx, DWORD [rbp + 24] ; get value of 'str_len'
     mov r8, rbx ; arg 2
     lea rbx, QWORD [rbp + -8] ; addrof bytes_written
     mov r9, rbx ; arg 3
@@ -50,13 +50,13 @@ print_num:
     mov DWORD [rbp + 16], ecx ; push arg 0 
     sub rsp, 32 ; reserve stack space for locals
     lea rbx, [REL str_lit_1]
-    lea r10, QWORD [rbp + -32] ; get address of num_str
+    lea r10, QWORD [rbp + -32] ; get address of 'num_str'
     mov QWORD [r10], rbx
     mov rbx, 0
-    lea r10, QWORD [rbp + -24] ; get address of idx
+    lea r10, QWORD [rbp + -24] ; get address of 'idx'
     mov DWORD [r10], ebx
     L_loop0:
-    movsx rbx, DWORD [rbp + 16] ; get value of num
+    movsx rbx, DWORD [rbp + 16] ; get value of 'num'
     mov r10, 0
     cmp rbx, r10
     jle L1
@@ -67,8 +67,8 @@ print_num:
     L2:
     cmp rbx, 0
     je L_exit0
-        lea rbx, QWORD [rbp + -20] ; get address of digit
-        movsx r10, DWORD [rbp + 16] ; get value of num
+        lea rbx, QWORD [rbp + -20] ; get address of 'digit'
+        movsx r10, DWORD [rbp + 16] ; get value of 'num'
         mov r11, 10
         mov rax, r10
         cdq
@@ -76,39 +76,39 @@ print_num:
         mov r10, rdx
         and r10, 0xff
         mov BYTE [rbx], r10b
-        mov rbx, QWORD [rbp + -32] ; get value of num_str
-        movsx r10, DWORD [rbp + -24] ; get value of idx
+        mov rbx, QWORD [rbp + -32] ; get value of 'num_str'
+        movsx r10, DWORD [rbp + -24] ; get value of 'idx'
         add rbx, r10
-        movsx r10, BYTE [rbp + -20] ; get value of digit
+        movsx r10, BYTE [rbp + -20] ; get value of 'digit'
         mov r11, 48
         add r10, r11
         mov BYTE [rbx], r10b
-        movsx rbx, DWORD [rbp + 16] ; get value of num
+        movsx rbx, DWORD [rbp + 16] ; get value of 'num'
         mov r10, 10
         mov rax, rbx
         cdq
         idiv r10
         mov rbx, rax
-        lea r10, QWORD [rbp + 16] ; get address of num
+        lea r10, QWORD [rbp + 16] ; get address of 'num'
         mov DWORD [r10], ebx
-        movsx rbx, DWORD [rbp + -24] ; get value of idx
+        movsx rbx, DWORD [rbp + -24] ; get value of 'idx'
         mov r10, 1
         add rbx, r10
-        lea r10, QWORD [rbp + -24] ; get address of idx
+        lea r10, QWORD [rbp + -24] ; get address of 'idx'
         mov DWORD [r10], ebx
     jmp L_loop0
     L_exit0:
     mov rbx, 0
-    lea r10, QWORD [rbp + -16] ; get address of i
+    lea r10, QWORD [rbp + -16] ; get address of 'i'
     mov DWORD [r10], ebx
     L_loop3:
-    movsx rbx, DWORD [rbp + -24] ; get value of idx
+    movsx rbx, DWORD [rbp + -24] ; get value of 'idx'
     mov r10, 2
     mov rax, rbx
     cdq
     idiv r10
     mov rbx, rax
-    movsx r10, DWORD [rbp + -16] ; get value of i
+    movsx r10, DWORD [rbp + -16] ; get value of 'i'
     cmp r10, rbx
     jge L4
     mov r10, 1
@@ -118,49 +118,49 @@ print_num:
     L5:
     cmp r10, 0
     je L_exit3
-        mov rbx, QWORD [rbp + -32] ; get value of num_str
-        movsx r10, DWORD [rbp + -16] ; get value of i
+        mov rbx, QWORD [rbp + -32] ; get value of 'num_str'
+        movsx r10, DWORD [rbp + -16] ; get value of 'i'
         add rbx, r10
         movsx rbx, BYTE [rbx]
-        lea r10, QWORD [rbp + -12] ; get address of tmp
+        lea r10, QWORD [rbp + -12] ; get address of 'tmp'
         mov BYTE [r10], bl
-        mov rbx, QWORD [rbp + -32] ; get value of num_str
-        movsx r10, DWORD [rbp + -24] ; get value of idx
+        mov rbx, QWORD [rbp + -32] ; get value of 'num_str'
+        movsx r10, DWORD [rbp + -24] ; get value of 'idx'
         add rbx, r10
-        movsx r10, DWORD [rbp + -16] ; get value of i
+        movsx r10, DWORD [rbp + -16] ; get value of 'i'
         sub rbx, r10
         mov r10, 1
         sub rbx, r10
         movsx rbx, BYTE [rbx]
-        mov r10, QWORD [rbp + -32] ; get value of num_str
-        movsx r11, DWORD [rbp + -16] ; get value of i
+        mov r10, QWORD [rbp + -32] ; get value of 'num_str'
+        movsx r11, DWORD [rbp + -16] ; get value of 'i'
         add r10, r11
         mov BYTE [r10], bl
-        mov rbx, QWORD [rbp + -32] ; get value of num_str
-        movsx r10, DWORD [rbp + -24] ; get value of idx
+        mov rbx, QWORD [rbp + -32] ; get value of 'num_str'
+        movsx r10, DWORD [rbp + -24] ; get value of 'idx'
         add rbx, r10
-        movsx r10, DWORD [rbp + -16] ; get value of i
+        movsx r10, DWORD [rbp + -16] ; get value of 'i'
         sub rbx, r10
         mov r10, 1
         sub rbx, r10
-        movsx r10, BYTE [rbp + -12] ; get value of tmp
+        movsx r10, BYTE [rbp + -12] ; get value of 'tmp'
         mov BYTE [rbx], r10b
-        movsx rbx, DWORD [rbp + -16] ; get value of i
+        movsx rbx, DWORD [rbp + -16] ; get value of 'i'
         mov r10, 1
         add rbx, r10
-        lea r10, QWORD [rbp + -16] ; get address of i
+        lea r10, QWORD [rbp + -16] ; get address of 'i'
         mov DWORD [r10], ebx
     jmp L_loop3
     L_exit3:
-    mov rbx, QWORD [rbp + -32] ; get value of num_str
-    movsx r10, DWORD [rbp + -24] ; get value of idx
+    mov rbx, QWORD [rbp + -32] ; get value of 'num_str'
+    movsx r10, DWORD [rbp + -24] ; get value of 'idx'
     add rbx, r10
     mov r10, 32
     mov BYTE [rbx], r10b
     sub rsp, 32 ; reserve space for call arguments
-    mov rbx, QWORD [rbp + -32] ; get value of num_str
+    mov rbx, QWORD [rbp + -32] ; get value of 'num_str'
     mov rcx, rbx ; arg 0
-    movsx rbx, DWORD [rbp + -24] ; get value of idx
+    movsx rbx, DWORD [rbp + -24] ; get value of 'idx'
     mov r10, 1
     add rbx, r10
     mov rdx, rbx ; arg 1
@@ -179,11 +179,11 @@ fizzbuzz:
     mov DWORD [rbp + 16], ecx ; push arg 0 
     sub rsp, 16 ; reserve stack space for locals
     mov rbx, 1
-    lea r10, QWORD [rbp + -16] ; get address of i
+    lea r10, QWORD [rbp + -16] ; get address of 'i'
     mov DWORD [r10], ebx
     L_loop6:
-    movsx rbx, DWORD [rbp + -16] ; get value of i
-    movsx r10, DWORD [rbp + 16] ; get value of n
+    movsx rbx, DWORD [rbp + -16] ; get value of 'i'
+    movsx r10, DWORD [rbp + 16] ; get value of 'n'
     cmp rbx, r10
     jg L7
     mov rbx, 1
@@ -193,7 +193,7 @@ fizzbuzz:
     L8:
     cmp rbx, 0
     je L_exit6
-        movsx rbx, DWORD [rbp + -16] ; get value of i
+        movsx rbx, DWORD [rbp + -16] ; get value of 'i'
         mov r10, 3
         mov rax, rbx
         cdq
@@ -207,9 +207,9 @@ fizzbuzz:
         L9:
         mov rbx, 0
         L10:
-        lea r10, QWORD [rbp + -12] ; get address of divisible_by_3
+        lea r10, QWORD [rbp + -12] ; get address of 'divisible_by_3'
         mov BYTE [r10], bl
-        movsx rbx, DWORD [rbp + -16] ; get value of i
+        movsx rbx, DWORD [rbp + -16] ; get value of 'i'
         mov r10, 5
         mov rax, rbx
         cdq
@@ -223,10 +223,10 @@ fizzbuzz:
         L11:
         mov rbx, 0
         L12:
-        lea r10, QWORD [rbp + -11] ; get address of divisible_by_5
+        lea r10, QWORD [rbp + -11] ; get address of 'divisible_by_5'
         mov BYTE [r10], bl
-        movsx rbx, BYTE [rbp + -11] ; get value of divisible_by_5
-        movsx r10, BYTE [rbp + -12] ; get value of divisible_by_3
+        movsx rbx, BYTE [rbp + -11] ; get value of 'divisible_by_5'
+        movsx r10, BYTE [rbp + -12] ; get value of 'divisible_by_3'
         test rbx, rbx
         je L_land_false_13
         test r10, r10
@@ -248,7 +248,7 @@ fizzbuzz:
             mov rbx, rax ; get return value
         jmp L_exit14
         L_else14:
-            movsx rbx, BYTE [rbp + -11] ; get value of divisible_by_5
+            movsx rbx, BYTE [rbp + -11] ; get value of 'divisible_by_5'
             cmp rbx, 0
             je L_else15
                 sub rsp, 32 ; reserve space for call arguments
@@ -261,7 +261,7 @@ fizzbuzz:
                 mov rbx, rax ; get return value
             jmp L_exit15
             L_else15:
-                movsx rbx, BYTE [rbp + -12] ; get value of divisible_by_3
+                movsx rbx, BYTE [rbp + -12] ; get value of 'divisible_by_3'
                 cmp rbx, 0
                 je L_else16
                     sub rsp, 32 ; reserve space for call arguments
@@ -275,7 +275,7 @@ fizzbuzz:
                 jmp L_exit16
                 L_else16:
                     sub rsp, 32 ; reserve space for call arguments
-                    movsx rbx, DWORD [rbp + -16] ; get value of i
+                    movsx rbx, DWORD [rbp + -16] ; get value of 'i'
                     mov rcx, rbx ; arg 0
                     call print_num
                     add rsp, 32 ; pop arguments
@@ -283,10 +283,10 @@ fizzbuzz:
                 L_exit16:
             L_exit15:
         L_exit14:
-        movsx rbx, DWORD [rbp + -16] ; get value of i
+        movsx rbx, DWORD [rbp + -16] ; get value of 'i'
         mov r10, 1
         add rbx, r10
-        lea r10, QWORD [rbp + -16] ; get address of i
+        lea r10, QWORD [rbp + -16] ; get address of 'i'
         mov DWORD [r10], ebx
     jmp L_loop6
     L_exit6:
