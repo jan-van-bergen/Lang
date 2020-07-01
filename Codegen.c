@@ -927,7 +927,7 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 	}
 
 	// Reserve stack space for arguments
-	context_emit_code(ctx, "sub rsp, %i ; reserve space for call arguments\n", arg_size);
+	context_emit_code(ctx, "sub rsp, %i ; reserve shadow space and %i arguments\n", arg_size, call_arg_count);
 
 	// Evaluate arguments and put them into the right register / stack address
 	// The first 4 arguments go in registers, the rest spills onto the stack
@@ -1117,7 +1117,9 @@ static void codegen_statement_decl_func(Context * ctx, AST_Statement const * sta
 		stack_frame->vars[i].offset -= stack_frame_size_aligned;
 	}
 
-	context_emit_code(ctx, "sub rsp, %i ; reserve stack space for locals\n", stack_frame_size_aligned);
+	if (stack_frame->vars_len > 0) {  
+		context_emit_code(ctx, "sub rsp, %i ; reserve stack space for %i locals\n", stack_frame_size_aligned, stack_frame->vars_len);
+	}
 
 	// Function body
 	codegen_statement(ctx, stat->stat_decl_func.body);
