@@ -98,7 +98,7 @@ main:
         mov DWORD [r10], ebx
     jmp L_loop0
     L_exit0:
-    movsx rbx, DWORD [rbp + -16] ; get value of 'num_primes'
+    movsx rbx, DWORD [rbp + -12] ; get value of 'i'
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
     xor rax, rax ; Default return value 0
@@ -110,8 +110,6 @@ main:
 EXTERN GetStdHandle
 
 EXTERN WriteFile
-
-EXTERN strlen
 
 print:
     push rbp ; save RBP

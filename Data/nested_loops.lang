@@ -32,7 +32,7 @@ func main() -> int {
 		i = i + 1;
 	}
 	
-	return num_primes;
+	return i; // return N-th prime
 }
 
 extern GetStdHandle(std_handle: int) -> void *;
