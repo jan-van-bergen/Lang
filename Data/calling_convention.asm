@@ -17,10 +17,10 @@ calling_convention:
     add rbx, r10
     movsx r10, DWORD [rbp + 40]
     add rbx, r10
-    movsx r10, DWORD [rbp + 48]
-    add rbx, r10
     movsx r10, DWORD [rbp + 52]
     add rbx, r10
+    movsx r10, DWORD [rbp + 48]
+    sub rbx, r10
     mov rax, rbx ; return via rax
     jmp L_function_calling_convention_exit
     

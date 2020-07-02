@@ -38,7 +38,7 @@ static void run_test(char const * filename, int expected_exit_code, char const *
 void run_tests() {
 	puts("Starting tests...");
 
-	run_test("Data\\calling_convention.lang", 21, "");
+	run_test("Data\\calling_convention.lang", 11, "");
 	run_test("Data\\code.lang",           0xc0de, "");
 	run_test("Data\\extern.lang",             13, "Hallo wereld!");
 	run_test("Data\\functions.lang",          12, "");

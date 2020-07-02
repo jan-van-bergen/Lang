@@ -155,7 +155,13 @@ static void print_statement(AST_Statement const * stat, int indent) {
 			type_to_string(&stat->stat_def_var.type, str_type, sizeof(str_type));
 
 			print_indent(indent);
-			printf("let %s: %s;\n", stat->stat_def_var.name, str_type);
+			printf("let %s: %s", stat->stat_def_var.name, str_type);
+
+			if (stat->stat_def_var.assign) {
+				printf("; ");
+				print_expression(stat->stat_def_var.assign);
+			}
+			printf(";\n");
 
 			break;
 		}
