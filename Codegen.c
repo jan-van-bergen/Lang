@@ -412,8 +412,7 @@ static Result codegen_expression_struct_member(Context * ctx, AST_Expression * e
 	if (!var_by_address) {
 		context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
 
-		// Structs are allways returned by address
-		if (!type_is_struct(&result.type)) {
+		if (type_is_primitive(&result.type)) {
 			codegen_deref_address(ctx, result.reg, &result.type,  get_reg_name_scratch(result.reg, 8), NULL);
 		}
 	}
@@ -425,19 +424,6 @@ static Result codegen_expression_cast(Context * ctx, AST_Expression * expr) {
 	assert(expr->type == AST_EXPRESSION_CAST);
 
 	Result result = codegen_expression(ctx, expr->expr_cast.expr);
-
-	if (!type_is_pointer(&expr->expr_cast.new_type)) {
-		switch (expr->expr_cast.new_type.type) {
-			case TYPE_VOID: type_error("Cannot cast to void!");
-
-			case TYPE_I8:  case TYPE_U8:  context_emit_code(ctx, "and %s, 0xff\n",       get_reg_name_scratch(result.reg, 8)); break;
-			case TYPE_I16: case TYPE_U16: context_emit_code(ctx, "and %s, 0xffff\n",     get_reg_name_scratch(result.reg, 8)); break;
-			case TYPE_I32: case TYPE_U32: context_emit_code(ctx, "and %s, 0xffffffff\n", get_reg_name_scratch(result.reg, 8)); break;
-
-			case TYPE_BOOL: context_emit_code(ctx, "and %s, 1\n", get_reg_name_scratch(result.reg, 8)); break;
-		}
-	}
-
 	result.type = expr->expr_cast.new_type;
 
 	return result;

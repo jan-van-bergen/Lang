@@ -78,7 +78,6 @@ main:
     call strlen
     add rsp, 32 ; pop arguments
     mov r10, rax ; get return value
-    and r10, 0xffffffff
     mov DWORD [rbx], r10d
     
     mov DWORD [rbp + -12], 0 ; zero initialize 'bytes_written'

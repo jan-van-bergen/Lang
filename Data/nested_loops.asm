@@ -204,7 +204,6 @@ print_num:
         cdq
         idiv r11
         mov r10, rdx
-        and r10, 0xff
         mov BYTE [rbx], r10b
         
         mov rbx, QWORD [rbp + -32]
