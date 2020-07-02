@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-static int variable_buffer_add_variable(Variable_Buffer * buf, char const * name, Type * type, bool is_global) {
+static int variable_buffer_add_variable(Variable_Buffer * buf, char const * name, Type const * type, bool is_global) {
 	if (buf->vars_len == buf->vars_cap) {
 		buf->vars_cap *= 2;
 		buf->vars = realloc(buf->vars, buf->vars_cap * sizeof(Variable));
@@ -17,7 +17,7 @@ static int variable_buffer_add_variable(Variable_Buffer * buf, char const * name
 	
 	Variable * var = &buf->vars[index];
 	var->name = name;
-	var->type = *type;
+	var->type = type;
 	var->is_global = is_global;
 
 	return index;
@@ -86,8 +86,8 @@ void scope_add_arg(Scope * scope, char const * name, Type const * type) {
 
 	Variable * arg = &scope->variable_buffer->vars[index];
 	
-	int arg_size  = type_get_size (&arg->type, scope);
-	int arg_align = type_get_align(&arg->type, scope);
+	int arg_size  = type_get_size (arg->type, scope);
+	int arg_align = type_get_align(arg->type, scope);
 
 	if (scope->indices_len <= 4) { // First 4 arguments will be put into shadow space by callee
 		arg_size  = 8;
@@ -116,8 +116,8 @@ void scope_add_var(Scope * scope, char const * name, Type const * type) {
 
 	Variable * var = &scope->variable_buffer->vars[index];
 
-	int var_size  = type_get_size (&var->type, scope);
-	int var_align = type_get_align(&var->type, scope);
+	int var_size  = type_get_size (var->type, scope);
+	int var_align = type_get_align(var->type, scope);
 
 	align(&scope->variable_buffer->size, var_align);
 
@@ -185,7 +185,7 @@ Struct_Def * scope_get_struct_def(Scope const * scope, char const * name) {
 	}
 }
 
-Function_Def * scope_get_function_def(Scope * scope, char const * name) {
+Function_Def * scope_get_function_def(Scope const * scope, char const * name) {
 	while (true) {
 		for (int i = 0; i < scope->function_defs_len; i++) {
 			if (strcmp(scope->function_defs[i].name, name) == 0) {

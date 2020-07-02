@@ -5,7 +5,7 @@
 
 typedef struct Variable {
 	char const * name;
-	Type         type;
+	Type const * type;
 
 	bool is_global;
 
@@ -37,7 +37,7 @@ typedef struct Struct_Def {
 
 typedef struct Function_Def {
 	char const * name;
-	Type         return_type;
+	Type const * return_type;
 
 	int                   arg_count;
 	struct AST_Def_Arg  * args;

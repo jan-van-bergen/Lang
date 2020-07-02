@@ -8,40 +8,89 @@
 
 #include "Scope.h"
 
-Type make_type_void() { return (Type){ TYPE_VOID, 0 }; }
+// Types are allocated in Blocks that form a linked list
+// This allows for stable pointers to types
 
-Type make_type_i8 () { return (Type){ TYPE_I8,  0 }; }
-Type make_type_i16() { return (Type){ TYPE_I16, 0 }; }
-Type make_type_i32() { return (Type){ TYPE_I32, 0 }; }
-Type make_type_i64() { return (Type){ TYPE_I64, 0 }; }
+#define TYPE_TABLE_BLOCK_SIZE 127
 
-Type make_type_u8 () { return (Type){ TYPE_U8,  0 }; }
-Type make_type_u16() { return (Type){ TYPE_U16, 0 }; }
-Type make_type_u32() { return (Type){ TYPE_U32, 0 }; }
-Type make_type_u64() { return (Type){ TYPE_U64, 0 }; }
+typedef struct Type_Block {
+	Type table[TYPE_TABLE_BLOCK_SIZE];
+	int  table_len;
 
-Type make_type_bool() { return (Type){ TYPE_BOOL, 0 }; }
+	struct Type_Block * next;
+} Type_Block;
 
-Type make_type_pointer(Type const * type) {
-	Type ptr_type;
-	ptr_type.type      = type->type;
-	ptr_type.ptr_level = type->ptr_level + 1;
+static Type_Block * type_block_first;
+static Type_Block * type_block_curr;
+
+void type_table_init() {
+	type_block_first = malloc(sizeof(Type_Block));
+	type_block_first->next = NULL;
+
+	type_block_first->table[TYPE_VOID] = (Type){ TYPE_VOID, 0 };
+
+	type_block_first->table[TYPE_I8 ] = (Type){ TYPE_I8,  0 };
+	type_block_first->table[TYPE_I16] = (Type){ TYPE_I16, 0 };
+	type_block_first->table[TYPE_I32] = (Type){ TYPE_I32, 0 };
+	type_block_first->table[TYPE_I64] = (Type){ TYPE_I64, 0 };
+
+	type_block_first->table[TYPE_U8 ] = (Type){ TYPE_U8,  0 };
+	type_block_first->table[TYPE_U16] = (Type){ TYPE_U16, 0 };
+	type_block_first->table[TYPE_U32] = (Type){ TYPE_U32, 0 };
+	type_block_first->table[TYPE_U64] = (Type){ TYPE_U64, 0 };
+
+	type_block_first->table[TYPE_BOOL] = (Type){ TYPE_BOOL, 0 };
+
+	type_block_first->table_len = TYPE_POINTER;
+
+	type_block_curr = type_block_first;
+}
+
+static void free_type_block(Type_Block * block) {
+	if (block->next) free_type_block(block->next);
+
+	free(block);
+}
+
+void type_table_free() {
+	free_type_block(type_block_first);
+
+	type_block_curr = NULL;
+}
+
+Type * type_table_new_type() {
+	if (type_block_curr->table_len == TYPE_TABLE_BLOCK_SIZE) {
+		Type_Block * block = malloc(sizeof(Type_Block));
+		block->table_len = 0;
+		block->next = NULL;
+
+		type_block_curr->next = block;
+		type_block_curr       = block;
+	}
+
+	return type_block_curr->table + type_block_curr->table_len++;
+}
+
+Type const * make_type_void() { return &type_block_first->table[TYPE_VOID]; }
+
+Type const * make_type_i8 () { return &type_block_first->table[TYPE_I8 ]; }
+Type const * make_type_i16() { return &type_block_first->table[TYPE_I16]; }
+Type const * make_type_i32() { return &type_block_first->table[TYPE_I32]; }
+Type const * make_type_i64() { return &type_block_first->table[TYPE_I64]; }
+
+Type const * make_type_u8 () { return &type_block_first->table[TYPE_U8 ]; }
+Type const * make_type_u16() { return &type_block_first->table[TYPE_U16]; }
+Type const * make_type_u32() { return &type_block_first->table[TYPE_U32]; }
+Type const * make_type_u64() { return &type_block_first->table[TYPE_U64]; }
+
+Type const * make_type_bool() { return &type_block_first->table[TYPE_BOOL]; }
+
+Type const * make_type_pointer(Type const * type) {
+	Type * ptr_type = type_table_new_type();
+	ptr_type->type = TYPE_POINTER;
+	ptr_type->ptr  = type;
 
 	return ptr_type;
-}
-
-Type make_type_deref(Type const * type) {
-	assert(type_is_pointer(type));
-
-	Type deref_type;
-	deref_type.type      = type->type;
-	deref_type.ptr_level = type->ptr_level - 1;
-
-	return deref_type;
-}
-
-Type make_type_str() {
-	return (Type){ TYPE_U8, 1 };
 }
 
 void type_to_string(Type const * type, char * string, int string_size) {
@@ -60,17 +109,16 @@ void type_to_string(Type const * type, char * string, int string_size) {
 
 		case TYPE_BOOL: sprintf_s(string, string_size, "bool"); break;
 
+		case TYPE_POINTER: {
+			type_to_string(type->ptr, string, string_size);
+			strcat_s(string, string_size, "*");
+
+			break;
+		}
+
 		case TYPE_STRUCT: sprintf_s(string, string_size, "%s", type->struct_name); break;
 
 		default: abort();
-	}
-
-	int ptr_level = type->ptr_level;
-
-	while (ptr_level > 0) {
-		strcat_s(string, string_size, "*");
-
-		ptr_level--;
 	}
 }
 
@@ -91,6 +139,8 @@ int type_get_size(Type const * type, Scope * scope) {
 		case TYPE_U64: return 8;
 
 		case TYPE_BOOL: return 1;
+
+		case TYPE_POINTER: return 8;
 
 		case TYPE_STRUCT: return scope_get_struct_def(scope, type->struct_name)->members->size;
 
@@ -116,6 +166,8 @@ int type_get_align(Type const * type, Scope * scope) {
 
 		case TYPE_BOOL: return 1;
 
+		case TYPE_POINTER: return 8;
+
 		case TYPE_STRUCT: return scope_get_struct_def(scope, type->struct_name)->members->align;
 
 		default: abort();
@@ -131,15 +183,15 @@ void align(int * address, int alignment) {
 
 
 bool type_is_void(Type const * type) {
-	return !type_is_pointer(type) && type->type == TYPE_VOID;
+	return type->type == TYPE_VOID;
 }
 
 bool type_is_signed_integral(Type const * type) {
-	return !type_is_pointer(type) && (type->type == TYPE_I8 || type->type == TYPE_I16 || type->type == TYPE_I32 || type->type == TYPE_I64);
+	return type->type == TYPE_I8 || type->type == TYPE_I16 || type->type == TYPE_I32 || type->type == TYPE_I64;
 }
 
 bool type_is_unsigned_integral(Type const * type) {
-	return !type_is_pointer(type) && (type->type == TYPE_U8 || type->type == TYPE_U16 || type->type == TYPE_U32 || type->type == TYPE_U64);
+	return type->type == TYPE_U8 || type->type == TYPE_U16 || type->type == TYPE_U32 || type->type == TYPE_U64;
 }
 
 bool type_is_integral(Type const * type) {
@@ -147,19 +199,19 @@ bool type_is_integral(Type const * type) {
 }	
 
 bool type_is_boolean(Type const * type) {
-	return !type_is_pointer(type) && type->type == TYPE_BOOL;
+	return type->type == TYPE_BOOL;
 }
 
 bool type_is_pointer(Type const * type) {
-	return type->ptr_level > 0;
+	return type->type == TYPE_POINTER;
 }
 
 bool type_is_struct(Type const * type) {
-	return !type_is_pointer(type) && type->type == TYPE_STRUCT;
+	return type->type == TYPE_STRUCT;
 }
 
 bool type_is_void_pointer(Type const * type) {
-	return type_is_pointer(type) && type->type == TYPE_VOID;
+	return type_is_pointer(type) && type->ptr->type == TYPE_VOID;
 }
 
 bool type_is_primitive(Type const * type) {
@@ -171,7 +223,7 @@ bool types_equal(Type const * a, Type const * b) {
 	if (a->type != b->type) return false;
 
 	if (type_is_pointer(a)) {
-		return a->ptr_level == b->ptr_level;
+		return types_equal(a->ptr, b->ptr);
 	}
 
 	if (type_is_struct(a)) {
@@ -186,7 +238,7 @@ bool types_unifiable(Type const * a, Type const * b) {
 
 	if (type_is_pointer(a) && type_is_pointer(b)) {
 		// If either type is a void star and the other is a pointer as well, the types are considered equal
-		if ((a->type == TYPE_VOID || b->type == TYPE_VOID) && a->ptr_level == b->ptr_level) return true;
+		if (a->ptr->type == TYPE_VOID || b->ptr->type == TYPE_VOID) return true;
 
 		return types_equal(a, b);
 	}
@@ -198,19 +250,19 @@ bool types_unifiable(Type const * a, Type const * b) {
 	return a->type == b->type;
 }
 
-Type types_unify(Type const * a, Type const * b, Scope * scope) {
-	if (types_equal(a, b)) return *a;
+Type const * types_unify(Type const * a, Type const * b, Scope * scope) {
+	if (types_equal(a, b)) return a;
 
 	if (type_is_integral(a) && type_is_integral(b)) {
 		int size_a = type_get_size(a, scope);
 		int size_b = type_get_size(b, scope);
 
-		return size_a >= size_b ? *a : *b;
+		return size_a >= size_b ? a : b;
 	}
 
 	if (type_is_pointer(a) && type_is_pointer(b)) {
-		if (type_is_void_pointer(a)) return *b;
-		if (type_is_void_pointer(b)) return *a;
+		if (type_is_void_pointer(a)) return b;
+		if (type_is_void_pointer(b)) return a;
 	}
 
 	char str_type_a[128];

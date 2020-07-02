@@ -36,6 +36,8 @@ void compile_file(char const * filename, bool show_output) {
 	Parser parser;
 	parser_init(&parser, tokens, token_count);
 
+	type_table_init();
+
 	AST_Statement * program = parser_parse_program(&parser);
 	
 	free(tokens);
@@ -46,6 +48,8 @@ void compile_file(char const * filename, bool show_output) {
 	char const * code = codegen_program(program);
 
 	ast_free_statement(program);
+	
+	type_table_free();
 
 	char const * file_asm = replace_file_extension(filename, "asm");
 	char const * file_obj = replace_file_extension(filename, "obj");
