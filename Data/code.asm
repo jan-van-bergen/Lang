@@ -11,7 +11,7 @@ main:
     lea r10, QWORD [rbp + -16] ; get address of 'a'
     mov DWORD [r10], ebx
     mov DWORD [rbp + -12], 0 ; zero initialize b
-    movsx rbx, DWORD [rbp + -16] ; get value of 'a'
+    movsx rbx, DWORD [rbp + -16]
     mov r10, 0
     cmp rbx, r10
     jle L0
@@ -31,7 +31,7 @@ main:
         mov r10, 48879
         mov DWORD [rbx], r10d
     L_exit2:
-    movsx rbx, DWORD [rbp + -12] ; get value of 'b'
+    movsx rbx, DWORD [rbp + -12]
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
     xor rax, rax ; Default return value 0

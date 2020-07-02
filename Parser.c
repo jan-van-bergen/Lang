@@ -75,6 +75,7 @@ static bool parser_match_expression(Parser const * parser) {
 		parser_match(parser, TOKEN_OPERATOR_DEC)         ||
 		parser_match(parser, TOKEN_OPERATOR_BITWISE_AND) ||
 		parser_match(parser, TOKEN_OPERATOR_MULTIPLY)    ||
+		parser_match(parser, TOKEN_OPERATOR_BITWISE_NOT) ||
 		parser_match(parser, TOKEN_OPERATOR_LOGICAL_NOT) ||
 		parser_match(parser, TOKEN_LITERAL_INT)    || // Constant values
 		parser_match(parser, TOKEN_LITERAL_BOOL)   ||
@@ -343,7 +344,8 @@ static AST_Expression * parser_parse_expression_prefix(Parser * parser) {
 		parser_match(parser, TOKEN_OPERATOR_PLUS)  ||
 		parser_match(parser, TOKEN_OPERATOR_MINUS) ||
 		parser_match(parser, TOKEN_OPERATOR_BITWISE_AND) || // address of
-		parser_match(parser, TOKEN_OPERATOR_MULTIPLY) ||    // dereference
+		parser_match(parser, TOKEN_OPERATOR_MULTIPLY)    || // dereference
+		parser_match(parser, TOKEN_OPERATOR_BITWISE_NOT) ||
 		parser_match(parser, TOKEN_OPERATOR_LOGICAL_NOT)
 	) {
 		AST_Expression * prefix = malloc(sizeof(AST_Expression));
@@ -491,8 +493,77 @@ static AST_Expression * parser_parse_expression_equality(Parser * parser) {
 	return lhs;
 }
 
-static AST_Expression * parser_parse_expression_logical_and(Parser * parser) {
+static AST_Expression * parser_parse_expression_bitwise_and(Parser * parser) {
 	AST_Expression * lhs = parser_parse_expression_equality(parser);
+
+	// Left Associative
+	while (parser_match(parser, TOKEN_OPERATOR_BITWISE_AND)) {
+		AST_Expression * expression = malloc(sizeof(AST_Expression));
+		expression->type = AST_EXPRESSION_OPERATOR_BIN;
+
+		expression->expr_op_bin.token = *parser_advance(parser);
+		expression->expr_op_bin.expr_left  = lhs;
+		expression->expr_op_bin.expr_right = parser_parse_expression_equality(parser);
+
+		expression->height = max(
+			expression->expr_op_bin.expr_left->height,
+			expression->expr_op_bin.expr_right->height
+		) + 1;
+
+		lhs = expression;
+	}
+
+	return lhs;
+}
+
+static AST_Expression * parser_parse_expression_bitwise_xor(Parser * parser) {
+	AST_Expression * lhs = parser_parse_expression_bitwise_and(parser);
+
+	// Left Associative
+	while (parser_match(parser, TOKEN_OPERATOR_BITWISE_XOR)) {
+		AST_Expression * expression = malloc(sizeof(AST_Expression));
+		expression->type = AST_EXPRESSION_OPERATOR_BIN;
+
+		expression->expr_op_bin.token = *parser_advance(parser);
+		expression->expr_op_bin.expr_left  = lhs;
+		expression->expr_op_bin.expr_right = parser_parse_expression_bitwise_and(parser);
+
+		expression->height = max(
+			expression->expr_op_bin.expr_left->height,
+			expression->expr_op_bin.expr_right->height
+		) + 1;
+
+		lhs = expression;
+	}
+
+	return lhs;
+}
+
+static AST_Expression * parser_parse_expression_bitwise_or(Parser * parser) {
+	AST_Expression * lhs = parser_parse_expression_bitwise_xor(parser);
+
+	// Left Associative
+	while (parser_match(parser, TOKEN_OPERATOR_BITWISE_OR)) {
+		AST_Expression * expression = malloc(sizeof(AST_Expression));
+		expression->type = AST_EXPRESSION_OPERATOR_BIN;
+
+		expression->expr_op_bin.token = *parser_advance(parser);
+		expression->expr_op_bin.expr_left  = lhs;
+		expression->expr_op_bin.expr_right = parser_parse_expression_bitwise_xor(parser);
+
+		expression->height = max(
+			expression->expr_op_bin.expr_left->height,
+			expression->expr_op_bin.expr_right->height
+		) + 1;
+
+		lhs = expression;
+	}
+
+	return lhs;
+}
+
+static AST_Expression * parser_parse_expression_logical_and(Parser * parser) {
+	AST_Expression * lhs = parser_parse_expression_bitwise_or(parser);
 
 	// Left Associative
 	while (parser_match(parser, TOKEN_OPERATOR_LOGICAL_AND)) {
@@ -501,7 +572,7 @@ static AST_Expression * parser_parse_expression_logical_and(Parser * parser) {
 
 		expression->expr_op_bin.token = *parser_advance(parser);
 		expression->expr_op_bin.expr_left  = lhs;
-		expression->expr_op_bin.expr_right = parser_parse_expression_equality(parser);
+		expression->expr_op_bin.expr_right = parser_parse_expression_bitwise_or(parser);
 
 		expression->height = max(
 			expression->expr_op_bin.expr_left->height,

@@ -18,10 +18,10 @@ abc:
     lea rbx, QWORD [rbp + -32] ; addrof ptr_a
     lea r10, QWORD [rbp + -16] ; get address of 'ptr_ptr'
     mov QWORD [r10], rbx
-    mov rbx, QWORD [rbp + -16] ; get value of 'ptr_ptr'
-    mov r10, QWORD [rbp + -24] ; get value of 'ptr_b'
+    mov rbx, QWORD [rbp + -16]
+    mov r10, QWORD [rbp + -24]
     mov QWORD [rbx], r10
-    mov rbx, QWORD [rbp + -16] ; get value of 'ptr_ptr'
+    mov rbx, QWORD [rbp + -16]
     mov rbx, QWORD [rbx]
     movsx rbx, DWORD [rbx]
     mov rax, rbx ; return via rax

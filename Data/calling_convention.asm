@@ -10,16 +10,16 @@ calling_convention:
     mov DWORD [rbp + 24], edx ; push arg 1 
     mov DWORD [rbp + 32], r8d ; push arg 2 
     mov DWORD [rbp + 40], r9d ; push arg 3 
-    movsx rbx, DWORD [rbp + 16] ; get value of 'rcx'
-    movsx r10, DWORD [rbp + 24] ; get value of 'rdx'
+    movsx rbx, DWORD [rbp + 16]
+    movsx r10, DWORD [rbp + 24]
     add rbx, r10
-    movsx r10, DWORD [rbp + 32] ; get value of 'r8'
+    movsx r10, DWORD [rbp + 32]
     add rbx, r10
-    movsx r10, DWORD [rbp + 40] ; get value of 'r9'
+    movsx r10, DWORD [rbp + 40]
     add rbx, r10
-    movsx r10, DWORD [rbp + 48] ; get value of 'stack0'
+    movsx r10, DWORD [rbp + 48]
     add rbx, r10
-    movsx r10, DWORD [rbp + 52] ; get value of 'stack1'
+    movsx r10, DWORD [rbp + 52]
     add rbx, r10
     mov rax, rbx ; return via rax
     jmp L_function_calling_convention_exit

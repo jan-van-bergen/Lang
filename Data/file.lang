@@ -1,0 +1,73 @@
+struct SECURITY_ATTRIBUTES {
+	nLength: int;
+	lpSecurityDescriptor: void *;
+	bInheritHandle: bool;
+}
+
+extern PathFileExistsA(path: char *) -> bool;
+
+extern OpenFile(
+	lpFileName: char *,
+	lpReOpenBuff: void *,
+	uStyle: u32       
+) -> void *;
+
+extern CreateFileA(
+	lpFileName: char *,
+	dwDesiredAccess: int,
+	dwShareMode: int,
+	lpSecurityAttributes: SECURITY_ATTRIBUTES *,
+	dwCreationDisposition: int,
+	dwFlagsAndAttributes: int,
+	hTemplateFile: void *
+) -> void *;
+
+extern WriteFile(
+	handle: void *,
+	buffer: void *,
+	bytes_to_write: int,
+	bytes_written: int *,
+	overlapped: int
+) -> bool;
+
+let NULL: void * = 0;
+
+let GENERIC_WRITE         : int = 0x40000000;
+let CREATE_NEW            : int = 1;
+let FILE_ATTRIBUTE_NORMAL : int = 0x00000080;
+
+let OF_CREATE : u32 = 0x00001000;
+let OF_READ   : u32 = 0x00000000;
+
+func main() -> int {
+	let file_name: char * = "TEST.TXT";
+
+	let file_handle: void * = OpenFile(file_name, NULL, OF_CREATE | OF_READ);
+	// } else {
+		// file_handle = CreateFileA(
+			// file_name,
+			// GENERIC_WRITE,
+			// 0,
+			// NULL,
+			// CREATE_NEW,
+			// FILE_ATTRIBUTE_NORMAL,
+			// NULL
+		// );
+	// }
+
+	if (file_handle == cast(void *) -1) return -1;
+	
+	let bytes_written: int;
+	
+	let err: bool = WriteFile( 
+		file_handle,
+		"This is not an empty file",
+		25,
+		&bytes_written,
+		0
+	);
+	
+	if (err == false) return -1;
+	
+	return 0;
+}

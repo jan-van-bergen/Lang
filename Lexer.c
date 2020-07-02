@@ -129,7 +129,7 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 			hex <<= 4;
 			if (curr >= 'A' && curr <= 'F') {
 				hex += curr - 'A' + 10;
-			} else if (curr >= 'a' && curr < 'f') {
+			} else if (curr >= 'a' && curr <= 'f') {
 				hex += curr - 'a' + 10;
 			} else if (isdigit(curr)) {
 				hex += curr - '0';
@@ -277,6 +277,9 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 		case '!': token->type = TOKEN_OPERATOR_LOGICAL_NOT; lexer_next(lexer); return;
 
 		case '&': token->type = TOKEN_OPERATOR_BITWISE_AND; lexer_next(lexer); return;
+		case '|': token->type = TOKEN_OPERATOR_BITWISE_OR;  lexer_next(lexer); return;
+		case '^': token->type = TOKEN_OPERATOR_BITWISE_XOR; lexer_next(lexer); return;
+		case '~': token->type = TOKEN_OPERATOR_BITWISE_NOT; lexer_next(lexer); return;
 
 		case '=': token->type = TOKEN_ASSIGN; lexer_next(lexer); return;
 

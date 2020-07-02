@@ -361,11 +361,19 @@ static Result codegen_expression_var(Context * ctx, AST_Expression const * expr)
 	} else {
 		int type_size = type_get_size(&result.type, ctx->current_scope);
 
+		int reg_size = 8;
+		char const * mov = "mov";
 		if (type_size < 8) {
-			context_emit_code(ctx, "movsx %s, %s [%s] ; get value of '%s'\n", get_reg_name_scratch(result.reg, 8), get_word_name(type_size), var_address, var_name); // Mov with Sign Extension
-		} else {
-			context_emit_code(ctx, "mov %s, %s [%s] ; get value of '%s'\n",   get_reg_name_scratch(result.reg, 8), get_word_name(type_size), var_address, var_name);
+			if (type_is_signed_integral(&result.type)) {
+				mov = "movsx"; // Signed extend
+			} else if (type_size < 4) {
+				mov = "movzx"; // Zero extend
+			} else {
+				reg_size = 4; // 32bit movs will automatically zero extend the highest 32 bits
+			}
 		}
+
+		context_emit_code(ctx, "%s %s, %s [%s]\n", mov, get_reg_name_scratch(result.reg, reg_size), get_word_name(type_size), var_address, var_name);
 	}
 
 	return result;
@@ -403,11 +411,19 @@ static Result codege_expression_struct_member(Context * ctx, AST_Expression * ex
 		if (!type_is_struct(&result.type)) {
 			int type_size = type_get_size(&result.type, struct_def->member_scope);
 
+			int reg_size = 8;
+			char const * mov = "mov";
 			if (type_size < 8) {
-				context_emit_code(ctx, "movsx %s, %s [%s]\n", get_reg_name_scratch(result.reg, 8), get_word_name(type_size), get_reg_name_scratch(result.reg, 8));
-			} else {
-				context_emit_code(ctx, "mov %s, %s [%s]\n",   get_reg_name_scratch(result.reg, 8), get_word_name(type_size), get_reg_name_scratch(result.reg, 8));
+				if (type_is_signed_integral(&result.type)) {
+					mov = "movsx"; // Signed extend
+				} else if (type_size < 4) {
+					mov = "movzx"; // Zero extend
+				} else {
+					reg_size = 4; // 32bit movs will automatically zero extend the highest 32 bits
+				}
 			}
+
+			context_emit_code(ctx, "%s %s, %s [%s]\n", mov, get_reg_name_scratch(result.reg, reg_size), get_word_name(type_size), get_reg_name_scratch(result.reg, 8));
 		}
 	}
 
@@ -558,36 +574,6 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 
 	// Emit correct instructions based on operator type
 	switch (operator) {
-		case TOKEN_OPERATOR_PLUS: {
-			context_emit_code(ctx, "add %s, %s\n", reg_name_left, reg_name_right);
-
-			if (type_is_integral(&result_left.type) && type_is_integral(&result_right.type)) { // integral + integral --> integral
-				result_left.type = types_unify(&result_left.type, &result_right.type, ctx->current_scope);
-			} else if (type_is_pointer(&result_left.type) && type_is_integral(&result_right.type)) { // pointer + integral --> pointer
-				// Resulting type is pointer, do nothing
-			} else {
-				type_error("Left of operator '+' must be integral or pointer type, right must be integral type!");
-			}
-
-			break;
-		}
-
-		case TOKEN_OPERATOR_MINUS: {
-			context_emit_code(ctx, "sub %s, %s\n", reg_name_left, reg_name_right);
-
-			if (type_is_integral(&result_left.type) && type_is_integral(&result_right.type)) { // integral - integral --> integral
-				result_left.type = types_unify(&result_left.type, &result_right.type, ctx->current_scope);
-			} else if (type_is_pointer(&result_left.type) && type_is_integral(&result_right.type)) { // pointer - integral --> pointer
-				// Resulting type is pointer, do nothing
-			} else if (type_is_pointer(&result_left.type) && type_is_pointer(&result_right.type) && types_unifiable(&result_left.type, &result_right.type)) { // pointer - pointer --> integral
-				result_left.type = make_type_i64();
-			} else {
-				type_error("Operator '-' cannot cannot have integral type on the left and pointer type on the right");
-			}
-
-			break;
-		}
-
 		case TOKEN_OPERATOR_MULTIPLY: {
 			context_emit_code(ctx, "imul %s, %s\n", reg_name_left, reg_name_right);
 
@@ -630,16 +616,76 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			break;
 		}
 
+		case TOKEN_OPERATOR_PLUS: {
+			context_emit_code(ctx, "add %s, %s\n", reg_name_left, reg_name_right);
+
+			if (type_is_integral(&result_left.type) && type_is_integral(&result_right.type)) { // integral + integral --> integral
+				result_left.type = types_unify(&result_left.type, &result_right.type, ctx->current_scope);
+			} else if (type_is_pointer(&result_left.type) && type_is_integral(&result_right.type)) { // pointer + integral --> pointer
+				// Resulting type is pointer, do nothing
+			} else {
+				type_error("Left of operator '+' must be integral or pointer type, right must be integral type!");
+			}
+
+			break;
+		}
+
+		case TOKEN_OPERATOR_MINUS: {
+			context_emit_code(ctx, "sub %s, %s\n", reg_name_left, reg_name_right);
+
+			if (type_is_integral(&result_left.type) && type_is_integral(&result_right.type)) { // integral - integral --> integral
+				result_left.type = types_unify(&result_left.type, &result_right.type, ctx->current_scope);
+			} else if (type_is_pointer(&result_left.type) && type_is_integral(&result_right.type)) { // pointer - integral --> pointer
+				// Resulting type is pointer, do nothing
+			} else if (type_is_pointer(&result_left.type) && type_is_pointer(&result_right.type) && types_unifiable(&result_left.type, &result_right.type)) { // pointer - pointer --> integral
+				result_left.type = make_type_i64();
+			} else {
+				type_error("Operator '-' cannot cannot have integral type on the left and pointer type on the right");
+			}
+
+			break;
+		}
+
+		case TOKEN_OPERATOR_SHIFT_LEFT: {
+			context_emit_code(ctx, "mov rcx, %s\n", reg_name_right);
+			context_emit_code(ctx, "shl %s, cl\n",  reg_name_left);
+
+			if (!type_is_integral(&result_left.type) || !type_is_integral(&result_right.type)) {
+				type_error("Operator '<<' requires two operands of integral type");
+			}
+
+			result_left.type = types_unify(&result_left.type, &result_right.type, ctx->current_scope);
+
+			break;
+		}
+
+		case TOKEN_OPERATOR_SHIFT_RIGHT: {
+			context_emit_code(ctx, "mov rcx, %s\n", reg_name_right);
+			if (type_is_signed_integral(&result_left.type)) {
+				context_emit_code(ctx, "sar %s, cl\n", reg_name_left);
+			} else {
+				context_emit_code(ctx, "shr %s, cl\n", reg_name_left);
+			}
+
+			if (!type_is_integral(&result_left.type) || !type_is_integral(&result_right.type)) {
+				type_error("Operator '>>' requires two operands of integral type");
+			}
+
+			result_left.type = types_unify(&result_left.type, &result_right.type, ctx->current_scope);
+
+			break;
+		}
+
 		case TOKEN_OPERATOR_LT: {
 			codegen_compare_branch(ctx, "jge", reg_name_left, reg_name_right);
 			
-			if ((type_is_integral(&result_left.type) && type_is_integral(&result_right.type)) ||
-				(type_is_pointer (&result_left.type) && type_is_pointer (&result_right.type) && types_unifiable(&result_left.type, &result_right.type))
+			if ((!type_is_integral(&result_left.type) || !type_is_integral(&result_right.type)) &&
+				(!type_is_pointer (&result_left.type) || !type_is_pointer (&result_right.type) || !types_unifiable(&result_left.type, &result_right.type))
 			) {
-				result_left.type = make_type_bool();
-			} else {
 				type_error("Operator '<' requires two integral or two equal pointer types");
 			}
+
+			result_left.type = make_type_bool();
 
 			break;
 		}
@@ -647,13 +693,13 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 		case TOKEN_OPERATOR_LT_EQ: {
 			codegen_compare_branch(ctx, "jg", reg_name_left, reg_name_right);
 
-			if ((type_is_integral(&result_left.type) && type_is_integral(&result_right.type)) ||
-				(type_is_pointer (&result_left.type) && type_is_pointer (&result_right.type) && types_unifiable(&result_left.type, &result_right.type))
+			if ((!type_is_integral(&result_left.type) || !type_is_integral(&result_right.type)) &&
+				(!type_is_pointer (&result_left.type) || !type_is_pointer (&result_right.type) || !types_unifiable(&result_left.type, &result_right.type))
 			) {
-				result_left.type = make_type_bool();
-			} else {
 				type_error("Operator '<=' requires two integral or two equal pointer types");
 			}
+
+			result_left.type = make_type_bool();
 
 			break;
 		}
@@ -661,13 +707,13 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 		case TOKEN_OPERATOR_GT: {
 			codegen_compare_branch(ctx, "jle", reg_name_left, reg_name_right);
 			
-			if ((type_is_integral(&result_left.type) && type_is_integral(&result_right.type)) ||
-				(type_is_pointer (&result_left.type) && type_is_pointer (&result_right.type) && types_unifiable(&result_left.type, &result_right.type))
+			if ((!type_is_integral(&result_left.type) || !type_is_integral(&result_right.type)) &&
+				(!type_is_pointer (&result_left.type) || !type_is_pointer (&result_right.type) || !types_unifiable(&result_left.type, &result_right.type))
 			) {
-				result_left.type = make_type_bool();
-			} else {
 				type_error("Operator '>' requires two integral or two equal pointer types");
 			}
+
+			result_left.type = make_type_bool();
 			
 			break;
 		}
@@ -675,13 +721,13 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 		case TOKEN_OPERATOR_GT_EQ: {
 			codegen_compare_branch(ctx, "jl", reg_name_left, reg_name_right);
 			
-			if ((type_is_integral(&result_left.type) && type_is_integral(&result_right.type)) ||
-				(type_is_pointer (&result_left.type) && type_is_pointer (&result_right.type) && types_unifiable(&result_left.type, &result_right.type))
+			if ((!type_is_integral(&result_left.type) || !type_is_integral(&result_right.type)) &&
+				(!type_is_pointer (&result_left.type) || !type_is_pointer (&result_right.type) || !types_unifiable(&result_left.type, &result_right.type))
 			) {
-				result_left.type = make_type_bool();
-			} else {
 				type_error("Operator '>=' requires two integral or two equal pointer types");
 			}
+
+			result_left.type = make_type_bool();
 
 			break;
 		}
@@ -689,11 +735,11 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 		case TOKEN_OPERATOR_EQ: {
 			codegen_compare_branch(ctx, "jne", reg_name_left, reg_name_right);
 			
-			if (types_unifiable(&result_left.type, &result_right.type)) {
-				result_left.type = make_type_bool();
-			} else {
+			if (!types_unifiable(&result_left.type, &result_right.type)) {
 				type_error("Operator '==' requires equal types on both sides");
 			}
+			
+			result_left.type = make_type_bool();
 			
 			break;
 		}
@@ -701,12 +747,48 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 		case TOKEN_OPERATOR_NE: {
 			codegen_compare_branch(ctx, "je", reg_name_left, reg_name_right);
 			
-			if (types_unifiable(&result_left.type, &result_right.type)) {
-				result_left.type = make_type_bool();
-			} else {
+			if (!types_unifiable(&result_left.type, &result_right.type)) {
 				type_error("Operator '!=' requires equal types on both sides");
 			}
+
+			result_left.type = make_type_bool();
 			
+			break;
+		}
+
+		case TOKEN_OPERATOR_BITWISE_AND: {
+			context_emit_code(ctx, "and %s, %s\n", reg_name_left, reg_name_right);
+
+			if (!type_is_integral(&result_left.type) || !type_is_integral(&result_right.type)) {
+				type_error("Operator '&' requires two operands of integral type");
+			}
+
+			result_left.type = types_unify(&result_left.type, &result_right.type, ctx->current_scope);
+
+			break;
+		}
+
+		case TOKEN_OPERATOR_BITWISE_XOR: {
+			context_emit_code(ctx, "xor %s, %s\n", reg_name_left, reg_name_right);
+
+			if (!type_is_integral(&result_left.type) || !type_is_integral(&result_right.type)) {
+				type_error("Operator '^' requires two operands of integral type");
+			}
+
+			result_left.type = types_unify(&result_left.type, &result_right.type, ctx->current_scope);
+
+			break;
+		}
+
+		case TOKEN_OPERATOR_BITWISE_OR: {
+			context_emit_code(ctx, "or %s, %s\n", reg_name_left, reg_name_right);
+
+			if (!type_is_integral(&result_left.type) || !type_is_integral(&result_right.type)) {
+				type_error("Operator '|' requires two operands of integral type");
+			}
+
+			result_left.type = types_unify(&result_left.type, &result_right.type, ctx->current_scope);
+
 			break;
 		}
 
@@ -807,11 +889,19 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 		} else {
 			int type_size = type_get_size(&result.type, ctx->current_scope);
 
+			int reg_size = 8;
+			char const * mov = "mov";
 			if (type_size < 8) {
-				context_emit_code(ctx, "movsx %s, %s [%s]\n", get_reg_name_scratch(result.reg, 8), get_word_name(type_size), get_reg_name_scratch(result.reg, 8));
-			} else {
-				context_emit_code(ctx, "mov %s, QWORD [%s]\n", get_reg_name_scratch(result.reg, 8), get_reg_name_scratch(result.reg, 8));
+				if (type_is_signed_integral(&result.type)) {
+					mov = "movsx"; // Signed extend
+				} else if (type_size < 4) {
+					mov = "movzx"; // Zero extend
+				} else {
+					reg_size = 4; // 32bit movs will automatically zero extend the highest 32 bits
+				}
 			}
+
+			context_emit_code(ctx, "%s %s, %s [%s]\n", mov, get_reg_name_scratch(result.reg, reg_size), get_word_name(type_size), get_reg_name_scratch(result.reg, 8));
 		}
 
 		return result;
@@ -838,6 +928,16 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 				type_error("Operator '-' requires operand of integral type");
 			}
 			
+			break;
+		}
+
+		case TOKEN_OPERATOR_BITWISE_NOT: {
+			context_emit_code(ctx, "not %s\n", reg_name);
+
+			if (!type_is_integral(&result.type)) {
+				type_error("Operator '~' requires operand of integral type");
+			}
+
 			break;
 		}
 

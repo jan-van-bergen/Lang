@@ -9,7 +9,7 @@ assert:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
     mov BYTE [rbp + 16], cl ; push arg 0 
-    movsx rbx, BYTE [rbp + 16] ; get value of 'expression'
+    movzx rbx, BYTE [rbp + 16]
     test rbx, rbx
     jne L_lnot_false_0
     mov rbx, 1
@@ -51,7 +51,7 @@ main:
     lea r10, QWORD [rbp + -16] ; get address of 'a'
     mov BYTE [r10], bl
     sub rsp, 32 ; reserve shadow space and 1 arguments
-    movsx rbx, BYTE [rbp + -16] ; get value of 'a'
+    movzx rbx, BYTE [rbp + -16]
     mov r10, 1
     cmp rbx, r10
     jne L3
@@ -78,7 +78,7 @@ main:
     lea r10, QWORD [rbp + -16] ; get address of 'a'
     mov BYTE [r10], bl
     sub rsp, 32 ; reserve shadow space and 1 arguments
-    movsx rbx, BYTE [rbp + -16] ; get value of 'a'
+    movzx rbx, BYTE [rbp + -16]
     mov r10, 0
     cmp rbx, r10
     jne L6
@@ -91,7 +91,7 @@ main:
     call assert
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movsx rbx, BYTE [rbp + -16] ; get value of 'a'
+    movzx rbx, BYTE [rbp + -16]
     test rbx, rbx
     jne L_lnot_false_8
     mov rbx, 1
@@ -99,7 +99,7 @@ main:
     L_lnot_false_8:
     mov rbx, 0
     L_lnot_exit_8:
-    movsx r10, BYTE [rbp + -16] ; get value of 'a'
+    movzx r10, BYTE [rbp + -16]
     test r10, r10
     jne L_lor_true_9
     test rbx, rbx
@@ -112,7 +112,7 @@ main:
     lea rbx, QWORD [rbp + -16] ; get address of 'a'
     mov BYTE [rbx], r10b
     sub rsp, 32 ; reserve shadow space and 1 arguments
-    movsx rbx, BYTE [rbp + -16] ; get value of 'a'
+    movzx rbx, BYTE [rbp + -16]
     mov r10, 1
     cmp rbx, r10
     jne L10

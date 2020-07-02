@@ -23,8 +23,8 @@ main:
     mov rbx, rdx
     lea r10, QWORD [rbp + -12] ; get address of 'b'
     mov DWORD [r10], ebx
-    movsx rbx, DWORD [rbp + -16] ; get value of 'a'
-    movsx r10, DWORD [rbp + -12] ; get value of 'b'
+    movsx rbx, DWORD [rbp + -16]
+    movsx r10, DWORD [rbp + -12]
     mov rax, rbx
     cdq
     idiv r10

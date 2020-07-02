@@ -68,9 +68,12 @@ void token_to_string(Token const * token, char * string, int string_size) {
 		case TOKEN_OPERATOR_LOGICAL_NOT: strcpy_s(string, string_size, "!");  return;
 			
 		case TOKEN_OPERATOR_BITWISE_AND: strcpy_s(string, string_size, "&"); return;
+		case TOKEN_OPERATOR_BITWISE_OR:  strcpy_s(string, string_size, "|"); return;
+		case TOKEN_OPERATOR_BITWISE_XOR: strcpy_s(string, string_size, "^"); return;
+		case TOKEN_OPERATOR_BITWISE_NOT: strcpy_s(string, string_size, "~"); return;
 
-		case TOKEN_OPERATOR_INC:  strcpy_s(string, string_size, "++"); return;  
-		case TOKEN_OPERATOR_DEC:  strcpy_s(string, string_size, "--"); return;  
+		case TOKEN_OPERATOR_INC: strcpy_s(string, string_size, "++"); return;  
+		case TOKEN_OPERATOR_DEC: strcpy_s(string, string_size, "--"); return;  
 
 		case TOKEN_COMMA:	  strcpy_s(string, string_size, ","); return;
 		case TOKEN_COLON:	  strcpy_s(string, string_size, ":"); return;

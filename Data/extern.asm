@@ -14,7 +14,7 @@ main:
     mov rbp, rsp ; stack frame
     sub rsp, 16 ; reserve stack space for 3 locals
     sub rsp, 32 ; reserve shadow space and 1 arguments
-    movsx rbx, DWORD [REL STD_OUTPUT_HANDLE] ; get value of 'STD_OUTPUT_HANDLE'
+    movsx rbx, DWORD [REL STD_OUTPUT_HANDLE]
     mov rcx, rbx ; arg 0
     call GetStdHandle
     add rsp, 32 ; pop arguments
@@ -31,11 +31,11 @@ main:
     mov DWORD [r10], ebx
     mov DWORD [rbp + -4], 0 ; zero initialize bytes_written
     sub rsp, 48 ; reserve shadow space and 5 arguments
-    mov rbx, QWORD [rbp + -16] ; get value of 'std_handle'
+    mov rbx, QWORD [rbp + -16]
     mov rcx, rbx ; arg 0
     lea rbx, QWORD [REL string] ; get address of 'string'
     mov rdx, rbx ; arg 1
-    movsx rbx, DWORD [rbp + -8] ; get value of 'str_len'
+    movsx rbx, DWORD [rbp + -8]
     mov r8, rbx ; arg 2
     lea rbx, QWORD [rbp + -4] ; addrof bytes_written
     mov r9, rbx ; arg 3
@@ -44,7 +44,7 @@ main:
     call WriteFile
     add rsp, 48 ; pop arguments
     mov rbx, rax ; get return value
-    movsx rbx, DWORD [rbp + -4] ; get value of 'bytes_written'
+    movsx rbx, DWORD [rbp + -4]
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
     xor rax, rax ; Default return value 0

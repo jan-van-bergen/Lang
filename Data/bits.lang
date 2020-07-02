@@ -1,0 +1,30 @@
+func main() -> int {
+	let a: u32;
+	let b: u32;
+	let c: u32;
+	
+	a = 0xff000000;
+	b = 0x000000ff;
+	
+	c = a | b;
+	assert(c == 0xff0000ff);
+	
+	c = ~a & b;
+	assert(c == 0x000000ff);
+	
+	a = 0x00ffff00;
+	b = b << 8;
+	
+	c = a ^ b | c;
+	assert(c == 0x00ff00ff);
+	
+	return c >> 16; // 0x000000ff
+}
+
+extern ExitProcess(exit_code: int) -> void;
+
+func assert(expression: bool) -> void {
+	if (!expression) {
+		ExitProcess(1);
+	}
+}

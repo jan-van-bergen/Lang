@@ -27,7 +27,7 @@ main:
     mov rbx, rax ; get return value
     lea r10, QWORD [rbp + -28] ; get address of 'b'
     mov DWORD [r10], ebx
-    movsx rbx, DWORD [rbp + -32] ; get value of 'a'
+    movsx rbx, DWORD [rbp + -32]
     mov r10, 5
     cmp rbx, r10
     je L0
@@ -36,7 +36,7 @@ main:
     L0:
     mov rbx, 0
     L1:
-    movsx r10, DWORD [rbp + -28] ; get value of 'b'
+    movsx r10, DWORD [rbp + -28]
     mov r11, 3
     cmp r10, r11
     je L2
@@ -74,10 +74,10 @@ main:
         mov r10, 5
         mov DWORD [rbx], r10d
         lea rbx, QWORD [rbp + -20] ; get address of 'outter'
-        movsx r10, DWORD [rbp + -16] ; get value of 'common_name'
+        movsx r10, DWORD [rbp + -16]
         mov DWORD [rbx], r10d
     L_exit6:
-    movsx rbx, DWORD [rbp + -20] ; get value of 'outter'
+    movsx rbx, DWORD [rbp + -20]
     mov r10, 5
     cmp rbx, r10
     je L7
@@ -92,7 +92,7 @@ main:
         mov rax, rbx ; return via rax
         jmp L_function_main_exit
     L_exit9:
-    movsx rbx, DWORD [rbp + -24] ; get value of 'common_name'
+    movsx rbx, DWORD [rbp + -24]
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
     xor rax, rax ; Default return value 0
@@ -107,10 +107,10 @@ test:
     mov BYTE [rbp + 16], cl ; push arg 0 
     mov DWORD [rbp + 24], edx ; push arg 1 
     sub rsp, 16 ; reserve stack space for 1 locals
-    movsx rbx, BYTE [rbp + 16] ; get value of 'ret_arg'
+    movzx rbx, BYTE [rbp + 16]
     cmp rbx, 0
     je L_else10
-        movsx rbx, DWORD [rbp + 24] ; get value of 'arg'
+        movsx rbx, DWORD [rbp + 24]
         mov rax, rbx ; return via rax
         jmp L_function_test_exit
     jmp L_exit10
@@ -118,7 +118,7 @@ test:
         mov rbx, 3
         lea r10, QWORD [rbp + -16] ; get address of 'arg'
         mov DWORD [r10], ebx
-        movsx rbx, DWORD [rbp + -16] ; get value of 'arg'
+        movsx rbx, DWORD [rbp + -16]
         mov rax, rbx ; return via rax
         jmp L_function_test_exit
     L_exit10:
