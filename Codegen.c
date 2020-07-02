@@ -723,10 +723,8 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			context_emit_code(ctx, "mov %s, 0\n",   reg_name_left);
 			context_emit_code(ctx, "L_land_exit_%i:\n",  label);
 	
-			if (type_is_boolean(&result_left.type) && type_is_boolean(&result_right.type)) {
-				// Resulting type is bool, do nothing
-			} else {
-				type_error("Operator '&&' requires two booleans");
+			if (!type_is_boolean(&result_left.type) || !type_is_boolean(&result_right.type)) {
+				type_error("Operator '&&' requires two boolean operands");
 			}
 
 			break;
@@ -745,10 +743,8 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			context_emit_code(ctx, "mov %s, 1\n",   reg_name_left);
 			context_emit_code(ctx, "L_lor_exit_%i:\n",  label);
 			
-			if (type_is_boolean(&result_left.type) && type_is_boolean(&result_right.type)) {
-				// Resulting type is bool, do nothing
-			} else {
-				type_error("Operator '||' requires two booleans");
+			if (!type_is_boolean(&result_left.type) || !type_is_boolean(&result_right.type)) {
+				type_error("Operator '||' requires two boolean operands");
 			}
 
 			break;
@@ -1175,11 +1171,13 @@ static void codegen_statement_while(Context * ctx, AST_Statement const * stat) {
 	context_emit_code(ctx, "cmp %s, 0\n", get_reg_name_scratch(result.reg, 8));
 	context_emit_code(ctx, "je L_exit%i\n", label);
 
+	int prev_loop_label = ctx->current_loop_label;
+
 	ctx->current_loop_label = label;
 	ctx->indent++;
 	codegen_statement(ctx, stat->stat_while.body);
 	ctx->indent--;
-	ctx->current_loop_label = -1;
+	ctx->current_loop_label = prev_loop_label;
 
 	context_emit_code(ctx, "jmp L_loop%i\n", label);
 	context_emit_code(ctx, "L_exit%i:\n", label);

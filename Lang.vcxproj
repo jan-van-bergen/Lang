@@ -148,6 +148,7 @@
     <ClCompile Include="Test.c" />
     <ClCompile Include="Token.c" />
     <ClCompile Include="Type.c" />
+    <ClCompile Include="Util.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AST.h" />

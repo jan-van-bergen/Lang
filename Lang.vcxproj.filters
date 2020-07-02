@@ -27,6 +27,7 @@
     <ClCompile Include="Codegen.c">
       <Filter>Compiler</Filter>
     </ClCompile>
+    <ClCompile Include="Util.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Test.h" />

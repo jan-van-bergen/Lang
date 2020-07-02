@@ -379,6 +379,9 @@ void ast_free_statement(AST_Statement * stat) {
 			break;
 		}
 
+		case AST_STATEMENT_BREAK:    break;
+		case AST_STATEMENT_CONTINUE: break;
+
 		case AST_STATEMENT_RETURN: {
 			ast_free_expression(stat->stat_return.expr);
 
