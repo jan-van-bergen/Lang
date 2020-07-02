@@ -29,7 +29,7 @@ func main() -> int {
 			}		
 		}
 	
-		i = i + 1;
+		i++;
 	}
 	
 	return i; // return N-th prime

@@ -5,9 +5,13 @@ GLOBAL main
 SECTION .code
 EXTERN GetStdHandle
 
+
 EXTERN WriteFile
 
+
 EXTERN strlen
+
+
 
 print:
     push rbp ; save RBP
@@ -23,7 +27,9 @@ print:
     mov rbx, rax ; get return value
     lea r10, QWORD [rbp + -16] ; get address of 'std_handle'
     mov QWORD [r10], rbx
+    
     mov DWORD [rbp + -8], 0 ; zero initialize bytes_written
+    
     sub rsp, 48 ; reserve shadow space and 5 arguments
     mov rbx, QWORD [rbp + -16]
     mov rcx, rbx ; arg 0
@@ -38,12 +44,14 @@ print:
     call WriteFile
     add rsp, 48 ; pop arguments
     mov rbx, rax ; get return value
+    
     xor rax, rax ; Default return value 0
     L_function_print_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
 print_num:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
@@ -52,9 +60,11 @@ print_num:
     lea rbx, [REL str_lit_1]
     lea r10, QWORD [rbp + -32] ; get address of 'num_str'
     mov QWORD [r10], rbx
+    
     mov rbx, 0
     lea r10, QWORD [rbp + -24] ; get address of 'idx'
     mov DWORD [r10], ebx
+    
     L_loop0:
     movsx rbx, DWORD [rbp + 16]
     mov r10, 0
@@ -76,6 +86,7 @@ print_num:
         mov r10, rdx
         and r10, 0xff
         mov BYTE [rbx], r10b
+        
         mov rbx, QWORD [rbp + -32]
         movsx r10, DWORD [rbp + -24]
         add rbx, r10
@@ -83,6 +94,7 @@ print_num:
         mov r11, 48
         add r10, r11
         mov BYTE [rbx], r10b
+        
         movsx rbx, DWORD [rbp + 16]
         mov r10, 10
         mov rax, rbx
@@ -91,16 +103,20 @@ print_num:
         mov rbx, rax
         lea r10, QWORD [rbp + 16] ; get address of 'num'
         mov DWORD [r10], ebx
+        
         movsx rbx, DWORD [rbp + -24]
         mov r10, 1
         add rbx, r10
         lea r10, QWORD [rbp + -24] ; get address of 'idx'
         mov DWORD [r10], ebx
+        
     jmp L_loop0
     L_exit0:
+    
     mov rbx, 0
     lea r10, QWORD [rbp + -16] ; get address of 'i'
     mov DWORD [r10], ebx
+    
     L_loop3:
     movsx rbx, DWORD [rbp + -24]
     mov r10, 2
@@ -124,6 +140,7 @@ print_num:
         movzx rbx, BYTE [rbx]
         lea r10, QWORD [rbp + -12] ; get address of 'tmp'
         mov BYTE [r10], bl
+        
         mov rbx, QWORD [rbp + -32]
         movsx r10, DWORD [rbp + -24]
         add rbx, r10
@@ -136,6 +153,7 @@ print_num:
         movsx r11, DWORD [rbp + -16]
         add r10, r11
         mov BYTE [r10], bl
+        
         mov rbx, QWORD [rbp + -32]
         movsx r10, DWORD [rbp + -24]
         add rbx, r10
@@ -145,18 +163,23 @@ print_num:
         sub rbx, r10
         movzx r10, BYTE [rbp + -12]
         mov BYTE [rbx], r10b
-        movsx rbx, DWORD [rbp + -16]
-        mov r10, 1
-        add rbx, r10
-        lea r10, QWORD [rbp + -16] ; get address of 'i'
-        mov DWORD [r10], ebx
+        
+        lea rbx, QWORD [rbp + -16] ; get address of 'i'
+        mov r10, rbx
+        movsx rbx, DWORD [rbx]
+        mov r11, rbx
+        inc r11
+        mov DWORD [r10], r11d
+        
     jmp L_loop3
     L_exit3:
+    
     mov rbx, QWORD [rbp + -32]
     movsx r10, DWORD [rbp + -24]
     add rbx, r10
     mov r10, 32
     mov BYTE [rbx], r10b
+    
     sub rsp, 32 ; reserve shadow space and 2 arguments
     mov rbx, QWORD [rbp + -32]
     mov rcx, rbx ; arg 0
@@ -167,12 +190,14 @@ print_num:
     call print
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
+    
     xor rax, rax ; Default return value 0
     L_function_print_num_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
 fizzbuzz:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
@@ -181,6 +206,7 @@ fizzbuzz:
     mov rbx, 1
     lea r10, QWORD [rbp + -16] ; get address of 'i'
     mov DWORD [r10], ebx
+    
     L_loop6:
     movsx rbx, DWORD [rbp + -16]
     movsx r10, DWORD [rbp + 16]
@@ -209,6 +235,7 @@ fizzbuzz:
         L10:
         lea r10, QWORD [rbp + -12] ; get address of 'divisible_by_3'
         mov BYTE [r10], bl
+        
         movsx rbx, DWORD [rbp + -16]
         mov r10, 5
         mov rax, rbx
@@ -225,6 +252,7 @@ fizzbuzz:
         L12:
         lea r10, QWORD [rbp + -11] ; get address of 'divisible_by_5'
         mov BYTE [r10], bl
+        
         movzx rbx, BYTE [rbp + -11]
         movzx r10, BYTE [rbp + -12]
         test rbx, rbx
@@ -246,6 +274,7 @@ fizzbuzz:
             call print
             add rsp, 32 ; pop arguments
             mov rbx, rax ; get return value
+            
         jmp L_exit14
         L_else14:
             movzx rbx, BYTE [rbp + -11]
@@ -259,6 +288,7 @@ fizzbuzz:
                 call print
                 add rsp, 32 ; pop arguments
                 mov rbx, rax ; get return value
+                
             jmp L_exit15
             L_else15:
                 movzx rbx, BYTE [rbp + -12]
@@ -272,6 +302,7 @@ fizzbuzz:
                     call print
                     add rsp, 32 ; pop arguments
                     mov rbx, rax ; get return value
+                    
                 jmp L_exit16
                 L_else16:
                     sub rsp, 32 ; reserve shadow space and 1 arguments
@@ -280,22 +311,30 @@ fizzbuzz:
                     call print_num
                     add rsp, 32 ; pop arguments
                     mov rbx, rax ; get return value
+                    
                 L_exit16:
+                
             L_exit15:
+            
         L_exit14:
-        movsx rbx, DWORD [rbp + -16]
-        mov r10, 1
-        add rbx, r10
-        lea r10, QWORD [rbp + -16] ; get address of 'i'
-        mov DWORD [r10], ebx
+        
+        lea rbx, QWORD [rbp + -16] ; get address of 'i'
+        mov r10, rbx
+        movsx rbx, DWORD [rbx]
+        mov r11, rbx
+        inc r11
+        mov DWORD [r10], r11d
+        
     jmp L_loop6
     L_exit6:
+    
     xor rax, rax ; Default return value 0
     L_function_fizzbuzz_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
@@ -305,12 +344,15 @@ main:
     call fizzbuzz
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
+    
     xor rax, rax ; Default return value 0
     L_function_main_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
+
 SECTION .data
 STD_OUTPUT_HANDLE dq -11
 str_lit_1 db "         ", 0

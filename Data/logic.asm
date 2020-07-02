@@ -5,6 +5,7 @@ GLOBAL main
 SECTION .code
 EXTERN ExitProcess
 
+
 assert:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
@@ -25,18 +26,22 @@ assert:
         call ExitProcess
         add rsp, 32 ; pop arguments
         mov rbx, rax ; get return value
+        
     L_exit1:
+    
     xor rax, rax ; Default return value 0
     L_function_assert_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
     sub rsp, 16 ; reserve stack space for 1 locals
     mov BYTE [rbp + -16], 0 ; zero initialize a
+    
     mov rbx, 1
     mov r10, 0
     test rbx, rbx
@@ -50,6 +55,7 @@ main:
     L_lor_exit_2:
     lea r10, QWORD [rbp + -16] ; get address of 'a'
     mov BYTE [r10], bl
+    
     sub rsp, 32 ; reserve shadow space and 1 arguments
     movzx rbx, BYTE [rbp + -16]
     mov r10, 1
@@ -64,6 +70,7 @@ main:
     call assert
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
+    
     mov rbx, 0
     mov r10, 1
     test rbx, rbx
@@ -77,6 +84,7 @@ main:
     L_land_exit_5:
     lea r10, QWORD [rbp + -16] ; get address of 'a'
     mov BYTE [r10], bl
+    
     sub rsp, 32 ; reserve shadow space and 1 arguments
     movzx rbx, BYTE [rbp + -16]
     mov r10, 0
@@ -91,6 +99,7 @@ main:
     call assert
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
+    
     movzx rbx, BYTE [rbp + -16]
     test rbx, rbx
     jne L_lnot_false_8
@@ -111,6 +120,7 @@ main:
     L_lor_exit_9:
     lea rbx, QWORD [rbp + -16] ; get address of 'a'
     mov BYTE [rbx], r10b
+    
     sub rsp, 32 ; reserve shadow space and 1 arguments
     movzx rbx, BYTE [rbp + -16]
     mov r10, 1
@@ -125,13 +135,17 @@ main:
     call assert
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
+    
     mov rbx, 0
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
+    
     xor rax, rax ; Default return value 0
     L_function_main_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
+
 SECTION .data

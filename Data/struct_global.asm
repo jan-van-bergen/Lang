@@ -3,6 +3,7 @@
 GLOBAL main
 
 SECTION .code
+
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
@@ -10,14 +11,17 @@ main:
     add rbx, 0 ; member offset 'b'
     mov r10, 3
     mov DWORD [rbx], r10d
+    
     lea rbx, QWORD [REL globla] ; get address of 'globla'
     add rbx, 8 ; member offset 'l'
     mov r10, 5
     mov QWORD [rbx], r10
+    
     lea rbx, QWORD [REL globla] ; get address of 'globla'
     add rbx, 16 ; member offset 'a'
     mov r10, 7
     mov BYTE [rbx], r10b
+    
     lea rbx, QWORD [REL globla] ; get address of 'globla'
     add rbx, 0 ; member offset 'b'
     movsx rbx, DWORD [rbx]
@@ -31,11 +35,14 @@ main:
     add rbx, r10
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
+    
     xor rax, rax ; Default return value 0
     L_function_main_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
+
 SECTION .data
 globla dq 0, 0, 0

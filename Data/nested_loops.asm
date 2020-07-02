@@ -3,6 +3,7 @@
 GLOBAL main
 
 SECTION .code
+
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
@@ -10,9 +11,11 @@ main:
     mov rbx, 0
     lea r10, QWORD [rbp + -16] ; get address of 'num_primes'
     mov DWORD [r10], ebx
+    
     mov rbx, 2
     lea r10, QWORD [rbp + -12] ; get address of 'i'
     mov DWORD [r10], ebx
+    
     L_loop0:
     mov rbx, 1
     cmp rbx, 0
@@ -20,9 +23,11 @@ main:
         mov rbx, 1
         lea r10, QWORD [rbp + -8] ; get address of 'i_is_prime'
         mov BYTE [r10], bl
+        
         mov rbx, 2
         lea r10, QWORD [rbp + -4] ; get address of 'j'
         mov DWORD [r10], ebx
+        
         L_loop1:
         movsx rbx, DWORD [rbp + -4]
         movsx r10, DWORD [rbp + -12]
@@ -54,15 +59,20 @@ main:
                 lea rbx, QWORD [rbp + -8] ; get address of 'i_is_prime'
                 mov r10, 0
                 mov BYTE [rbx], r10b
+                
                 jmp L_exit1
+                
             L_exit6:
+            
             movsx rbx, DWORD [rbp + -4]
             mov r10, 1
             add rbx, r10
             lea r10, QWORD [rbp + -4] ; get address of 'j'
             mov DWORD [r10], ebx
+            
         jmp L_loop1
         L_exit1:
+        
         movzx rbx, BYTE [rbp + -8]
         cmp rbx, 0
         je L_exit7
@@ -72,11 +82,13 @@ main:
             call print_num
             add rsp, 32 ; pop arguments
             mov rbx, rax ; get return value
+            
             movsx rbx, DWORD [rbp + -16]
             mov r10, 1
             add rbx, r10
             lea r10, QWORD [rbp + -16] ; get address of 'num_primes'
             mov DWORD [r10], ebx
+            
             movsx rbx, DWORD [rbp + -16]
             movsx r10, DWORD [REL N]
             cmp rbx, r10
@@ -89,27 +101,37 @@ main:
             cmp rbx, 0
             je L_exit10
                 jmp L_exit0
+                
             L_exit10:
+            
         L_exit7:
-        movsx rbx, DWORD [rbp + -12]
-        mov r10, 1
-        add rbx, r10
-        lea r10, QWORD [rbp + -12] ; get address of 'i'
-        mov DWORD [r10], ebx
+        
+        lea rbx, QWORD [rbp + -12] ; get address of 'i'
+        mov r10, rbx
+        movsx rbx, DWORD [rbx]
+        mov r11, rbx
+        inc r11
+        mov DWORD [r10], r11d
+        
     jmp L_loop0
     L_exit0:
+    
     movsx rbx, DWORD [rbp + -12]
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
+    
     xor rax, rax ; Default return value 0
     L_function_main_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
 EXTERN GetStdHandle
 
+
 EXTERN WriteFile
+
 
 print:
     push rbp ; save RBP
@@ -125,7 +147,9 @@ print:
     mov rbx, rax ; get return value
     lea r10, QWORD [rbp + -16] ; get address of 'std_handle'
     mov QWORD [r10], rbx
+    
     mov DWORD [rbp + -8], 0 ; zero initialize bytes_written
+    
     sub rsp, 48 ; reserve shadow space and 5 arguments
     mov rbx, QWORD [rbp + -16]
     mov rcx, rbx ; arg 0
@@ -140,12 +164,14 @@ print:
     call WriteFile
     add rsp, 48 ; pop arguments
     mov rbx, rax ; get return value
+    
     xor rax, rax ; Default return value 0
     L_function_print_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
 print_num:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
@@ -154,9 +180,11 @@ print_num:
     lea rbx, [REL str_lit_1]
     lea r10, QWORD [rbp + -32] ; get address of 'num_str'
     mov QWORD [r10], rbx
+    
     mov rbx, 0
     lea r10, QWORD [rbp + -24] ; get address of 'idx'
     mov DWORD [r10], ebx
+    
     L_loop11:
     movsx rbx, DWORD [rbp + 16]
     mov r10, 0
@@ -178,6 +206,7 @@ print_num:
         mov r10, rdx
         and r10, 0xff
         mov BYTE [rbx], r10b
+        
         mov rbx, QWORD [rbp + -32]
         movsx r10, DWORD [rbp + -24]
         add rbx, r10
@@ -185,6 +214,7 @@ print_num:
         mov r11, 48
         add r10, r11
         mov BYTE [rbx], r10b
+        
         movsx rbx, DWORD [rbp + 16]
         mov r10, 10
         mov rax, rbx
@@ -193,16 +223,20 @@ print_num:
         mov rbx, rax
         lea r10, QWORD [rbp + 16] ; get address of 'num'
         mov DWORD [r10], ebx
+        
         movsx rbx, DWORD [rbp + -24]
         mov r10, 1
         add rbx, r10
         lea r10, QWORD [rbp + -24] ; get address of 'idx'
         mov DWORD [r10], ebx
+        
     jmp L_loop11
     L_exit11:
+    
     mov rbx, 0
     lea r10, QWORD [rbp + -16] ; get address of 'i'
     mov DWORD [r10], ebx
+    
     L_loop14:
     movsx rbx, DWORD [rbp + -24]
     mov r10, 2
@@ -226,6 +260,7 @@ print_num:
         movzx rbx, BYTE [rbx]
         lea r10, QWORD [rbp + -12] ; get address of 'tmp'
         mov BYTE [r10], bl
+        
         mov rbx, QWORD [rbp + -32]
         movsx r10, DWORD [rbp + -24]
         add rbx, r10
@@ -238,6 +273,7 @@ print_num:
         movsx r11, DWORD [rbp + -16]
         add r10, r11
         mov BYTE [r10], bl
+        
         mov rbx, QWORD [rbp + -32]
         movsx r10, DWORD [rbp + -24]
         add rbx, r10
@@ -247,18 +283,22 @@ print_num:
         sub rbx, r10
         movzx r10, BYTE [rbp + -12]
         mov BYTE [rbx], r10b
+        
         movsx rbx, DWORD [rbp + -16]
         mov r10, 1
         add rbx, r10
         lea r10, QWORD [rbp + -16] ; get address of 'i'
         mov DWORD [r10], ebx
+        
     jmp L_loop14
     L_exit14:
+    
     mov rbx, QWORD [rbp + -32]
     movsx r10, DWORD [rbp + -24]
     add rbx, r10
     mov r10, 44
     mov BYTE [rbx], r10b
+    
     mov rbx, QWORD [rbp + -32]
     movsx r10, DWORD [rbp + -24]
     add rbx, r10
@@ -266,6 +306,7 @@ print_num:
     add rbx, r10
     mov r10, 32
     mov BYTE [rbx], r10b
+    
     sub rsp, 32 ; reserve shadow space and 2 arguments
     mov rbx, QWORD [rbp + -32]
     mov rcx, rbx ; arg 0
@@ -276,12 +317,15 @@ print_num:
     call print
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
+    
     xor rax, rax ; Default return value 0
     L_function_print_num_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
+
 SECTION .data
 N dq 100
 str_lit_1 db "         ", 0

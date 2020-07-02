@@ -21,7 +21,9 @@ factorial_recursive:
         mov rbx, 1
         mov rax, rbx ; return via rax
         jmp L_function_factorial_recursive_exit
+        
     L_exit2:
+    
     sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [rbp + 16]
     mov r10, 1
@@ -34,12 +36,14 @@ factorial_recursive:
     imul r10, rbx
     mov rax, r10 ; return via rax
     jmp L_function_factorial_recursive_exit
+    
     xor rax, rax ; Default return value 0
     L_function_factorial_recursive_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
 factorial_loop:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
@@ -48,6 +52,7 @@ factorial_loop:
     mov rbx, 1
     lea r10, QWORD [rbp + -16] ; get address of 'result'
     mov DWORD [r10], ebx
+    
     L_loop3:
     movsx rbx, DWORD [rbp + 16]
     mov r10, 0
@@ -65,22 +70,27 @@ factorial_loop:
         imul rbx, r10
         lea r10, QWORD [rbp + -16] ; get address of 'result'
         mov DWORD [r10], ebx
+        
         movsx rbx, DWORD [rbp + 16]
         mov r10, 1
         sub rbx, r10
         lea r10, QWORD [rbp + 16] ; get address of 'n'
         mov DWORD [r10], ebx
+        
     jmp L_loop3
     L_exit3:
+    
     movsx rbx, DWORD [rbp + -16]
     mov rax, rbx ; return via rax
     jmp L_function_factorial_loop_exit
+    
     xor rax, rax ; Default return value 0
     L_function_factorial_loop_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
@@ -88,6 +98,7 @@ main:
     mov rbx, 5
     lea r10, QWORD [rbp + -16] ; get address of 'arg'
     mov DWORD [r10], ebx
+    
     sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [rbp + -16]
     mov rcx, rbx ; arg 0
@@ -96,6 +107,7 @@ main:
     mov rbx, rax ; get return value
     lea r10, QWORD [rbp + -12] ; get address of 'a'
     mov DWORD [r10], ebx
+    
     sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [rbp + -16]
     mov rcx, rbx ; arg 0
@@ -104,6 +116,7 @@ main:
     mov rbx, rax ; get return value
     lea r10, QWORD [rbp + -8] ; get address of 'b'
     mov DWORD [r10], ebx
+    
     movsx rbx, DWORD [rbp + -12]
     movsx r10, DWORD [rbp + -8]
     cmp rbx, r10
@@ -115,10 +128,13 @@ main:
     L7:
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
+    
     xor rax, rax ; Default return value 0
     L_function_main_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
+
 SECTION .data

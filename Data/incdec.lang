@@ -1,0 +1,11 @@
+func main() -> int {
+	let a: int = 55;
+	
+	let b: int = a++; // 55	
+	let c: int = ++a; // 57
+
+	let d: int = --a; // 56
+	let e: int = a--; // 56
+
+	return e - d + c - b; // 2
+}

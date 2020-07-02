@@ -31,7 +31,7 @@ func print_num(num: int) -> void {
 		*(num_str + i) = *(num_str + idx - i - 1);
 		*(num_str + idx - i - 1) = tmp;
 
-		i = i + 1;
+		i++;
 	}
 	
 	*(num_str + idx) = 32; // space
@@ -56,7 +56,7 @@ func fizzbuzz(n: int) -> void {
 			print_num(i);
 		}
 
-		i = i + 1;
+		i++;
 	}
 }
 

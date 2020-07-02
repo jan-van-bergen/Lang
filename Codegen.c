@@ -338,6 +338,25 @@ static Result codegen_expression_const(Context * ctx, AST_Expression const * exp
 	return result;
 }
 
+static void codegen_deref_address(Context * ctx, int reg, Type const * type, char const * var_address) {
+	int type_size = type_get_size(type, ctx->current_scope);
+
+	int          reg_size = 8;
+	char const * mov = "mov";
+
+	if (type_size < 8) {
+		if (type_is_signed_integral(type)) {
+			mov = "movsx"; // Signed extend
+		} else if (type_size < 4) {
+			mov = "movzx"; // Zero extend
+		} else {
+			reg_size = 4; // 32bit movs will automatically zero extend the highest 32 bits
+		}
+	}
+
+	context_emit_code(ctx, "%s %s, %s [%s]\n", mov, get_reg_name_scratch(reg, reg_size), get_word_name(type_size), var_address);
+}
+
 static Result codegen_expression_var(Context * ctx, AST_Expression const * expr) {
 	assert(expr->type == AST_EXPRESSION_VAR);
 
@@ -359,27 +378,13 @@ static Result codegen_expression_var(Context * ctx, AST_Expression const * expr)
 	if (ctx->flags & CTX_FLAG_VAR_BY_ADDRESS || is_global_char_ptr) {
 		context_emit_code(ctx, "lea %s, QWORD [%s] ; get address of '%s'\n", get_reg_name_scratch(result.reg, 8), var_address, var_name);
 	} else {
-		int type_size = type_get_size(&result.type, ctx->current_scope);
-
-		int reg_size = 8;
-		char const * mov = "mov";
-		if (type_size < 8) {
-			if (type_is_signed_integral(&result.type)) {
-				mov = "movsx"; // Signed extend
-			} else if (type_size < 4) {
-				mov = "movzx"; // Zero extend
-			} else {
-				reg_size = 4; // 32bit movs will automatically zero extend the highest 32 bits
-			}
-		}
-
-		context_emit_code(ctx, "%s %s, %s [%s]\n", mov, get_reg_name_scratch(result.reg, reg_size), get_word_name(type_size), var_address, var_name);
+		codegen_deref_address(ctx, result.reg, &result.type, var_address, var_name);
 	}
 
 	return result;
 }
 
-static Result codege_expression_struct_member(Context * ctx, AST_Expression * expr) {
+static Result codegen_expression_struct_member(Context * ctx, AST_Expression * expr) {
 	assert(expr->type == AST_EXPRESSION_STRUCT_MEMBER);
 
 	bool var_by_address = ctx->flags & CTX_FLAG_VAR_BY_ADDRESS; 
@@ -409,21 +414,7 @@ static Result codege_expression_struct_member(Context * ctx, AST_Expression * ex
 
 		// Structs are allways returned by address
 		if (!type_is_struct(&result.type)) {
-			int type_size = type_get_size(&result.type, struct_def->member_scope);
-
-			int reg_size = 8;
-			char const * mov = "mov";
-			if (type_size < 8) {
-				if (type_is_signed_integral(&result.type)) {
-					mov = "movsx"; // Signed extend
-				} else if (type_size < 4) {
-					mov = "movzx"; // Zero extend
-				} else {
-					reg_size = 4; // 32bit movs will automatically zero extend the highest 32 bits
-				}
-			}
-
-			context_emit_code(ctx, "%s %s, %s [%s]\n", mov, get_reg_name_scratch(result.reg, reg_size), get_word_name(type_size), get_reg_name_scratch(result.reg, 8));
+			codegen_deref_address(ctx, result.reg, &result.type,  get_reg_name_scratch(result.reg, 8), NULL);
 		}
 	}
 
@@ -887,31 +878,68 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 		if (var_by_address) {
 			context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS); // Reset if this flag was previously set
 		} else {
-			int type_size = type_get_size(&result.type, ctx->current_scope);
-
-			int reg_size = 8;
-			char const * mov = "mov";
-			if (type_size < 8) {
-				if (type_is_signed_integral(&result.type)) {
-					mov = "movsx"; // Signed extend
-				} else if (type_size < 4) {
-					mov = "movzx"; // Zero extend
-				} else {
-					reg_size = 4; // 32bit movs will automatically zero extend the highest 32 bits
-				}
-			}
-
-			context_emit_code(ctx, "%s %s, %s [%s]\n", mov, get_reg_name_scratch(result.reg, reg_size), get_word_name(type_size), get_reg_name_scratch(result.reg, 8));
+			codegen_deref_address(ctx, result.reg, &result.type, get_reg_name_scratch(result.reg, 8));
 		}
 
 		return result;
 	}
 
+	bool by_address = false;
+
+	if (operator == TOKEN_OPERATOR_INC || operator == TOKEN_OPERATOR_DEC) {
+		by_address = ctx->flags & CTX_FLAG_VAR_BY_ADDRESS;
+		context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS);
+	}
+
 	result = codegen_expression(ctx, operand);
+
+	if (!by_address) context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
 
 	char const * reg_name = get_reg_name_scratch(result.reg, 8);
 
 	switch (operator) {
+		case TOKEN_OPERATOR_INC: {
+			int type_size = type_get_size(&result.type, ctx->current_scope);
+
+			int reg_address = context_reg_request(ctx);
+
+			context_emit_code(ctx, "mov %s, %s\n", get_reg_name_scratch(reg_address, 8), get_reg_name_scratch(result.reg, 8));
+			
+			codegen_deref_address(ctx, result.reg, &result.type, get_reg_name_scratch(result.reg, 8));
+
+			context_emit_code(ctx, "inc %s\n", get_reg_name_scratch(result.reg, 8));
+			context_emit_code(ctx, "mov %s [%s], %s\n", get_word_name(type_size), get_reg_name_scratch(reg_address, 8), get_reg_name_scratch(result.reg, type_size));
+
+			context_reg_free(ctx, reg_address);
+
+			if (!type_is_integral(&result.type)) {
+				type_error("Operator '++' requires operand of integral type");
+			}
+
+			break;
+		}
+
+		case TOKEN_OPERATOR_DEC: {
+			int type_size = type_get_size(&result.type, ctx->current_scope);
+
+			int reg_address = context_reg_request(ctx);
+
+			context_emit_code(ctx, "mov %s, %s\n", get_reg_name_scratch(reg_address, 8), get_reg_name_scratch(result.reg, 8));
+			
+			codegen_deref_address(ctx, result.reg, &result.type, get_reg_name_scratch(result.reg, 8));
+
+			context_emit_code(ctx, "dec %s\n", get_reg_name_scratch(result.reg, 8));
+			context_emit_code(ctx, "mov %s [%s], %s\n", get_word_name(type_size), get_reg_name_scratch(reg_address, 8), get_reg_name_scratch(result.reg, type_size));
+
+			context_reg_free(ctx, reg_address);
+
+			if (!type_is_integral(&result.type)) {
+				type_error("Operator '--' requires operand of integral type");
+			}
+
+			break;
+		}
+
 		case TOKEN_OPERATOR_PLUS: {
 			// Unary plus is a no-op, no code is emitted
 
@@ -954,6 +982,76 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 
 			if (!type_is_boolean(&result.type)) {
 				type_error("Operator '!' requires operand of boolean type");
+			}
+
+			break;
+		}
+
+		default: abort();
+	}
+
+	return result;
+}
+
+static Result codegen_expression_op_post(Context * ctx, AST_Expression const * expr) {
+	assert(expr->type == AST_EXPRESSION_OPERATOR_POST);
+
+	AST_Expression * operand  = expr->expr_op_pre.expr;
+	Token_Type       operator = expr->expr_op_pre.token.type;
+
+	bool by_address = ctx->flags & CTX_FLAG_VAR_BY_ADDRESS;
+
+	context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS);
+	Result result = codegen_expression(ctx, operand);
+
+	if (!by_address) context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
+
+	char const * reg_name = get_reg_name_scratch(result.reg, 8);
+
+	switch (operator) {
+		case TOKEN_OPERATOR_INC: {
+			int type_size = type_get_size(&result.type, ctx->current_scope);
+
+			int reg_address = context_reg_request(ctx);
+			int reg_value   = context_reg_request(ctx);
+
+			context_emit_code(ctx, "mov %s, %s\n", get_reg_name_scratch(reg_address, 8), get_reg_name_scratch(result.reg, 8));
+			
+			codegen_deref_address(ctx, result.reg, &result.type, get_reg_name_scratch(result.reg, 8));
+
+			context_emit_code(ctx, "mov %s, %s\n", get_reg_name_scratch(reg_value, 8), get_reg_name_scratch(result.reg, 8));
+			context_emit_code(ctx, "inc %s\n",     get_reg_name_scratch(reg_value, 8));
+			context_emit_code(ctx, "mov %s [%s], %s\n", get_word_name(type_size), get_reg_name_scratch(reg_address, 8), get_reg_name_scratch(reg_value, type_size));
+
+			context_reg_free(ctx, reg_address);
+			context_reg_free(ctx, reg_value);
+
+			if (!type_is_integral(&result.type)) {
+				type_error("Operator '++' requires operand of integral type");
+			}
+
+			break;
+		}
+
+		case TOKEN_OPERATOR_DEC: {
+			int type_size = type_get_size(&result.type, ctx->current_scope);
+
+			int reg_address = context_reg_request(ctx);
+			int reg_value   = context_reg_request(ctx);
+
+			context_emit_code(ctx, "mov %s, %s\n", get_reg_name_scratch(reg_address, 8), get_reg_name_scratch(result.reg, 8));
+			
+			codegen_deref_address(ctx, result.reg, &result.type, get_reg_name_scratch(result.reg, 8));
+
+			context_emit_code(ctx, "mov %s, %s\n", get_reg_name_scratch(reg_value, 8), get_reg_name_scratch(result.reg, 8));
+			context_emit_code(ctx, "dec %s\n",     get_reg_name_scratch(reg_value, 8));
+			context_emit_code(ctx, "mov %s [%s], %s\n", get_word_name(type_size), get_reg_name_scratch(reg_address, 8), get_reg_name_scratch(reg_value, type_size));
+
+			context_reg_free(ctx, reg_address);
+			context_reg_free(ctx, reg_value);
+
+			if (!type_is_integral(&result.type)) {
+				type_error("Operator '--' requires operand of integral type");
 			}
 
 			break;
@@ -1072,16 +1170,16 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 
 static Result codegen_expression(Context * ctx, AST_Expression const * expr) {
 	switch (expr->type) {
-		case AST_EXPRESSION_CONST:         return codegen_expression_const       (ctx, expr);
-		case AST_EXPRESSION_VAR:           return codegen_expression_var         (ctx, expr);
-		case AST_EXPRESSION_STRUCT_MEMBER: return codege_expression_struct_member(ctx, expr);
+		case AST_EXPRESSION_CONST:         return codegen_expression_const        (ctx, expr);
+		case AST_EXPRESSION_VAR:           return codegen_expression_var          (ctx, expr);
+		case AST_EXPRESSION_STRUCT_MEMBER: return codegen_expression_struct_member(ctx, expr);
 		
 		case AST_EXPRESSION_CAST:   return codegen_expression_cast  (ctx, expr);
 		case AST_EXPRESSION_SIZEOF: return codegen_expression_sizeof(ctx, expr);
 
 		case AST_EXPRESSION_OPERATOR_BIN:  return codegen_expression_op_bin (ctx, expr);
 		case AST_EXPRESSION_OPERATOR_PRE:  return codegen_expression_op_pre (ctx, expr);
-		//case AST_EXPRESSION_OPERATOR_POST: return codegen_expression_op_post(ctx, expr);
+		case AST_EXPRESSION_OPERATOR_POST: return codegen_expression_op_post(ctx, expr);
 
 		case AST_EXPRESSION_CALL_FUNC: return codegen_expression_call_func(ctx, expr);
 
@@ -1364,6 +1462,8 @@ static void codegen_statement(Context * ctx, AST_Statement const * stat) {
 
 		default: abort();
 	}
+
+	if (stat->type != AST_STATEMENTS && stat->type != AST_STATEMENT_BLOCK) context_emit_code(ctx, "\n");
 }
 
 char const * codegen_program(AST_Statement const * program) {

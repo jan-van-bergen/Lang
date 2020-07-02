@@ -10,9 +10,11 @@ main:
     mov rbx, 48
     lea r10, QWORD [rbp + -16] ; get address of 'a'
     mov DWORD [r10], ebx
+    
     mov rbx, 3
     lea r10, QWORD [rbp + -12] ; get address of 'b'
     mov DWORD [r10], ebx
+    
     movsx rbx, DWORD [rbp + -16]
     movsx r10, DWORD [rbp + -12]
     mov rax, rbx
@@ -21,6 +23,7 @@ main:
     mov rbx, rax
     lea r10, QWORD [rbp + -8] ; get address of 'c'
     mov DWORD [r10], ebx
+    
     movsx rbx, DWORD [rbp + -8]
     mov r10, 16
     cmp rbx, r10
@@ -35,10 +38,13 @@ main:
         mov rbx, 0
         mov rax, rbx ; return via rax
         jmp L_function_main_exit
+        
     L_exit2:
+    
     lea rbx, QWORD [rbp + -12] ; get address of 'b'
     mov r10, 4
     mov DWORD [rbx], r10d
+    
     movsx rbx, DWORD [rbp + -8]
     movsx r10, DWORD [rbp + -12]
     mov rax, rbx
@@ -47,6 +53,7 @@ main:
     mov rbx, rax
     lea r10, QWORD [rbp + -8] ; get address of 'c'
     mov DWORD [r10], ebx
+    
     movsx rbx, DWORD [rbp + -8]
     mov r10, 4
     cmp rbx, r10
@@ -61,7 +68,9 @@ main:
         mov rbx, 0
         mov rax, rbx ; return via rax
         jmp L_function_main_exit
+        
     L_exit5:
+    
     movsx rbx, DWORD [rbp + -8]
     movsx r10, DWORD [rbp + -8]
     mov rax, rbx
@@ -70,13 +79,17 @@ main:
     mov rbx, rax
     lea r10, QWORD [rbp + -8] ; get address of 'c'
     mov DWORD [r10], ebx
+    
     movsx rbx, DWORD [rbp + -8]
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
+    
     xor rax, rax ; Default return value 0
     L_function_main_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
+
 SECTION .data

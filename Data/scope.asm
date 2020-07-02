@@ -17,6 +17,7 @@ main:
     mov rbx, rax ; get return value
     lea r10, QWORD [rbp + -32] ; get address of 'a'
     mov DWORD [r10], ebx
+    
     sub rsp, 32 ; reserve shadow space and 2 arguments
     mov rbx, 0
     mov rcx, rbx ; arg 0
@@ -27,6 +28,7 @@ main:
     mov rbx, rax ; get return value
     lea r10, QWORD [rbp + -28] ; get address of 'b'
     mov DWORD [r10], ebx
+    
     movsx rbx, DWORD [rbp + -32]
     mov r10, 5
     cmp rbx, r10
@@ -59,24 +61,32 @@ main:
         mov rbx, -1
         mov rax, rbx ; return via rax
         jmp L_function_main_exit
+        
     L_exit5:
+    
     mov rbx, 3
     lea r10, QWORD [rbp + -24] ; get address of 'common_name'
     mov DWORD [r10], ebx
+    
     mov rbx, 0
     lea r10, QWORD [rbp + -20] ; get address of 'outter'
     mov DWORD [r10], ebx
+    
     mov rbx, 1
     cmp rbx, 0
     je L_exit6
         mov DWORD [rbp + -16], 0 ; zero initialize common_name
+        
         lea rbx, QWORD [rbp + -16] ; get address of 'common_name'
         mov r10, 5
         mov DWORD [rbx], r10d
+        
         lea rbx, QWORD [rbp + -20] ; get address of 'outter'
         movsx r10, DWORD [rbp + -16]
         mov DWORD [rbx], r10d
+        
     L_exit6:
+    
     movsx rbx, DWORD [rbp + -20]
     mov r10, 5
     cmp rbx, r10
@@ -91,16 +101,20 @@ main:
         mov rbx, -1
         mov rax, rbx ; return via rax
         jmp L_function_main_exit
+        
     L_exit9:
+    
     movsx rbx, DWORD [rbp + -24]
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
+    
     xor rax, rax ; Default return value 0
     L_function_main_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
 test:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
@@ -113,19 +127,25 @@ test:
         movsx rbx, DWORD [rbp + 24]
         mov rax, rbx ; return via rax
         jmp L_function_test_exit
+        
     jmp L_exit10
     L_else10:
         mov rbx, 3
         lea r10, QWORD [rbp + -16] ; get address of 'arg'
         mov DWORD [r10], ebx
+        
         movsx rbx, DWORD [rbp + -16]
         mov rax, rbx ; return via rax
         jmp L_function_test_exit
+        
     L_exit10:
+    
     xor rax, rax ; Default return value 0
     L_function_test_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
+
 SECTION .data

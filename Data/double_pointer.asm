@@ -12,26 +12,32 @@ abc:
     lea rbx, QWORD [rbp + 16] ; addrof a
     lea r10, QWORD [rbp + -32] ; get address of 'ptr_a'
     mov QWORD [r10], rbx
+    
     lea rbx, QWORD [rbp + 24] ; addrof b
     lea r10, QWORD [rbp + -24] ; get address of 'ptr_b'
     mov QWORD [r10], rbx
+    
     lea rbx, QWORD [rbp + -32] ; addrof ptr_a
     lea r10, QWORD [rbp + -16] ; get address of 'ptr_ptr'
     mov QWORD [r10], rbx
+    
     mov rbx, QWORD [rbp + -16]
     mov r10, QWORD [rbp + -24]
     mov QWORD [rbx], r10
+    
     mov rbx, QWORD [rbp + -16]
     mov rbx, QWORD [rbx]
     movsx rbx, DWORD [rbx]
     mov rax, rbx ; return via rax
     jmp L_function_abc_exit
+    
     xor rax, rax ; Default return value 0
     L_function_abc_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
@@ -45,10 +51,13 @@ main:
     mov rbx, rax ; get return value
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
+    
     xor rax, rax ; Default return value 0
     L_function_main_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
+
 SECTION .data

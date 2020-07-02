@@ -5,9 +5,14 @@ GLOBAL main
 SECTION .code
 EXTERN GetStdHandle
 
+
 EXTERN WriteFile
 
+
 EXTERN strlen
+
+
+
 
 main:
     push rbp ; save RBP
@@ -21,6 +26,7 @@ main:
     mov rbx, rax ; get return value
     lea r10, QWORD [rbp + -16] ; get address of 'std_handle'
     mov QWORD [r10], rbx
+    
     sub rsp, 32 ; reserve shadow space and 1 arguments
     lea rbx, QWORD [REL string] ; get address of 'string'
     mov rcx, rbx ; arg 0
@@ -29,7 +35,9 @@ main:
     mov rbx, rax ; get return value
     lea r10, QWORD [rbp + -8] ; get address of 'str_len'
     mov DWORD [r10], ebx
+    
     mov DWORD [rbp + -4], 0 ; zero initialize bytes_written
+    
     sub rsp, 48 ; reserve shadow space and 5 arguments
     mov rbx, QWORD [rbp + -16]
     mov rcx, rbx ; arg 0
@@ -44,15 +52,19 @@ main:
     call WriteFile
     add rsp, 48 ; pop arguments
     mov rbx, rax ; get return value
+    
     movsx rbx, DWORD [rbp + -4]
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
+    
     xor rax, rax ; Default return value 0
     L_function_main_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
+
 SECTION .data
 STD_OUTPUT_HANDLE dq -11
 string db "Hallo wereld!", 0

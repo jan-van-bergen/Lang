@@ -5,15 +5,23 @@ GLOBAL main
 SECTION .code
 EXTERN GetProcessHeap
 
+
 EXTERN HeapAlloc
+
 
 EXTERN HeapFree
 
+
 EXTERN GetStdHandle
+
 
 EXTERN WriteFile
 
+
 EXTERN ExitProcess
+
+
+
 
 malloc:
     push rbp ; save RBP
@@ -36,7 +44,9 @@ malloc:
         add rsp, 32 ; pop arguments
         mov r10, rax ; get return value
         mov QWORD [rbx], r10
+        
     L_exit2:
+    
     sub rsp, 32 ; reserve shadow space and 3 arguments
     mov rbx, QWORD [REL heap]
     mov rcx, rbx ; arg 0
@@ -49,12 +59,14 @@ malloc:
     mov rbx, rax ; get return value
     mov rax, rbx ; return via rax
     jmp L_function_malloc_exit
+    
     xor rax, rax ; Default return value 0
     L_function_malloc_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
 free:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
@@ -73,6 +85,7 @@ free:
     call assert
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
+    
     sub rsp, 32 ; reserve shadow space and 1 arguments
     mov rbx, QWORD [REL heap]
     mov r10, QWORD [REL NULL]
@@ -87,6 +100,7 @@ free:
     call assert
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
+    
     sub rsp, 32 ; reserve shadow space and 3 arguments
     mov rbx, QWORD [REL heap]
     mov rcx, rbx ; arg 0
@@ -97,12 +111,14 @@ free:
     call HeapFree
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
+    
     xor rax, rax ; Default return value 0
     L_function_free_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
 assert:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
@@ -123,13 +139,17 @@ assert:
         call ExitProcess
         add rsp, 32 ; pop arguments
         mov rbx, rax ; get return value
+        
     L_exit8:
+    
     xor rax, rax ; Default return value 0
     L_function_assert_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
+
 print:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
@@ -144,7 +164,9 @@ print:
     mov rbx, rax ; get return value
     lea r10, QWORD [rbp + -16] ; get address of 'std_handle'
     mov QWORD [r10], rbx
+    
     mov DWORD [rbp + -8], 0 ; zero initialize bytes_written
+    
     sub rsp, 48 ; reserve shadow space and 5 arguments
     mov rbx, QWORD [rbp + -16]
     mov rcx, rbx ; arg 0
@@ -159,12 +181,14 @@ print:
     call WriteFile
     add rsp, 48 ; pop arguments
     mov rbx, rax ; get return value
+    
     xor rax, rax ; Default return value 0
     L_function_print_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
 strlen:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
@@ -173,6 +197,7 @@ strlen:
     mov rbx, 0
     lea r10, QWORD [rbp + -16] ; get address of 'len'
     mov DWORD [r10], ebx
+    
     L_loop9:
     mov rbx, QWORD [rbp + 16]
     movsx r10, DWORD [rbp + -16]
@@ -193,17 +218,21 @@ strlen:
         add rbx, r10
         lea r10, QWORD [rbp + -16] ; get address of 'len'
         mov DWORD [r10], ebx
+        
     jmp L_loop9
     L_exit9:
+    
     movsx rbx, DWORD [rbp + -16]
     mov rax, rbx ; return via rax
     jmp L_function_strlen_exit
+    
     xor rax, rax ; Default return value 0
     L_function_strlen_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
@@ -216,51 +245,61 @@ main:
     mov rbx, rax ; get return value
     lea r10, QWORD [rbp + -32] ; get address of 'mem'
     mov QWORD [r10], rbx
+    
     mov rbx, QWORD [rbp + -32]
     mov r10, 0
     add rbx, r10
     mov r10, 66
     mov BYTE [rbx], r10b
+    
     mov rbx, QWORD [rbp + -32]
     mov r10, 1
     add rbx, r10
     mov r10, 114
     mov BYTE [rbx], r10b
+    
     mov rbx, QWORD [rbp + -32]
     mov r10, 2
     add rbx, r10
     mov r10, 117
     mov BYTE [rbx], r10b
+    
     mov rbx, QWORD [rbp + -32]
     mov r10, 3
     add rbx, r10
     mov r10, 104
     mov BYTE [rbx], r10b
+    
     mov rbx, QWORD [rbp + -32]
     mov r10, 4
     add rbx, r10
     mov r10, 84
     mov BYTE [rbx], r10b
+    
     mov rbx, QWORD [rbp + -32]
     mov r10, 5
     add rbx, r10
     mov r10, 101
     mov BYTE [rbx], r10b
+    
     mov rbx, QWORD [rbp + -32]
     mov r10, 6
     add rbx, r10
     mov r10, 115
     mov BYTE [rbx], r10b
+    
     mov rbx, QWORD [rbp + -32]
     mov r10, 7
     add rbx, r10
     mov r10, 116
     mov BYTE [rbx], r10b
+    
     mov rbx, QWORD [rbp + -32]
     mov r10, 8
     add rbx, r10
     mov r10, 0
     mov BYTE [rbx], r10b
+    
     sub rsp, 32 ; reserve shadow space and 1 arguments
     mov rbx, QWORD [rbp + -32]
     mov rcx, rbx ; arg 0
@@ -269,6 +308,7 @@ main:
     mov rbx, rax ; get return value
     lea r10, QWORD [rbp + -24] ; get address of 'str_len'
     mov DWORD [r10], ebx
+    
     sub rsp, 32 ; reserve shadow space and 2 arguments
     mov rbx, QWORD [rbp + -32]
     mov rcx, rbx ; arg 0
@@ -277,12 +317,14 @@ main:
     call print
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
+    
     sub rsp, 32 ; reserve shadow space and 1 arguments
     mov rbx, QWORD [rbp + -32]
     mov rcx, rbx ; arg 0
     call free
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
+    
     sub rsp, 32 ; reserve shadow space and 1 arguments
     mov rbx, 16
     mov rcx, rbx ; arg 0
@@ -291,56 +333,68 @@ main:
     mov rbx, rax ; get return value
     lea r10, QWORD [rbp + -16] ; get address of 'mem2'
     mov QWORD [r10], rbx
+    
     mov rbx, QWORD [rbp + -16]
     mov r10, 0
     add rbx, r10
     mov r10, 1
     mov BYTE [rbx], r10b
+    
     mov rbx, QWORD [rbp + -16]
     mov r10, 1
     add rbx, r10
     mov r10, 2
     mov BYTE [rbx], r10b
+    
     mov rbx, QWORD [rbp + -16]
     mov r10, 2
     add rbx, r10
     mov r10, 3
     mov BYTE [rbx], r10b
+    
     mov rbx, QWORD [rbp + -16]
     mov r10, 3
     add rbx, r10
     mov r10, 4
     mov BYTE [rbx], r10b
+    
     mov rbx, QWORD [rbp + -16]
     mov r10, 4
     add rbx, r10
     mov r10, 0
     mov BYTE [rbx], r10b
+    
     mov rbx, QWORD [rbp + -16]
     mov r10, 5
     add rbx, r10
     mov r10, 0
     mov BYTE [rbx], r10b
+    
     mov rbx, QWORD [rbp + -16]
     mov r10, 6
     add rbx, r10
     mov r10, 0
     mov BYTE [rbx], r10b
+    
     mov rbx, QWORD [rbp + -16]
     mov r10, 7
     add rbx, r10
     mov r10, 0
     mov BYTE [rbx], r10b
+    
     mov rbx, QWORD [rbp + -16]
     movsx rbx, DWORD [rbx]
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
+    
     xor rax, rax ; Default return value 0
     L_function_main_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
+
 SECTION .data
 NULL dq 0
 heap dq 0

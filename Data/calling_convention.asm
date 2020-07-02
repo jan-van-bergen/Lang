@@ -23,12 +23,14 @@ calling_convention:
     add rbx, r10
     mov rax, rbx ; return via rax
     jmp L_function_calling_convention_exit
+    
     xor rax, rax ; Default return value 0
     L_function_calling_convention_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
@@ -50,10 +52,13 @@ main:
     mov rbx, rax ; get return value
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
+    
     xor rax, rax ; Default return value 0
     L_function_main_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
+
 SECTION .data

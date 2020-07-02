@@ -8,19 +8,25 @@ main:
     mov rbp, rsp ; stack frame
     sub rsp, 16 ; reserve stack space for 3 locals
     mov DWORD [rbp + -16], 0 ; zero initialize a
+    
     mov DWORD [rbp + -12], 0 ; zero initialize b
+    
     mov DWORD [rbp + -8], 0 ; zero initialize c
+    
     lea rbx, QWORD [rbp + -16] ; get address of 'a'
     mov r10, 4278190080
     mov DWORD [rbx], r10d
+    
     lea rbx, QWORD [rbp + -12] ; get address of 'b'
     mov r10, 255
     mov DWORD [rbx], r10d
+    
     mov ebx, DWORD [rbp + -16]
     mov r10d, DWORD [rbp + -12]
     or rbx, r10
     lea r10, QWORD [rbp + -8] ; get address of 'c'
     mov DWORD [r10], ebx
+    
     sub rsp, 32 ; reserve shadow space and 1 arguments
     mov ebx, DWORD [rbp + -8]
     mov r10, 4278190335
@@ -35,12 +41,14 @@ main:
     call assert
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
+    
     mov ebx, DWORD [rbp + -16]
     not rbx
     mov r10d, DWORD [rbp + -12]
     and rbx, r10
     lea r10, QWORD [rbp + -8] ; get address of 'c'
     mov DWORD [r10], ebx
+    
     sub rsp, 32 ; reserve shadow space and 1 arguments
     mov ebx, DWORD [rbp + -8]
     mov r10, 255
@@ -55,15 +63,18 @@ main:
     call assert
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
+    
     lea rbx, QWORD [rbp + -16] ; get address of 'a'
     mov r10, 16776960
     mov DWORD [rbx], r10d
+    
     mov ebx, DWORD [rbp + -12]
     mov r10, 8
     mov rcx, r10
     shl rbx, cl
     lea r10, QWORD [rbp + -12] ; get address of 'b'
     mov DWORD [r10], ebx
+    
     mov ebx, DWORD [rbp + -16]
     mov r10d, DWORD [rbp + -12]
     xor rbx, r10
@@ -71,6 +82,7 @@ main:
     or rbx, r10
     lea r10, QWORD [rbp + -8] ; get address of 'c'
     mov DWORD [r10], ebx
+    
     sub rsp, 32 ; reserve shadow space and 1 arguments
     mov ebx, DWORD [rbp + -8]
     mov r10, 16711935
@@ -85,19 +97,23 @@ main:
     call assert
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
+    
     mov ebx, DWORD [rbp + -8]
     mov r10, 16
     mov rcx, r10
     shr rbx, cl
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
+    
     xor rax, rax ; Default return value 0
     L_function_main_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
 EXTERN ExitProcess
+
 
 assert:
     push rbp ; save RBP
@@ -119,11 +135,15 @@ assert:
         call ExitProcess
         add rsp, 32 ; pop arguments
         mov rbx, rax ; get return value
+        
     L_exit7:
+    
     xor rax, rax ; Default return value 0
     L_function_assert_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
+
 SECTION .data

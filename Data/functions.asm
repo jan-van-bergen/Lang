@@ -12,12 +12,14 @@ one:
     add rbx, r10
     mov rax, rbx ; return via rax
     jmp L_function_one_exit
+    
     xor rax, rax ; Default return value 0
     L_function_one_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
 two:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
@@ -32,6 +34,7 @@ two:
     mov rbx, rax ; get return value
     lea r10, QWORD [rbp + -16] ; get address of 'local'
     mov DWORD [r10], ebx
+    
     sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [rbp + 24]
     mov rcx, rbx ; arg 0
@@ -42,12 +45,14 @@ two:
     add rbx, r10
     mov rax, rbx ; return via rax
     jmp L_function_two_exit
+    
     xor rax, rax ; Default return value 0
     L_function_two_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
 recursive:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
@@ -67,17 +72,21 @@ recursive:
         movsx rbx, DWORD [rbp + 24]
         mov rax, rbx ; return via rax
         jmp L_function_recursive_exit
+        
     L_exit2:
+    
     movsx rbx, DWORD [rbp + 24]
     mov r10, 2
     add rbx, r10
     lea r10, QWORD [rbp + 24] ; get address of 'b'
     mov DWORD [r10], ebx
+    
     movsx rbx, DWORD [rbp + 16]
     mov r10, 1
     sub rbx, r10
     lea r10, QWORD [rbp + 16] ; get address of 'a'
     mov DWORD [r10], ebx
+    
     sub rsp, 32 ; reserve shadow space and 2 arguments
     movsx rbx, DWORD [rbp + 16]
     mov rcx, rbx ; arg 0
@@ -88,12 +97,14 @@ recursive:
     mov rbx, rax ; get return value
     mov rax, rbx ; return via rax
     jmp L_function_recursive_exit
+    
     xor rax, rax ; Default return value 0
     L_function_recursive_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
@@ -108,6 +119,7 @@ main:
     mov rbx, rax ; get return value
     lea r10, QWORD [rbp + -16] ; get address of 'bla'
     mov DWORD [r10], ebx
+    
     sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [rbp + -16]
     mov rcx, rbx ; arg 0
@@ -116,6 +128,7 @@ main:
     mov rbx, rax ; get return value
     lea r10, QWORD [rbp + -12] ; get address of 'tmp'
     mov DWORD [r10], ebx
+    
     sub rsp, 32 ; reserve shadow space and 2 arguments
     sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [rbp + -16]
@@ -131,10 +144,13 @@ main:
     mov rbx, rax ; get return value
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
+    
     xor rax, rax ; Default return value 0
     L_function_main_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
+
 SECTION .data
