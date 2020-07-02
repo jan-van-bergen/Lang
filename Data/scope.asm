@@ -75,7 +75,7 @@ main:
     mov rbx, 1
     cmp rbx, 0
     je L_exit6
-        mov DWORD [rbp + -16], 0 ; zero initialize common_name
+        mov DWORD [rbp + -16], 0 ; zero initialize 'common_name'
         
         lea rbx, QWORD [rbp + -16] ; get address of 'common_name'
         mov r10, 5

@@ -148,7 +148,7 @@ print:
     lea r10, QWORD [rbp + -16] ; get address of 'std_handle'
     mov QWORD [r10], rbx
     
-    mov DWORD [rbp + -8], 0 ; zero initialize bytes_written
+    mov DWORD [rbp + -8], 0 ; zero initialize 'bytes_written'
     
     sub rsp, 48 ; reserve shadow space and 5 arguments
     mov rbx, QWORD [rbp + -16]
@@ -157,7 +157,7 @@ print:
     mov rdx, rbx ; arg 1
     movsx rbx, DWORD [rbp + 24]
     mov r8, rbx ; arg 2
-    lea rbx, QWORD [rbp + -8] ; addrof bytes_written
+    lea rbx, QWORD [rbp + -8] ; get address of 'bytes_written'
     mov r9, rbx ; arg 3
     mov rbx, 0
     mov QWORD [rsp + 32], rbx ; arg 4

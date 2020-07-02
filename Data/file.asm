@@ -3,125 +3,144 @@
 GLOBAL main
 
 SECTION .code
-EXTERN PathFileExistsA
-
 EXTERN OpenFile
 
-EXTERN CreateFileA
 
 EXTERN WriteFile
+
+
+EXTERN CloseHandle
+
+
+EXTERN strlen
+
+
+
+
+
+
+
 
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    sub rsp, 32 ; reserve stack space for 4 locals
-    lea rbx, [REL str_lit_4]
-    lea r10, QWORD [rbp + -32] ; get address of 'file_name'
+    sub rsp, 176 ; reserve stack space for 7 locals
+    lea rbx, [REL str_lit_6]
+    lea r10, QWORD [rbp + -176] ; get address of 'file_name'
     mov QWORD [r10], rbx
-    mov QWORD [rbp + -24], 0 ; zero initialize file_handle
-    sub rsp, 32 ; reserve shadow space and 1 arguments
-    mov rbx, QWORD [rbp + -32] ; get value of 'file_name'
+    
+    lea rdi, QWORD [rbp + -168] ; zero initialize 'ofstruct'
+    xor rax, rax
+    mov ecx, 136
+    rep stosb
+    
+    sub rsp, 32 ; reserve shadow space and 3 arguments
+    mov rbx, QWORD [rbp + -176]
     mov rcx, rbx ; arg 0
-    call PathFileExistsA
+    lea rbx, QWORD [rbp + -168] ; get address of 'ofstruct'
+    mov rdx, rbx ; arg 1
+    mov ebx, DWORD [REL OF_CREATE]
+    mov r10d, DWORD [REL OF_READ]
+    or rbx, r10
+    mov r8, rbx ; arg 2
+    call OpenFile
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    cmp rbx, 0
-    je L_else0
-        lea rbx, QWORD [rbp + -24] ; get address of 'file_handle'
-        sub rsp, 32 ; reserve shadow space and 3 arguments
-        mov r10, QWORD [rbp + -32] ; get value of 'file_name'
-        mov rcx, r10 ; arg 0
-        mov r10, QWORD [REL NULL] ; get value of 'NULL'
-        mov rdx, r10 ; arg 1
-        mov r10, 0
-        mov r8, r10 ; arg 2
-        call OpenFile
-        add rsp, 32 ; pop arguments
-        mov r10, rax ; get return value
-        mov QWORD [rbx], r10
-    jmp L_exit0
-    L_else0:
-        lea rbx, QWORD [rbp + -24] ; get address of 'file_handle'
-        sub rsp, 48 ; reserve shadow space and 7 arguments
-        mov r10, QWORD [rbp + -32] ; get value of 'file_name'
-        mov rcx, r10 ; arg 0
-        movsx r10, DWORD [REL GENERIC_WRITE] ; get value of 'GENERIC_WRITE'
-        mov rdx, r10 ; arg 1
-        mov r10, 0
-        mov r8, r10 ; arg 2
-        mov r10, QWORD [REL NULL] ; get value of 'NULL'
-        mov r9, r10 ; arg 3
-        movsx r10, DWORD [REL CREATE_NEW] ; get value of 'CREATE_NEW'
-        mov QWORD [rsp + 32], r10 ; arg 4
-        movsx r10, DWORD [REL FILE_ATTRIBUTE_NORMAL] ; get value of 'FILE_ATTRIBUTE_NORMAL'
-        mov QWORD [rsp + 36], r10 ; arg 5
-        mov r10, QWORD [REL NULL] ; get value of 'NULL'
-        mov QWORD [rsp + 40], r10 ; arg 6
-        call CreateFileA
-        add rsp, 48 ; pop arguments
-        mov r10, rax ; get return value
-        mov QWORD [rbx], r10
-    L_exit0:
-    mov rbx, QWORD [rbp + -24] ; get value of 'file_handle'
+    lea r10, QWORD [rbp + -32] ; get address of 'file_handle'
+    mov QWORD [r10], rbx
+    
+    mov rbx, QWORD [rbp + -32]
     mov r10, -1
     cmp rbx, r10
-    jne L1
+    jne L0
     mov rbx, 1
-    jmp L2
-    L1:
+    jmp L1
+    L0:
     mov rbx, 0
-    L2:
+    L1:
     cmp rbx, 0
-    je L_exit3
+    je L_exit2
         mov rbx, -1
         mov rax, rbx ; return via rax
         jmp L_function_main_exit
-    L_exit3:
-    mov DWORD [rbp + -16], 0 ; zero initialize bytes_written
+        
+    L_exit2:
+    
+    lea rbx, QWORD [rbp + -24] ; get address of 'path'
+    lea r10, QWORD [rbp + -168] ; get address of 'ofstruct'
+    add r10, 8 ; member offset 'szPathName_0'
+    mov QWORD [rbx], r10
+    
+    lea rbx, QWORD [rbp + -16] ; get address of 'path_len'
+    sub rsp, 32 ; reserve shadow space and 1 arguments
+    mov r10, QWORD [rbp + -24]
+    mov rcx, r10 ; arg 0
+    call strlen
+    add rsp, 32 ; pop arguments
+    mov r10, rax ; get return value
+    and r10, 0xffffffff
+    mov DWORD [rbx], r10d
+    
+    mov DWORD [rbp + -12], 0 ; zero initialize 'bytes_written'
+    
     sub rsp, 48 ; reserve shadow space and 5 arguments
-    mov rbx, QWORD [rbp + -24] ; get value of 'file_handle'
+    mov rbx, QWORD [rbp + -32]
     mov rcx, rbx ; arg 0
-    lea rbx, [REL str_lit_5]
+    mov rbx, QWORD [rbp + -24]
     mov rdx, rbx ; arg 1
-    mov rbx, 25
+    movsx rbx, DWORD [rbp + -16]
     mov r8, rbx ; arg 2
-    lea rbx, QWORD [rbp + -16] ; addrof bytes_written
+    lea rbx, QWORD [rbp + -12] ; get address of 'bytes_written'
     mov r9, rbx ; arg 3
     mov rbx, 0
     mov QWORD [rsp + 32], rbx ; arg 4
     call WriteFile
     add rsp, 48 ; pop arguments
     mov rbx, rax ; get return value
-    lea r10, QWORD [rbp + -12] ; get address of 'err'
+    lea r10, QWORD [rbp + -8] ; get address of 'err'
     mov BYTE [r10], bl
-    movsx rbx, BYTE [rbp + -12] ; get value of 'err'
+    
+    sub rsp, 32 ; reserve shadow space and 1 arguments
+    mov rbx, QWORD [rbp + -32]
+    mov rcx, rbx ; arg 0
+    call CloseHandle
+    add rsp, 32 ; pop arguments
+    mov rbx, rax ; get return value
+    
+    movzx rbx, BYTE [rbp + -8]
     mov r10, 0
     cmp rbx, r10
-    jne L4
+    jne L3
     mov rbx, 1
-    jmp L5
-    L4:
+    jmp L4
+    L3:
     mov rbx, 0
-    L5:
+    L4:
     cmp rbx, 0
-    je L_exit6
+    je L_exit5
         mov rbx, -1
         mov rax, rbx ; return via rax
         jmp L_function_main_exit
-    L_exit6:
+        
+    L_exit5:
+    
     mov rbx, 0
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
+    
     xor rax, rax ; Default return value 0
     L_function_main_exit:
     mov rsp, rbp
     pop rbp
     ret
     
+
+
 SECTION .data
 NULL dq 0
 GENERIC_WRITE dq 1073741824
 CREATE_NEW dq 1
 FILE_ATTRIBUTE_NORMAL dq 128
-str_lit_4 db "TEST.TXT", 0
-str_lit_5 db "This is not an empty file", 0
+OF_CREATE dq 4096
+OF_READ dq 0
+str_lit_6 db "TEST.TXT", 0

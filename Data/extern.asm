@@ -36,7 +36,7 @@ main:
     lea r10, QWORD [rbp + -8] ; get address of 'str_len'
     mov DWORD [r10], ebx
     
-    mov DWORD [rbp + -4], 0 ; zero initialize bytes_written
+    mov DWORD [rbp + -4], 0 ; zero initialize 'bytes_written'
     
     sub rsp, 48 ; reserve shadow space and 5 arguments
     mov rbx, QWORD [rbp + -16]
@@ -45,7 +45,7 @@ main:
     mov rdx, rbx ; arg 1
     movsx rbx, DWORD [rbp + -8]
     mov r8, rbx ; arg 2
-    lea rbx, QWORD [rbp + -4] ; addrof bytes_written
+    lea rbx, QWORD [rbp + -4] ; get address of 'bytes_written'
     mov r9, rbx ; arg 3
     mov rbx, 0
     mov QWORD [rsp + 32], rbx ; arg 4

@@ -11,7 +11,7 @@ main:
     lea r10, QWORD [rbp + -32] ; get address of 'i'
     mov DWORD [r10], ebx
     
-    lea rbx, QWORD [rbp + -32] ; addrof i
+    lea rbx, QWORD [rbp + -32] ; get address of 'i'
     lea r10, QWORD [rbp + -24] ; get address of 'ptr_int'
     mov QWORD [r10], rbx
     

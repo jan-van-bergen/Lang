@@ -9,15 +9,15 @@ abc:
     mov DWORD [rbp + 16], ecx ; push arg 0 
     mov DWORD [rbp + 24], edx ; push arg 1 
     sub rsp, 32 ; reserve stack space for 3 locals
-    lea rbx, QWORD [rbp + 16] ; addrof a
+    lea rbx, QWORD [rbp + 16] ; get address of 'a'
     lea r10, QWORD [rbp + -32] ; get address of 'ptr_a'
     mov QWORD [r10], rbx
     
-    lea rbx, QWORD [rbp + 24] ; addrof b
+    lea rbx, QWORD [rbp + 24] ; get address of 'b'
     lea r10, QWORD [rbp + -24] ; get address of 'ptr_b'
     mov QWORD [r10], rbx
     
-    lea rbx, QWORD [rbp + -32] ; addrof ptr_a
+    lea rbx, QWORD [rbp + -32] ; get address of 'ptr_a'
     lea r10, QWORD [rbp + -16] ; get address of 'ptr_ptr'
     mov QWORD [r10], rbx
     

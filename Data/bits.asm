@@ -7,11 +7,11 @@ main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
     sub rsp, 16 ; reserve stack space for 3 locals
-    mov DWORD [rbp + -16], 0 ; zero initialize a
+    mov DWORD [rbp + -16], 0 ; zero initialize 'a'
     
-    mov DWORD [rbp + -12], 0 ; zero initialize b
+    mov DWORD [rbp + -12], 0 ; zero initialize 'b'
     
-    mov DWORD [rbp + -8], 0 ; zero initialize c
+    mov DWORD [rbp + -8], 0 ; zero initialize 'c'
     
     lea rbx, QWORD [rbp + -16] ; get address of 'a'
     mov r10, 4278190080

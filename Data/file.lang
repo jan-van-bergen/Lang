@@ -1,34 +1,20 @@
-struct SECURITY_ATTRIBUTES {
-	nLength: int;
-	lpSecurityDescriptor: void *;
-	bInheritHandle: bool;
-}
-
-extern PathFileExistsA(path: char *) -> bool;
-
 extern OpenFile(
-	lpFileName: char *,
-	lpReOpenBuff: void *,
-	uStyle: u32       
-) -> void *;
-
-extern CreateFileA(
-	lpFileName: char *,
-	dwDesiredAccess: int,
-	dwShareMode: int,
-	lpSecurityAttributes: SECURITY_ATTRIBUTES *,
-	dwCreationDisposition: int,
-	dwFlagsAndAttributes: int,
-	hTemplateFile: void *
+	lpFileName   : char *,
+	lpReOpenBuff : void *,
+	uStyle       : u32       
 ) -> void *;
 
 extern WriteFile(
-	handle: void *,
-	buffer: void *,
-	bytes_to_write: int,
-	bytes_written: int *,
-	overlapped: int
+	handle         : void *,
+	buffer         : void *,
+	bytes_to_write : int,
+	bytes_written  : int *,
+	overlapped     : int
 ) -> bool;
+
+extern CloseHandle(handle: void *) -> void;
+
+extern strlen(str: char *) -> u64;
 
 let NULL: void * = 0;
 
@@ -42,32 +28,52 @@ let OF_READ   : u32 = 0x00000000;
 func main() -> int {
 	let file_name: char * = "TEST.TXT";
 
-	let file_handle: void * = OpenFile(file_name, NULL, OF_CREATE | OF_READ);
-	// } else {
-		// file_handle = CreateFileA(
-			// file_name,
-			// GENERIC_WRITE,
-			// 0,
-			// NULL,
-			// CREATE_NEW,
-			// FILE_ATTRIBUTE_NORMAL,
-			// NULL
-		// );
-	// }
+	struct OFSTRUCT {
+		cBytes:     u8;
+		fFixedDisk: u8;
+		nErrCode:   u16;
+		Reserved1:  u16;
+		Reserved2:  u16;
+		szPathName_0:  u64;
+		szPathName_1:  u64;
+		szPathName_2:  u64;
+		szPathName_3:  u64;
+		szPathName_4:  u64;
+		szPathName_5:  u64;
+		szPathName_6:  u64;
+		szPathName_7:  u64;
+		szPathName_8:  u64;
+		szPathName_9:  u64;
+		szPathName_10: u64;
+		szPathName_11: u64;
+		szPathName_12: u64;
+		szPathName_13: u64;
+		szPathName_14: u64;
+		szPathName_15: u64;
+	}
+	let ofstruct: OFSTRUCT;
 
+	// Open the file
+	let file_handle: void * = OpenFile(file_name, &ofstruct, OF_CREATE | OF_READ);
 	if (file_handle == cast(void *) -1) return -1;
-	
+
+	// Get the path from the OFSTRUCT
+	let path:     char * = cast(char *) &ofstruct.szPathName_0;
+	let path_len: int    = cast(int) strlen(path);
+
+	// Write its path to the file
 	let bytes_written: int;
-	
 	let err: bool = WriteFile( 
 		file_handle,
-		"This is not an empty file",
-		25,
+		path,
+		path_len,
 		&bytes_written,
 		0
 	);
-	
+
+	CloseHandle(file_handle);
+
 	if (err == false) return -1;
-	
+
 	return 0;
 }

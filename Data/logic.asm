@@ -40,7 +40,7 @@ main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
     sub rsp, 16 ; reserve stack space for 1 locals
-    mov BYTE [rbp + -16], 0 ; zero initialize a
+    mov BYTE [rbp + -16], 0 ; zero initialize 'a'
     
     mov rbx, 1
     mov r10, 0

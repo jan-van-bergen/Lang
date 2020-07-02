@@ -7,7 +7,7 @@ main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
     sub rsp, 48 ; reserve stack space for 2 locals
-    lea rdi, QWORD [rbp + -48] ; zero initialize test
+    lea rdi, QWORD [rbp + -48] ; zero initialize 'test'
     xor rax, rax
     mov ecx, 24
     rep stosb

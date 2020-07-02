@@ -11,7 +11,7 @@ main:
     lea r10, QWORD [rbp + -16] ; get address of 'a'
     mov DWORD [r10], ebx
     
-    mov DWORD [rbp + -12], 0 ; zero initialize b
+    mov DWORD [rbp + -12], 0 ; zero initialize 'b'
     
     movsx rbx, DWORD [rbp + -16]
     mov r10, 0

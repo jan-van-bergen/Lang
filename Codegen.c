@@ -841,24 +841,23 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 
 	// Check if this is a pointer operator
 	if (operator == TOKEN_OPERATOR_BITWISE_AND) {
-		if (operand->type != AST_EXPRESSION_VAR) {
-			type_error("Operator '&' can only take address of a variable");
+		if (operand->type != AST_EXPRESSION_VAR && 
+			operand->type != AST_EXPRESSION_STRUCT_MEMBER
+		) {
+			type_error("Operator '&' can only take address of a variable or struct member");
 		}
 
-		char     const * var_name = operand->expr_var.name;
-		Variable const * var = scope_get_variable(ctx->current_scope, var_name);
-		
-		char var_address[32];
-		variable_get_address(var, var_address, sizeof(var_address));
+		bool by_address = ctx->flags & CTX_FLAG_VAR_BY_ADDRESS;
+		context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS);
 
-		result.reg  = context_reg_request(ctx);
-		result.type = make_type_pointer(&var->type);
+		result = codegen_expression(ctx, operand);
+		result.type = make_type_pointer(&result.type);
 
-		context_emit_code(ctx, "lea %s, QWORD [%s] ; addrof %s\n", get_reg_name_scratch(result.reg, 8), var_address, var_name);
+		if (!by_address) context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
 
 		return result;
 	} else if (operator == TOKEN_OPERATOR_MULTIPLY) {
-		bool var_by_address = ctx->flags & CTX_FLAG_VAR_BY_ADDRESS;
+		bool by_address = ctx->flags & CTX_FLAG_VAR_BY_ADDRESS;
 
 		context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS); // Unset temporarily
 
@@ -875,7 +874,7 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 
 		result.type = make_type_deref(&result.type);
 
-		if (var_by_address) {
+		if (by_address) {
 			context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS); // Reset if this flag was previously set
 		} else {
 			codegen_deref_address(ctx, result.reg, &result.type, get_reg_name_scratch(result.reg, 8));
@@ -1251,12 +1250,12 @@ static void codegen_statement_def_var(Context * ctx, AST_Statement const * stat)
 			if (type_is_struct(&var->type)) {
 				int struct_size = type_get_size(&var->type, ctx->current_scope);
 
-				context_emit_code(ctx, "lea rdi, QWORD [%s] ; zero initialize %s\n", var_address, var_name);
+				context_emit_code(ctx, "lea rdi, QWORD [%s] ; zero initialize '%s'\n", var_address, var_name);
 				context_emit_code(ctx, "xor rax, rax\n");
 				context_emit_code(ctx, "mov ecx, %i\n", struct_size);
 				context_emit_code(ctx, "rep stosb\n");
 			} else {
-				context_emit_code(ctx, "mov %s [%s], 0 ; zero initialize %s\n", get_word_name(type_size), var_address, var_name);
+				context_emit_code(ctx, "mov %s [%s], 0 ; zero initialize '%s'\n", get_word_name(type_size), var_address, var_name);
 			}
 		}
 	}
