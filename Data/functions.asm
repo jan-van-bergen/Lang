@@ -130,11 +130,13 @@ main:
     mov DWORD [r10], ebx
     
     sub rsp, 32 ; reserve shadow space and 2 arguments
+    push rcx ; preserve
     sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [rbp + -16]
     mov rcx, rbx ; arg 0
     call one
     add rsp, 32 ; pop arguments
+    pop rcx ; restore
     mov rbx, rax ; get return value
     mov rcx, rbx ; arg 0
     mov rbx, 0

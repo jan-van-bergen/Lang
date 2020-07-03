@@ -15,7 +15,8 @@ typedef enum Context_Flags {
 } Context_Flags;
 
 typedef struct Context {
-	int scratch_reg_mask;
+	int reg_mask_scratch; // Scratch registers currently in use
+	int reg_mask_call;    // Call    registers currently in use
 
 	int indent;
 
@@ -36,7 +37,8 @@ typedef struct Context {
 } Context;
 
 static void context_init(Context * ctx) {
-	ctx->scratch_reg_mask = 0;
+	ctx->reg_mask_scratch = 0;
+	ctx->reg_mask_call    = 0;
 
 	ctx->indent = 0;
 
@@ -58,8 +60,8 @@ static void context_init(Context * ctx) {
 
 static int context_reg_request(Context * ctx) {
 	for (int i = 0; i < SCRATCH_REG_COUNT; i++) {
-		if ((ctx->scratch_reg_mask & (1 << i)) == 0) {
-			ctx->scratch_reg_mask |= (1 << i);
+		if ((ctx->reg_mask_scratch & (1 << i)) == 0) {
+			ctx->reg_mask_scratch |= (1 << i);
 
 			return i;
 		}
@@ -72,9 +74,27 @@ static int context_reg_request(Context * ctx) {
 static void context_reg_free(Context * ctx, int reg) {
 	if (reg == -1) return;
 
-	assert(ctx->scratch_reg_mask & (1 << reg));
+	assert(ctx->reg_mask_scratch & (1 << reg));
 
-	ctx->scratch_reg_mask &= ~(1 << reg);
+	ctx->reg_mask_scratch &= ~(1 << reg);
+}
+
+static void context_call_reg_reserve(Context * ctx, int reg) {
+	assert(reg >= 0 && reg < 4);
+
+	ctx->reg_mask_call |= (1 << reg);
+}
+
+static bool context_call_reg_is_reserved(Context * ctx, int reg) {
+	assert(reg >= 0 && reg < 4);
+
+	return ctx->reg_mask_call & (1 << reg);
+}
+
+static void context_call_reg_free(Context * ctx, int reg) {
+	assert(reg >= 0 && reg < 4);
+
+	ctx->reg_mask_call &= ~(1 << reg);
 }
 
 static int context_new_label(Context * ctx) {
@@ -1071,16 +1091,30 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 	AST_Def_Arg  * def_arg  = def_func->args;
 
 	if (call_arg_count != def_func->arg_count) {
-		type_error("Incorrect number of arguments");
+		type_error("Incorrect number of arguments to function '%s'! Provided %i, needed %i",
+			expr->expr_call.function_name, call_arg_count, def_func->arg_count
+		);
 	}
 
-	// Count total size (in bytes) of arguments
+	bool call_reg_pushed[4] = { false, false, false, false };
+
+	// Get total size of arguments
 	int arg_size = 0;
-	int def_arg_count = 0;
+	int def_arg_index = 0;
 
 	while (def_arg) {
-		if (def_arg_count < 4) {
+		if (def_arg_index < 4) {
 			arg_size += 8;
+
+			if (context_call_reg_is_reserved(ctx, def_arg_index)) {
+				// If the call registers is already in use (i.e. this is a nested
+				// function call), push the register on the stack to preserve it
+				call_reg_pushed[def_arg_index] = true;
+
+				context_emit_code(ctx, "push %s ; preserve\n", get_reg_name_call(def_arg_index, 8));
+			} else {
+				context_call_reg_reserve(ctx, def_arg_index);
+			}
 		} else {
 			int type_size  = type_get_size (def_arg->type, ctx->current_scope);
 			int type_align = type_get_align(def_arg->type, ctx->current_scope);
@@ -1089,14 +1123,14 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 			arg_size += type_size;
 		}
 
-		def_arg_count++;
+		def_arg_index++;
 		def_arg = def_arg->next;
 	}
 
 	if (arg_size < 32) {
 		arg_size = 32; // Needs at least 32 bytes for shadow space
 	} else {
-		arg_size = (arg_size + 15) & ~15; // Round up to next multiple of 16 bytes for correct alignment of stack
+		arg_size = (arg_size + 15) & ~15; // Round up to next multiple of 16 bytes to ensure stack alignment
 	}
 
 	// Reserve stack space for arguments
@@ -1143,12 +1177,21 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 
 		arg_index++;
 		call_arg = call_arg->next;
-		def_arg = def_arg->next;
+		def_arg  = def_arg->next;
 	}
 
 	context_emit_code(ctx, "call %s\n", expr->expr_call.function_name);
 
 	context_emit_code(ctx, "add rsp, %i ; pop arguments\n", arg_size);
+
+	// Check if any call registers were pushed before this call and need to be restored
+	for (int i = min(3, def_arg_index - 1); i >= 0; i--) {
+		if (call_reg_pushed[i]) {
+			context_emit_code(ctx, "pop %s ; restore\n", get_reg_name_call(i, 8));
+		} else {
+			context_call_reg_free(ctx, i);
+		}
+	}
 
 	Result result;
 	result.reg = context_reg_request(ctx);
@@ -1456,7 +1499,9 @@ static void codegen_statement(Context * ctx, AST_Statement const * stat) {
 		default: abort();
 	}
 
-	assert(ctx->scratch_reg_mask == 0); // No regs should be active after a statement is complete
+	// No regs should be active after a statement is complete
+	assert(ctx->reg_mask_scratch == 0); 
+	assert(ctx->reg_mask_call    == 0);
 
 	if (stat->type != AST_STATEMENTS && stat->type != AST_STATEMENT_BLOCK) context_emit_code(ctx, "\n");
 }

@@ -1,0 +1,19 @@
+func identity(x: char) -> char {
+	return x;
+}
+
+func ayy(base: int, c: char) -> int {
+	if (c == 'a') {
+		return base + 6;
+	} else {
+		return base + 4;
+	}
+}
+
+func fun(a: int, b: char, c: u64) -> u64 {
+	return ayy(2, identity('b') - b) - a * c;
+}
+
+func main() {
+	return fun(3, identity(identity(1)), identity(2));
+}
