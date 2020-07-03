@@ -69,6 +69,15 @@ static void print_expression(AST_Expression const * expr) {
 			break;
 		}
 
+		case AST_EXPRESSION_SIZEOF: {
+			char str_type[128];
+			type_to_string(expr->expr_sizeof.type, str_type, sizeof(str_type));
+
+			printf("sizeof(%s)", str_type);
+
+			break;
+		}
+
 		case AST_EXPRESSION_OPERATOR_BIN: {
 			printf("(");
 			print_expression(expr->expr_op_bin.expr_left);

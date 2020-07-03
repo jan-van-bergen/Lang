@@ -119,7 +119,7 @@ static void context_emit_code(Context * ctx, char const * fmt, ...) {
 
 	// Add indentation based on current Context
 	char const * indent = "    ";
-	int  const   indent_len = strlen(indent);
+	int          indent_len = strlen(indent);
 
 	for (int i = 0; i < ctx->indent; i++) {
 		memcpy(new_code + i * indent_len, indent, indent_len);
@@ -373,9 +373,9 @@ static Result codegen_expression_var(Context * ctx, AST_Expression const * expr)
 	bool is_global_char_ptr =
 		var->is_global &&
 		type_is_pointer(var->type) &&
-		var->type->ptr->type == TYPE_U8;
+		type_is_u8(var->type->base);
 
-	if (ctx->flags & CTX_FLAG_VAR_BY_ADDRESS || is_global_char_ptr) {
+	if (ctx->flags & CTX_FLAG_VAR_BY_ADDRESS || is_global_char_ptr || type_is_array(var->type)) {
 		context_emit_code(ctx, "lea %s, QWORD [%s] ; get address of '%s'\n", get_reg_name_scratch(result.reg, 8), var_address, var_name);
 	} else {
 		codegen_deref_address(ctx, result.reg, result.type, var_address, var_name);
@@ -393,7 +393,7 @@ static Result codegen_expression_struct_member(Context * ctx, AST_Expression * e
 	context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS);
 	Result result = codegen_expression(ctx, expr->expr_struct_member.expr);
 
-	if (result.type->type != TYPE_STRUCT) {
+	if (!type_is_struct(result.type)) {
 		char str_type[128];
 		type_to_string(result.type, str_type, sizeof(str_type));
 
@@ -402,7 +402,7 @@ static Result codegen_expression_struct_member(Context * ctx, AST_Expression * e
 
 	// Lookup the struct member by name
 	Struct_Def * struct_def = scope_get_struct_def(ctx->current_scope, result.type->struct_name);
-	Variable          * var_member = scope_get_variable(struct_def->member_scope, expr->expr_struct_member.member_name);
+	Variable   * var_member = scope_get_variable(struct_def->member_scope, expr->expr_struct_member.member_name);
 
 	context_emit_code(ctx, "add %s, %i ; member offset '%s'\n", get_reg_name_scratch(result.reg, 8), var_member->offset, var_member->name);
 	
@@ -432,7 +432,7 @@ static Result codegen_expression_cast(Context * ctx, AST_Expression * expr) {
 static Result codegen_expression_sizeof(Context * ctx, AST_Expression * expr) {
 	assert(expr->type == AST_EXPRESSION_SIZEOF);
 
-	Type const * type = &expr->expr_sizeof.type;
+	Type const * type = expr->expr_sizeof.type;
 
 	Result result;
 	result.reg  = context_reg_request(ctx);
@@ -478,7 +478,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			expr_left->type != AST_EXPRESSION_OPERATOR_PRE &&
 			expr_left->type != AST_EXPRESSION_STRUCT_MEMBER
 		) {
-			type_error("Operator '=' requires left operand to be assignable");
+			type_error("Operator '=' requires left operand to be an lvalue");
 		}
 
 		// Traverse tallest subtree first
@@ -509,7 +509,11 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			type_to_string(result_right.type, str_type_right, sizeof(str_type_right));
 
 			type_error("Cannot assign instance of type '%s' a value of type '%s'", str_type_left, str_type_right);
-		} else if (type_size_right > type_size_left) {
+		} else if (
+			type_is_primitive(result_left .type) &&
+			type_is_primitive(result_right.type) &&
+			type_size_right > type_size_left
+		) {
 			char str_type_left [128];
 			char str_type_right[128];
 
@@ -519,15 +523,15 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			type_error("Implicit narrowing conversion from type '%s' to '%s' is not allowed. Explicit cast required", str_type_right, str_type_left);
 		}
 
-		if (type_is_primitive(result_left.type) && type_is_primitive(result_right.type)) {
-			context_emit_code(ctx, "mov %s [%s], %s\n", get_word_name(type_size_left), get_reg_name_scratch(result_left.reg, 8), get_reg_name_scratch(result_right.reg, type_size_left));
-		} else if (type_is_struct(result_left.type) && type_is_struct(result_right.type)) {
+		if (type_is_struct(result_left.type) && type_is_struct(result_right.type)) {
 			int struct_size = type_get_size(result_left.type, ctx->current_scope);
 
 			context_emit_code(ctx, "mov rdi, %s\n", get_reg_name_scratch(result_left .reg, 8));
 			context_emit_code(ctx, "mov rsi, %s\n", get_reg_name_scratch(result_right.reg, 8));
 			context_emit_code(ctx, "mov ecx, %i\n", struct_size);
 			context_emit_code(ctx, "rep movsb\n");			
+		} else {
+			context_emit_code(ctx, "mov %s [%s], %s\n", get_word_name(type_size_left), get_reg_name_scratch(result_left.reg, 8), get_reg_name_scratch(result_right.reg, type_size_left));
 		}
 
 		context_reg_free(ctx, result_right.reg);
@@ -600,8 +604,10 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 				result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
 			} else if (type_is_pointer(result_left.type) && type_is_integral(result_right.type)) { // pointer + integral --> pointer
 				// Resulting type is pointer, do nothing
+			} else if (type_is_array(result_left.type) && type_is_integral(result_right.type)) { // array + integral --> pointer
+				result_left.type = make_type_pointer(result_left.type->base);
 			} else {
-				type_error("Left of operator '+' must be integral or pointer type, right must be integral type!");
+				type_error("Left of operator '+' must be integral, array, or pointer type, right must be integral type!");
 			}
 
 			break;
@@ -858,7 +864,7 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 			type_error("Cannot dereference 'void *'");
 		}
 
-		result.type = result.type->ptr; // Remove 1 level of indirection
+		result.type = result.type->base; // Remove 1 level of indirection
 
 		if (by_address) {
 			context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS); // Reset if this flag was previously set
@@ -1447,6 +1453,8 @@ static void codegen_statement(Context * ctx, AST_Statement const * stat) {
 
 		default: abort();
 	}
+
+	assert(ctx->scratch_reg_mask == 0); // No regs should be active after a statement is complete
 
 	if (stat->type != AST_STATEMENTS && stat->type != AST_STATEMENT_BLOCK) context_emit_code(ctx, "\n");
 }

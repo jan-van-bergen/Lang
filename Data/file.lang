@@ -34,22 +34,7 @@ func main() -> int {
 		nErrCode:   u16;
 		Reserved1:  u16;
 		Reserved2:  u16;
-		szPathName_0:  u64;
-		szPathName_1:  u64;
-		szPathName_2:  u64;
-		szPathName_3:  u64;
-		szPathName_4:  u64;
-		szPathName_5:  u64;
-		szPathName_6:  u64;
-		szPathName_7:  u64;
-		szPathName_8:  u64;
-		szPathName_9:  u64;
-		szPathName_10: u64;
-		szPathName_11: u64;
-		szPathName_12: u64;
-		szPathName_13: u64;
-		szPathName_14: u64;
-		szPathName_15: u64;
+		szPathName: char[128];
 	}
 	let ofstruct: OFSTRUCT;
 
@@ -58,7 +43,7 @@ func main() -> int {
 	if (file_handle == cast(void *) -1) return -1;
 
 	// Get the path from the OFSTRUCT
-	let path:     char * = cast(char *) &ofstruct.szPathName_0;
+	let path:     char * = ofstruct.szPathName; // Array decays to pointer
 	let path_len: int    = cast(int) strlen(path);
 
 	// Write its path to the file

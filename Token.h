@@ -30,6 +30,9 @@ typedef enum Token_Type {
 	TOKEN_BRACES_OPEN,  // {
 	TOKEN_BRACES_CLOSE, // }
 
+	TOKEN_SQUARE_BRACES_OPEN,  // [
+	TOKEN_SQUARE_BRACES_CLOSE, // ]
+
 	TOKEN_ARROW, // ->
 	
 	TOKEN_ASSIGN,          // =

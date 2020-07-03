@@ -18,15 +18,19 @@ typedef enum Type_Type {
 
 	TYPE_POINTER,
 
+	TYPE_ARRAY,
 	TYPE_STRUCT
 } Type_Type;
 
 typedef struct Type {
 	Type_Type type;
+	
+	struct Type const * base;  // NULL if type != TYPE_POINTER
 
 	union {
-		struct Type const * ptr;         // If type is a TYPE_POINTER
-		char        const * struct_name; // If type is a TYPE_STRUCT
+		int array_size;           // Active if type == TYPE_ARRAY
+
+		char const * struct_name; // Active if type == TYPE_STRUCT
 	};
 } Type;
 
@@ -49,7 +53,8 @@ Type const * make_type_u64();
 
 Type const * make_type_bool();
 
-Type const * make_type_pointer(Type const * type);
+Type const * make_type_array  (Type const * base_type, int size);
+Type const * make_type_pointer(Type const * base_type);
 
 
 void type_to_string(Type const * type, char * string, int string_size);
@@ -64,12 +69,23 @@ void align(int * address, int alignment);
 
 bool type_is_void(Type const * type);
 
+bool type_is_i8 (Type const * type);
+bool type_is_i16(Type const * type);
+bool type_is_i32(Type const * type);
+bool type_is_i64(Type const * type);
+
+bool type_is_u8 (Type const * type);
+bool type_is_u16(Type const * type);
+bool type_is_u32(Type const * type);
+bool type_is_u64(Type const * type);
+
 bool type_is_signed_integral  (Type const * type);
 bool type_is_unsigned_integral(Type const * type);
 bool type_is_integral(Type const * type);
 
 bool type_is_boolean(Type const * type);
 
+bool type_is_array  (Type const * type);
 bool type_is_pointer(Type const * type);
 
 bool type_is_struct(Type const * type);

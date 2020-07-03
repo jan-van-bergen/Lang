@@ -148,7 +148,7 @@ static bool parser_match_program(Parser const * parser) {
 
 static Type const * parser_parse_type(Parser * parser) {
 	Type * type = type_table_new_type();
-	type->ptr = NULL;
+	type->base = NULL;
 
 	char const * identifier = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
 
@@ -177,10 +177,22 @@ static Type const * parser_parse_type(Parser * parser) {
 		type->struct_name = identifier;
 	}
 
-	while (parser_match(parser, TOKEN_OPERATOR_MULTIPLY)) {
-		parser_advance(parser);
+	while (
+		parser_match(parser, TOKEN_OPERATOR_MULTIPLY) ||
+		parser_match(parser, TOKEN_SQUARE_BRACES_OPEN)
+	) {
+		if (parser_match(parser, TOKEN_OPERATOR_MULTIPLY)) {
+			parser_advance(parser);
 
-		type = make_type_pointer(type);
+			type = make_type_pointer(type);
+		} else if (parser_match(parser, TOKEN_SQUARE_BRACES_OPEN)) {
+			parser_advance(parser);
+
+			int array_size = parser_match_and_advance(parser, TOKEN_LITERAL_INT)->value_int;
+			parser_match_and_advance(parser, TOKEN_SQUARE_BRACES_CLOSE);
+
+			type = make_type_array(type, array_size);
+		}
 	}
 
 	return type;

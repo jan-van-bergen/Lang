@@ -268,6 +268,9 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 		case '{': token->type = TOKEN_BRACES_OPEN;  lexer_next(lexer); return;
 		case '}': token->type = TOKEN_BRACES_CLOSE; lexer_next(lexer); return;
 
+		case '[': token->type = TOKEN_SQUARE_BRACES_OPEN;  lexer_next(lexer); return;
+		case ']': token->type = TOKEN_SQUARE_BRACES_CLOSE; lexer_next(lexer); return;
+
 		case '+': token->type = TOKEN_OPERATOR_PLUS; 	 lexer_next(lexer); return;
 		case '-': token->type = TOKEN_OPERATOR_MINUS; 	 lexer_next(lexer); return;
 		case '*': token->type = TOKEN_OPERATOR_MULTIPLY; lexer_next(lexer); return; 

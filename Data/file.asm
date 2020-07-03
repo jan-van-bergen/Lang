@@ -66,10 +66,10 @@ main:
         
     L_exit2:
     
-    lea rbx, QWORD [rbp + -24] ; get address of 'path'
-    lea r10, QWORD [rbp + -168] ; get address of 'ofstruct'
-    add r10, 8 ; member offset 'szPathName_0'
-    mov QWORD [rbx], r10
+    lea rbx, QWORD [rbp + -168] ; get address of 'ofstruct'
+    add rbx, 8 ; member offset 'szPathName'
+    lea r10, QWORD [rbp + -24] ; get address of 'path'
+    mov QWORD [r10], rbx
     
     lea rbx, QWORD [rbp + -16] ; get address of 'path_len'
     sub rsp, 32 ; reserve shadow space and 1 arguments

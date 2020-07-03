@@ -38,6 +38,9 @@ void token_to_string(Token const * token, char * string, int string_size) {
 		case TOKEN_BRACES_OPEN:  strcpy_s(string, string_size, "{"); return;
 		case TOKEN_BRACES_CLOSE: strcpy_s(string, string_size, "}"); return;
 		
+		case TOKEN_SQUARE_BRACES_OPEN:  strcpy_s(string, string_size, "["); return;
+		case TOKEN_SQUARE_BRACES_CLOSE: strcpy_s(string, string_size, "]"); return;
+
 		case TOKEN_ARROW: strcpy_s(string, string_size, "->"); return;
 
 		case TOKEN_ASSIGN:		    strcpy_s(string, string_size, "=");  return;

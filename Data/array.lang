@@ -1,0 +1,21 @@
+func main() -> int {
+	let arr: u32[64]; // Stack allocated array
+
+	let i: int;
+	while (i < 64) {
+		*(arr + i * sizeof(u32)) = i * i;
+		
+		i++;
+	}
+	
+	let sum: int;
+	
+	i = 0;
+	while (i < 64) {
+		sum = sum + *(arr + i * sizeof(u32));
+		
+		i++;
+	}
+	
+	return sum; // Sum of squares from 0 to 63 is 85344
+}
