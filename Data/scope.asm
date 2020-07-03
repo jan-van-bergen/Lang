@@ -32,30 +32,30 @@ main:
     movsx rbx, DWORD [rbp + -32]
     mov r10, 5
     cmp rbx, r10
-    je L0
+    je L1
     mov rbx, 1
-    jmp L1
-    L0:
-    mov rbx, 0
+    jmp L2
     L1:
+    mov rbx, 0
+    L2:
+    test rbx, rbx
+    jne L_lor_true_0
     movsx r10, DWORD [rbp + -28]
     mov r11, 3
     cmp r10, r11
-    je L2
+    je L3
     mov r10, 1
-    jmp L3
-    L2:
-    mov r10, 0
+    jmp L4
     L3:
-    test rbx, rbx
-    jne L_lor_true_4
+    mov r10, 0
+    L4:
     test r10, r10
-    jne L_lor_true_4
+    jne L_lor_true_0
     mov rbx, 0
-    jmp L_lor_exit_4
-    L_lor_true_4:
+    jmp L_lor_exit_0
+    L_lor_true_0:
     mov rbx, 1
-    L_lor_exit_4:
+    L_lor_exit_0:
     cmp rbx, 0
     je L_exit5
         mov rbx, -1

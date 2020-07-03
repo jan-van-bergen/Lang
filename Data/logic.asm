@@ -43,9 +43,9 @@ main:
     mov BYTE [rbp + -16], 0 ; zero initialize 'a'
     
     mov rbx, 1
-    mov r10, 0
     test rbx, rbx
     jne L_lor_true_2
+    mov r10, 0
     test r10, r10
     jne L_lor_true_2
     mov rbx, 0
@@ -72,9 +72,9 @@ main:
     mov rbx, rax ; get return value
     
     mov rbx, 0
-    mov r10, 1
     test rbx, rbx
     je L_land_false_5
+    mov r10, 1
     test r10, r10
     je L_land_false_5
     mov rbx, 1
@@ -102,24 +102,24 @@ main:
     
     movzx rbx, BYTE [rbp + -16]
     test rbx, rbx
-    jne L_lnot_false_8
-    mov rbx, 1
-    jmp L_lnot_exit_8
-    L_lnot_false_8:
-    mov rbx, 0
-    L_lnot_exit_8:
+    jne L_lor_true_8
     movzx r10, BYTE [rbp + -16]
     test r10, r10
-    jne L_lor_true_9
-    test rbx, rbx
-    jne L_lor_true_9
-    mov r10, 0
-    jmp L_lor_exit_9
-    L_lor_true_9:
+    jne L_lnot_false_9
     mov r10, 1
-    L_lor_exit_9:
-    lea rbx, QWORD [rbp + -16] ; get address of 'a'
-    mov BYTE [rbx], r10b
+    jmp L_lnot_exit_9
+    L_lnot_false_9:
+    mov r10, 0
+    L_lnot_exit_9:
+    test r10, r10
+    jne L_lor_true_8
+    mov rbx, 0
+    jmp L_lor_exit_8
+    L_lor_true_8:
+    mov rbx, 1
+    L_lor_exit_8:
+    lea r10, QWORD [rbp + -16] ; get address of 'a'
+    mov BYTE [r10], bl
     
     sub rsp, 32 ; reserve shadow space and 1 arguments
     movzx rbx, BYTE [rbp + -16]

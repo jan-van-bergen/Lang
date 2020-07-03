@@ -1,0 +1,11 @@
+extern ExitProcess(exit_code: int) -> void;
+
+func fail() -> bool { ExitProcess(-1); } // Better not call this function
+
+func main() -> int {
+	let stat: bool = false && fail();
+	
+	if (true  || fail()) { }
+	
+	return 0;
+}

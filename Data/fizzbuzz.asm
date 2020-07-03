@@ -253,9 +253,9 @@ fizzbuzz:
         mov BYTE [r10], bl
         
         movzx rbx, BYTE [rbp + -11]
-        movzx r10, BYTE [rbp + -12]
         test rbx, rbx
         je L_land_false_13
+        movzx r10, BYTE [rbp + -12]
         test r10, r10
         je L_land_false_13
         mov rbx, 1

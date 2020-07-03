@@ -560,6 +560,63 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 
 		return result_left;
 	}
+	
+	// Handle operator that require short-circuit evaluation separately
+	if (operator ==  TOKEN_OPERATOR_LOGICAL_AND) {
+		int label = context_new_label(ctx);
+
+		result_left  = codegen_expression(ctx, expr_left);
+		char const * reg_name_left = get_reg_name_scratch(result_left.reg, 8);
+
+		context_emit_code(ctx, "test %s, %s\n", reg_name_left, reg_name_left);
+		context_emit_code(ctx, "je L_land_false_%i\n", label);
+		
+		result_right = codegen_expression(ctx, expr_right);
+		char const * reg_name_right = get_reg_name_scratch(result_right.reg, 8);
+
+		context_emit_code(ctx, "test %s, %s\n", reg_name_right, reg_name_right);
+		context_emit_code(ctx, "je L_land_false_%i\n", label);
+		context_emit_code(ctx, "mov %s, 1\n",   reg_name_left);
+		context_emit_code(ctx, "jmp L_land_exit_%i\n", label);
+		context_emit_code(ctx, "L_land_false_%i:\n", label);
+		context_emit_code(ctx, "mov %s, 0\n",   reg_name_left);
+		context_emit_code(ctx, "L_land_exit_%i:\n",  label);
+	
+		if (!type_is_boolean(result_left.type) || !type_is_boolean(result_right.type)) {
+			type_error("Operator '&&' requires two boolean operands");
+		}
+		
+		context_reg_free(ctx, result_right.reg);
+
+		return result_left;
+	} else if (operator == TOKEN_OPERATOR_LOGICAL_OR) {
+		int label = context_new_label(ctx);
+		
+		result_left  = codegen_expression(ctx, expr_left);
+		char const * reg_name_left = get_reg_name_scratch(result_left.reg, 8);
+
+		context_emit_code(ctx, "test %s, %s\n", reg_name_left, reg_name_left);
+		context_emit_code(ctx, "jne L_lor_true_%i\n", label);
+
+		result_right = codegen_expression(ctx, expr_right);
+		char const * reg_name_right = get_reg_name_scratch(result_right.reg, 8);
+
+		context_emit_code(ctx, "test %s, %s\n", reg_name_right, reg_name_right);
+		context_emit_code(ctx, "jne L_lor_true_%i\n", label);
+		context_emit_code(ctx, "mov %s, 0\n",   reg_name_left);
+		context_emit_code(ctx, "jmp L_lor_exit_%i\n", label);
+		context_emit_code(ctx, "L_lor_true_%i:\n", label);
+		context_emit_code(ctx, "mov %s, 1\n",   reg_name_left);
+		context_emit_code(ctx, "L_lor_exit_%i:\n",  label);
+			
+		if (!type_is_boolean(result_left.type) || !type_is_boolean(result_right.type)) {
+			type_error("Operator '||' requires two boolean operands");
+		}
+		
+		context_reg_free(ctx, result_right.reg);
+
+		return result_left;
+	}
 
 	// Traverse tallest subtree first
 	if (expr->expr_op_bin.expr_left->height >= expr->expr_op_bin.expr_right->height) {
@@ -791,46 +848,6 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			}
 
 			result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
-
-			break;
-		}
-
-		case TOKEN_OPERATOR_LOGICAL_AND: {
-			int label = context_new_label(ctx);
-
-			context_emit_code(ctx, "test %s, %s\n", reg_name_left, reg_name_left);
-			context_emit_code(ctx, "je L_land_false_%i\n", label);
-			context_emit_code(ctx, "test %s, %s\n", reg_name_right, reg_name_right);
-			context_emit_code(ctx, "je L_land_false_%i\n", label);
-			context_emit_code(ctx, "mov %s, 1\n",   reg_name_left);
-			context_emit_code(ctx, "jmp L_land_exit_%i\n", label);
-			context_emit_code(ctx, "L_land_false_%i:\n", label);
-			context_emit_code(ctx, "mov %s, 0\n",   reg_name_left);
-			context_emit_code(ctx, "L_land_exit_%i:\n",  label);
-	
-			if (!type_is_boolean(result_left.type) || !type_is_boolean(result_right.type)) {
-				type_error("Operator '&&' requires two boolean operands");
-			}
-
-			break;
-		}
-
-		case TOKEN_OPERATOR_LOGICAL_OR: {
-			int label = context_new_label(ctx);
-
-			context_emit_code(ctx, "test %s, %s\n", reg_name_left, reg_name_left);
-			context_emit_code(ctx, "jne L_lor_true_%i\n", label);
-			context_emit_code(ctx, "test %s, %s\n", reg_name_right, reg_name_right);
-			context_emit_code(ctx, "jne L_lor_true_%i\n", label);
-			context_emit_code(ctx, "mov %s, 0\n",   reg_name_left);
-			context_emit_code(ctx, "jmp L_lor_exit_%i\n", label);
-			context_emit_code(ctx, "L_lor_true_%i:\n", label);
-			context_emit_code(ctx, "mov %s, 1\n",   reg_name_left);
-			context_emit_code(ctx, "L_lor_exit_%i:\n",  label);
-			
-			if (!type_is_boolean(result_left.type) || !type_is_boolean(result_right.type)) {
-				type_error("Operator '||' requires two boolean operands");
-			}
 
 			break;
 		}
@@ -1463,7 +1480,7 @@ static void codegen_statement_block(Context * ctx, AST_Statement const * stat) {
 
 	ctx->current_scope = stat->stat_block.scope;
 
-	codegen_statement(ctx, stat->stat_block.stat);
+	if (stat->stat_block.stat) codegen_statement(ctx, stat->stat_block.stat);
 
 	ctx->current_scope = ctx->current_scope->prev;
 }
