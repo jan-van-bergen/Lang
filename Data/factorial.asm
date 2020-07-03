@@ -49,9 +49,9 @@ factorial_loop:
     mov rbp, rsp ; stack frame
     mov DWORD [rbp + 16], ecx ; push arg 0 
     sub rsp, 16 ; reserve stack space for 1 locals
-    mov rbx, 1
-    lea r10, QWORD [rbp + -16] ; get address of 'result'
-    mov DWORD [r10], ebx
+    lea rbx, QWORD [rbp + -16] ; get address of 'result'
+    mov r10, 1
+    mov DWORD [rbx], r10d
     
     L_loop3:
     movsx rbx, DWORD [rbp + 16]
@@ -95,9 +95,9 @@ main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
     sub rsp, 16 ; reserve stack space for 3 locals
-    mov rbx, 5
-    lea r10, QWORD [rbp + -16] ; get address of 'arg'
-    mov DWORD [r10], ebx
+    lea rbx, QWORD [rbp + -16] ; get address of 'arg'
+    mov r10, 5
+    mov DWORD [rbx], r10d
     
     sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [rbp + -16]

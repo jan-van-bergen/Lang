@@ -38,12 +38,12 @@ malloc:
     L1:
     cmp rbx, 0
     je L_exit2
-        lea rbx, QWORD [REL heap] ; get address of 'heap'
         sub rsp, 32 ; reserve shadow space and 0 arguments
         call GetProcessHeap
         add rsp, 32 ; pop arguments
-        mov r10, rax ; get return value
-        mov QWORD [rbx], r10
+        mov rbx, rax ; get return value
+        lea r10, QWORD [REL heap] ; get address of 'heap'
+        mov QWORD [r10], rbx
         
     L_exit2:
     
@@ -194,9 +194,9 @@ strlen:
     mov rbp, rsp ; stack frame
     mov QWORD [rbp + 16], rcx ; push arg 0 
     sub rsp, 16 ; reserve stack space for 1 locals
-    mov rbx, 0
-    lea r10, QWORD [rbp + -16] ; get address of 'len'
-    mov DWORD [r10], ebx
+    lea rbx, QWORD [rbp + -16] ; get address of 'len'
+    mov r10, 0
+    mov DWORD [rbx], r10d
     
     L_loop9:
     mov rbx, QWORD [rbp + 16]

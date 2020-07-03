@@ -25,9 +25,9 @@ main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
     sub rsp, 176 ; reserve stack space for 7 locals
-    lea rbx, [REL str_lit_6]
-    lea r10, QWORD [rbp + -176] ; get address of 'file_name'
-    mov QWORD [r10], rbx
+    lea rbx, QWORD [rbp + -176] ; get address of 'file_name'
+    lea r10, [REL str_lit_6]
+    mov QWORD [rbx], r10
     
     lea rdi, QWORD [rbp + -168] ; zero initialize 'ofstruct'
     xor rax, rax
@@ -49,16 +49,16 @@ main:
     lea r10, QWORD [rbp + -32] ; get address of 'file_handle'
     mov QWORD [r10], rbx
     
-    mov rbx, QWORD [rbp + -32]
-    mov r10, -1
-    cmp rbx, r10
+    mov rbx, -1
+    mov r10, QWORD [rbp + -32]
+    cmp r10, rbx
     jne L0
-    mov rbx, 1
+    mov r10, 1
     jmp L1
     L0:
-    mov rbx, 0
+    mov r10, 0
     L1:
-    cmp rbx, 0
+    cmp r10, 0
     je L_exit2
         mov rbx, -1
         mov rax, rbx ; return via rax
@@ -71,14 +71,14 @@ main:
     lea r10, QWORD [rbp + -24] ; get address of 'path'
     mov QWORD [r10], rbx
     
-    lea rbx, QWORD [rbp + -16] ; get address of 'path_len'
     sub rsp, 32 ; reserve shadow space and 1 arguments
-    mov r10, QWORD [rbp + -24]
-    mov rcx, r10 ; arg 0
+    mov rbx, QWORD [rbp + -24]
+    mov rcx, rbx ; arg 0
     call strlen
     add rsp, 32 ; pop arguments
-    mov r10, rax ; get return value
-    mov DWORD [rbx], r10d
+    mov rbx, rax ; get return value
+    lea r10, QWORD [rbp + -16] ; get address of 'path_len'
+    mov DWORD [r10], ebx
     
     mov DWORD [rbp + -12], 0 ; zero initialize 'bytes_written'
     

@@ -1160,6 +1160,8 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 }
 
 static Result codegen_expression(Context * ctx, AST_Expression const * expr) {
+	assert(expr->height >= 0);
+
 	switch (expr->type) {
 		case AST_EXPRESSION_CONST:         return codegen_expression_const        (ctx, expr);
 		case AST_EXPRESSION_VAR:           return codegen_expression_var          (ctx, expr);

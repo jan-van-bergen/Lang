@@ -7,9 +7,9 @@ main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
     sub rsp, 32 ; reserve stack space for 5 locals
-    mov rbx, 55
-    lea r10, QWORD [rbp + -32] ; get address of 'a'
-    mov DWORD [r10], ebx
+    lea rbx, QWORD [rbp + -32] ; get address of 'a'
+    mov r10, 55
+    mov DWORD [rbx], r10d
     
     lea rbx, QWORD [rbp + -32] ; get address of 'a'
     mov r10, rbx

@@ -7,13 +7,13 @@ main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
     sub rsp, 16 ; reserve stack space for 3 locals
-    mov rbx, 48
-    lea r10, QWORD [rbp + -16] ; get address of 'a'
-    mov DWORD [r10], ebx
+    lea rbx, QWORD [rbp + -16] ; get address of 'a'
+    mov r10, 48
+    mov DWORD [rbx], r10d
     
-    mov rbx, 3
-    lea r10, QWORD [rbp + -12] ; get address of 'b'
-    mov DWORD [r10], ebx
+    lea rbx, QWORD [rbp + -12] ; get address of 'b'
+    mov r10, 3
+    mov DWORD [rbx], r10d
     
     movsx rbx, DWORD [rbp + -16]
     movsx r10, DWORD [rbp + -12]

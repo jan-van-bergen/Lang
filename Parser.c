@@ -247,9 +247,9 @@ static AST_Expression * parser_parse_expression_elementary(Parser * parser) {
 			expr->expr_call.args = parser_parse_call_args(parser);
 
 			if (expr->expr_call.args == NULL) {
-				expr->height = 0;
+				expr->height = 1;
 			} else {
-				expr->height = expr->expr_call.args->height;
+				expr->height = expr->expr_call.args->height + 1;
 			}
 
 			return expr;
@@ -279,12 +279,13 @@ static AST_Expression * parser_parse_expression_elementary(Parser * parser) {
 
 		AST_Expression * expr = malloc(sizeof(AST_Expression));
 		expr->type = AST_EXPRESSION_CAST;
-
+		
 		parser_match_and_advance(parser, TOKEN_PARENTESES_OPEN);
 		expr->expr_cast.new_type = parser_parse_type(parser);
 		parser_match_and_advance(parser, TOKEN_PARENTESES_CLOSE);
 
 		expr->expr_cast.expr = parser_parse_expression(parser);
+		expr->height = expr->expr_cast.expr->height + 1;
 
 		return expr;
 	} else if (parser_match(parser, TOKEN_KEYWORD_SIZEOF)) {
@@ -292,6 +293,7 @@ static AST_Expression * parser_parse_expression_elementary(Parser * parser) {
 
 		AST_Expression * expr = malloc(sizeof(AST_Expression));
 		expr->type = AST_EXPRESSION_SIZEOF;
+		expr->height = 0;
 
 		parser_match_and_advance(parser, TOKEN_PARENTESES_OPEN);
 		expr->expr_sizeof.type = parser_parse_type(parser);
@@ -679,15 +681,19 @@ static AST_Statement * parser_parse_statement_def_var(Parser * parser) {
 
 		AST_Expression * lhs = malloc(sizeof(AST_Expression));
 		lhs->type = AST_EXPRESSION_VAR;
+		lhs->height = 0;
 		lhs->expr_var.name = var_name;
 
 		AST_Expression * rhs = parser_parse_expression(parser);
 		
 		AST_Expression * assign = malloc(sizeof(AST_Expression));
 		assign->type = AST_EXPRESSION_OPERATOR_BIN;
+		assign->height = rhs->height + 1;
+
 		assign->expr_op_bin.token.type = TOKEN_ASSIGN;
 		assign->expr_op_bin.expr_left  = lhs;
 		assign->expr_op_bin.expr_right = rhs;
+
 
 		def->stat_def_var.assign = assign;
 	} else {

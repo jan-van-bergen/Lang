@@ -57,13 +57,13 @@ print_num:
     mov rbp, rsp ; stack frame
     mov DWORD [rbp + 16], ecx ; push arg 0 
     sub rsp, 32 ; reserve stack space for 5 locals
-    lea rbx, [REL str_lit_1]
-    lea r10, QWORD [rbp + -32] ; get address of 'num_str'
-    mov QWORD [r10], rbx
+    lea rbx, QWORD [rbp + -32] ; get address of 'num_str'
+    lea r10, [REL str_lit_1]
+    mov QWORD [rbx], r10
     
-    mov rbx, 0
-    lea r10, QWORD [rbp + -24] ; get address of 'idx'
-    mov DWORD [r10], ebx
+    lea rbx, QWORD [rbp + -24] ; get address of 'idx'
+    mov r10, 0
+    mov DWORD [rbx], r10d
     
     L_loop0:
     movsx rbx, DWORD [rbp + 16]
@@ -77,14 +77,14 @@ print_num:
     L2:
     cmp rbx, 0
     je L_exit0
-        lea rbx, QWORD [rbp + -20] ; get address of 'digit'
-        movsx r10, DWORD [rbp + 16]
-        mov r11, 10
-        mov rax, r10
+        movsx rbx, DWORD [rbp + 16]
+        mov r10, 10
+        mov rax, rbx
         cdq
-        idiv r11
-        mov r10, rdx
-        mov BYTE [rbx], r10b
+        idiv r10
+        mov rbx, rdx
+        lea r10, QWORD [rbp + -20] ; get address of 'digit'
+        mov BYTE [r10], bl
         
         mov rbx, QWORD [rbp + -32]
         movsx r10, DWORD [rbp + -24]
@@ -112,9 +112,9 @@ print_num:
     jmp L_loop0
     L_exit0:
     
-    mov rbx, 0
-    lea r10, QWORD [rbp + -16] ; get address of 'i'
-    mov DWORD [r10], ebx
+    lea rbx, QWORD [rbp + -16] ; get address of 'i'
+    mov r10, 0
+    mov DWORD [rbx], r10d
     
     L_loop3:
     movsx rbx, DWORD [rbp + -24]
@@ -202,9 +202,9 @@ fizzbuzz:
     mov rbp, rsp ; stack frame
     mov DWORD [rbp + 16], ecx ; push arg 0 
     sub rsp, 16 ; reserve stack space for 3 locals
-    mov rbx, 1
-    lea r10, QWORD [rbp + -16] ; get address of 'i'
-    mov DWORD [r10], ebx
+    lea rbx, QWORD [rbp + -16] ; get address of 'i'
+    mov r10, 1
+    mov DWORD [rbx], r10d
     
     L_loop6:
     movsx rbx, DWORD [rbp + -16]

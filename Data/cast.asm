@@ -7,17 +7,17 @@ main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
     sub rsp, 32 ; reserve stack space for 3 locals
-    mov rbx, 1234
-    lea r10, QWORD [rbp + -32] ; get address of 'i'
-    mov DWORD [r10], ebx
+    lea rbx, QWORD [rbp + -32] ; get address of 'i'
+    mov r10, 1234
+    mov DWORD [rbx], r10d
     
     lea rbx, QWORD [rbp + -32] ; get address of 'i'
     lea r10, QWORD [rbp + -24] ; get address of 'ptr_int'
     mov QWORD [r10], rbx
     
-    lea rbx, QWORD [rbp + -16] ; get address of 'ptr_char'
-    mov r10, QWORD [rbp + -24]
-    mov QWORD [rbx], r10
+    mov rbx, QWORD [rbp + -24]
+    lea r10, QWORD [rbp + -16] ; get address of 'ptr_char'
+    mov QWORD [r10], rbx
     
     mov rbx, QWORD [rbp + -16]
     mov r10, 0

@@ -8,25 +8,25 @@ main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
     sub rsp, 16 ; reserve stack space for 4 locals
-    mov rbx, 0
-    lea r10, QWORD [rbp + -16] ; get address of 'num_primes'
-    mov DWORD [r10], ebx
+    lea rbx, QWORD [rbp + -16] ; get address of 'num_primes'
+    mov r10, 0
+    mov DWORD [rbx], r10d
     
-    mov rbx, 2
-    lea r10, QWORD [rbp + -12] ; get address of 'i'
-    mov DWORD [r10], ebx
+    lea rbx, QWORD [rbp + -12] ; get address of 'i'
+    mov r10, 2
+    mov DWORD [rbx], r10d
     
     L_loop0:
     mov rbx, 1
     cmp rbx, 0
     je L_exit0
-        mov rbx, 1
-        lea r10, QWORD [rbp + -8] ; get address of 'i_is_prime'
-        mov BYTE [r10], bl
+        lea rbx, QWORD [rbp + -8] ; get address of 'i_is_prime'
+        mov r10, 1
+        mov BYTE [rbx], r10b
         
-        mov rbx, 2
-        lea r10, QWORD [rbp + -4] ; get address of 'j'
-        mov DWORD [r10], ebx
+        lea rbx, QWORD [rbp + -4] ; get address of 'j'
+        mov r10, 2
+        mov DWORD [rbx], r10d
         
         L_loop1:
         movsx rbx, DWORD [rbp + -4]
@@ -177,13 +177,13 @@ print_num:
     mov rbp, rsp ; stack frame
     mov DWORD [rbp + 16], ecx ; push arg 0 
     sub rsp, 32 ; reserve stack space for 5 locals
-    lea rbx, [REL str_lit_1]
-    lea r10, QWORD [rbp + -32] ; get address of 'num_str'
-    mov QWORD [r10], rbx
+    lea rbx, QWORD [rbp + -32] ; get address of 'num_str'
+    lea r10, [REL str_lit_1]
+    mov QWORD [rbx], r10
     
-    mov rbx, 0
-    lea r10, QWORD [rbp + -24] ; get address of 'idx'
-    mov DWORD [r10], ebx
+    lea rbx, QWORD [rbp + -24] ; get address of 'idx'
+    mov r10, 0
+    mov DWORD [rbx], r10d
     
     L_loop11:
     movsx rbx, DWORD [rbp + 16]
@@ -197,14 +197,14 @@ print_num:
     L13:
     cmp rbx, 0
     je L_exit11
-        lea rbx, QWORD [rbp + -20] ; get address of 'digit'
-        movsx r10, DWORD [rbp + 16]
-        mov r11, 10
-        mov rax, r10
+        movsx rbx, DWORD [rbp + 16]
+        mov r10, 10
+        mov rax, rbx
         cdq
-        idiv r11
-        mov r10, rdx
-        mov BYTE [rbx], r10b
+        idiv r10
+        mov rbx, rdx
+        lea r10, QWORD [rbp + -20] ; get address of 'digit'
+        mov BYTE [r10], bl
         
         mov rbx, QWORD [rbp + -32]
         movsx r10, DWORD [rbp + -24]
@@ -232,9 +232,9 @@ print_num:
     jmp L_loop11
     L_exit11:
     
-    mov rbx, 0
-    lea r10, QWORD [rbp + -16] ; get address of 'i'
-    mov DWORD [r10], ebx
+    lea rbx, QWORD [rbp + -16] ; get address of 'i'
+    mov r10, 0
+    mov DWORD [rbx], r10d
     
     L_loop14:
     movsx rbx, DWORD [rbp + -24]

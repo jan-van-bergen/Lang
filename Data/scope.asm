@@ -64,13 +64,13 @@ main:
         
     L_exit5:
     
-    mov rbx, 3
-    lea r10, QWORD [rbp + -24] ; get address of 'common_name'
-    mov DWORD [r10], ebx
+    lea rbx, QWORD [rbp + -24] ; get address of 'common_name'
+    mov r10, 3
+    mov DWORD [rbx], r10d
     
-    mov rbx, 0
-    lea r10, QWORD [rbp + -20] ; get address of 'outter'
-    mov DWORD [r10], ebx
+    lea rbx, QWORD [rbp + -20] ; get address of 'outter'
+    mov r10, 0
+    mov DWORD [rbx], r10d
     
     mov rbx, 1
     cmp rbx, 0
@@ -130,9 +130,9 @@ test:
         
     jmp L_exit10
     L_else10:
-        mov rbx, 3
-        lea r10, QWORD [rbp + -16] ; get address of 'arg'
-        mov DWORD [r10], ebx
+        lea rbx, QWORD [rbp + -16] ; get address of 'arg'
+        mov r10, 3
+        mov DWORD [rbx], r10d
         
         movsx rbx, DWORD [rbp + -16]
         mov rax, rbx ; return via rax
