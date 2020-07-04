@@ -9,10 +9,13 @@ typedef struct Lexer {
 
 	int index;
 	int line;
+
+	int     tokens_len;
+	int     tokens_cap;
+	Token * tokens;
 } Lexer;
 
 void lexer_init(Lexer * lexer, char const * source);
+void lexer_free(Lexer * lexer);
 
-bool lexer_reached_end(Lexer const * lexer);
-
-void lexer_get_token(Lexer * lexer, Token * token);
+void lexer_lex(Lexer * lexer);

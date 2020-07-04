@@ -6,14 +6,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void parser_init(Parser * parser, Token const * tokens, int token_count) {
+void parser_init(Parser * parser, int token_count, Token const * tokens) {
 	parser->token_count = token_count;
 	parser->tokens      = tokens;
 
 	parser->index = 0;
 
 	parser->current_variable_buffer = NULL;
-	parser->current_scope         = NULL;
+	parser->current_scope           = NULL;
 }
 
 static void parser_error(Parser * parser) {

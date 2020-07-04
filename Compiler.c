@@ -15,42 +15,35 @@
 void compile_file(char const * filename, bool show_output) {
 	char const * source = read_file(filename);
 
+	// Lexing phase
 	Lexer lexer;
 	lexer_init(&lexer, source);
 
-	int     token_count = 0;
-	int     token_capacity = 1024;
-	Token * tokens = malloc(token_capacity * sizeof(Token));
-
-	// Lexing
-	while (!lexer_reached_end(&lexer)) {
-		lexer_get_token(&lexer, tokens + token_count);
-		token_count++;
-	}
-
-	tokens[token_count++].type = TOKEN_EOF;
+	lexer_lex(&lexer);
 
 	free(source);
 
-	// Parsing
+	// Parsing phase
 	Parser parser;
-	parser_init(&parser, tokens, token_count);
+	parser_init(&parser, lexer.tokens_len, lexer.tokens);
 
 	type_table_init();
 
 	AST_Statement * program = parser_parse_program(&parser);
 	
-	free(tokens);
+	lexer_free(&lexer);
 
 	//printf("\n\nPretty Print:\n\n");
 	//ast_pretty_print(program);
 
+	// Code Generation phase
 	char const * code = codegen_program(program);
 
 	ast_free_statement(program);
 	
 	type_table_free();
 
+	// Output
 	char const * file_asm = replace_file_extension(filename, "asm");
 	char const * file_obj = replace_file_extension(filename, "obj");
 	char const * file_exe = replace_file_extension(filename, "exe");

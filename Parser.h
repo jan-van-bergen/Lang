@@ -13,6 +13,6 @@ typedef struct Parser {
 	Scope           * current_scope;
 } Parser;
 
-void parser_init(Parser * parser, Token const * tokens, int token_count);
+void parser_init(Parser * parser, int token_count, Token const * tokens);
 
 AST_Statement * parser_parse_program(Parser * parser);

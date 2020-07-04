@@ -13,6 +13,14 @@ void lexer_init(Lexer * lexer, char const * source) {
 
 	lexer->index = 0;
 	lexer->line  = 1;
+
+	lexer->tokens_len = 0;
+	lexer->tokens_cap = 32;
+	lexer->tokens = malloc(lexer->tokens_cap * sizeof(Token));
+}
+
+void lexer_free(Lexer * lexer) {
+	free(lexer->tokens);
 }
 
 static char lexer_peek(Lexer const * lexer) {
@@ -88,27 +96,10 @@ static void lexer_skip(Lexer * lexer) {
 	} while (changed);
 }
 
-bool lexer_reached_end(Lexer const * lexer) {
+static bool lexer_reached_end(Lexer const * lexer) {
 	lexer_skip(lexer);
 
 	return lexer_peek(lexer) == '\0' || lexer->index == lexer->source_len;
-}
-
-bool lexer_match_int_literal(Lexer * lexer) {
-	char curr = lexer_peek(lexer);
-	
-	if (curr != '+' && curr != '-' && !isdigit(curr)) return false;
-
-	bool is_negative = curr == '-';
-
-	int value = 0;
-
-	while (isdigit(curr)) {
-		value *= 10;
-		value += curr - '0';
-
-		curr = lexer_next(lexer);
-	}
 }
 
 void lexer_get_token(Lexer * lexer, Token * token) {
@@ -311,4 +302,22 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 	token->value_str = str;
 		
 	return;
+}
+
+static Token * lexer_new_token(Lexer * lexer) {
+	if (lexer->tokens_len == lexer->tokens_cap) {
+		lexer->tokens_cap *= 2;
+		lexer->tokens = realloc(lexer->tokens, lexer->tokens_cap * sizeof(Token));
+	}
+		
+	return lexer->tokens + lexer->tokens_len++;
+}
+
+void lexer_lex(Lexer * lexer) {
+	while (!lexer_reached_end(lexer)) {	
+		lexer_get_token(lexer, lexer_new_token(lexer));
+	}
+
+	// Append EOF Token
+	lexer_new_token(lexer)->type = TOKEN_EOF;
 }
