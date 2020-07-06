@@ -244,6 +244,7 @@ static void context_add_string_literal(Context * ctx, char const * str_name, cha
 	while (*curr) {
 		if (*curr == '\\') {
 			switch (*(curr + 1)) {
+				case '0':  strcpy_s(str_lit_cpy + idx, str_lit_cpy_size - idx, "\", 0, \"");   idx += 7; break;
 				case 'r':  strcpy_s(str_lit_cpy + idx, str_lit_cpy_size - idx, "\", 0Dh, \""); idx += 9; break;
 				case 'n':  strcpy_s(str_lit_cpy + idx, str_lit_cpy_size - idx, "\", 0Ah, \""); idx += 9; break;
 				case 't':  strcpy_s(str_lit_cpy + idx, str_lit_cpy_size - idx, "\", 09h, \""); idx += 9; break;
@@ -271,7 +272,7 @@ static void context_add_string_literal(Context * ctx, char const * str_name, cha
 
 // Result of an AST_Expression
 typedef struct Result {
-	int    reg;
+	int          reg;
 	Type const * type;
 } Result;
 
@@ -284,7 +285,7 @@ static char const * get_reg_name_scratch(int reg_index, int size) {
 	static char const * reg_names_32bit[SCRATCH_REG_COUNT] = { "ebx", "r10d", "r11d", "r12d", "r13d", "r14d", "r15d" };
 	static char const * reg_names_64bit[SCRATCH_REG_COUNT] = { "rbx", "r10",  "r11",  "r12",  "r13",  "r14",  "r15"  };
 
-	static char const * reg_names_float_128bit[SCRATCH_REG_COUNT_FLOAT] = { "xmm4", "xmm5", "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11" };
+	static char const * reg_names_float[SCRATCH_REG_COUNT_FLOAT] = { "xmm4", "xmm5", "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11" };
 
 	if (reg_index < SCRATCH_REG_COUNT) {
 		switch (size) {
@@ -296,7 +297,7 @@ static char const * get_reg_name_scratch(int reg_index, int size) {
 			default: abort();
 		}
 	} else {
-		return reg_names_float_128bit[reg_index - SCRATCH_REG_COUNT];
+		return reg_names_float[reg_index - SCRATCH_REG_COUNT];
 	}
 }
 
@@ -439,6 +440,7 @@ static Result codegen_expression_const(Context * ctx, AST_Expression const * exp
 	return result;
 }
 
+// Helper function that dereferences a pointer at a given address 'var_address' into a given register 'reg'
 static int codegen_deref_address(Context * ctx, int reg, Type const * type, char const * var_address) {
 	int type_size = type_get_size(type, ctx->current_scope);
 
@@ -525,6 +527,7 @@ static Result codegen_expression_struct_member(Context * ctx, AST_Expression * e
 	Struct_Def * struct_def = scope_get_struct_def(ctx->current_scope, result.type->struct_name);
 	Variable   * var_member = scope_get_variable(struct_def->member_scope, expr->expr_struct_member.member_name);
 
+	// Take the address of the struct and add the offset of the member
 	context_emit_code(ctx, "add %s, %i ; member offset '%s'\n", get_reg_name_scratch(result.reg, 8), var_member->offset, var_member->name);
 	
 	result.type = var_member->type;
@@ -533,8 +536,9 @@ static Result codegen_expression_struct_member(Context * ctx, AST_Expression * e
 	if (!var_by_address) {
 		context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
 
+		// Only dereference primitives, structs and arrays are always returned by address
 		if (type_is_primitive(result.type)) {
-			result.reg = codegen_deref_address(ctx, result.reg, result.type,  get_reg_name_scratch(result.reg, 8), NULL);
+			result.reg = codegen_deref_address(ctx, result.reg, result.type, get_reg_name_scratch(result.reg, 8));
 		}
 	}
 
@@ -1175,6 +1179,7 @@ static Result codegen_expression_op_post(Context * ctx, AST_Expression const * e
 
 	bool by_address = ctx->flags & CTX_FLAG_VAR_BY_ADDRESS;
 
+	// Evaluate operand by address
 	context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS);
 	Result result = codegen_expression(ctx, operand);
 
@@ -1240,7 +1245,6 @@ static Result codegen_expression_op_post(Context * ctx, AST_Expression const * e
 static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr) {
 	assert(expr->type == AST_EXPRESSION_CALL_FUNC);
 	
-	// Count call arguments
 	int call_arg_count = expr->expr_call.arg_count;
 
 	// Get function definition
@@ -1263,11 +1267,14 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 		}
 	}
 
-	// Get total size of arguments
-	int arg_size = 0;
+	// Get total size of arguments in bytes
+	int   arg_size = 0;
+	int * arg_offsets = _alloca(call_arg_count * sizeof(int));
 
-	for (int i = 0; i < expr->expr_call.arg_count; i++) {
+	for (int i = 0; i < call_arg_count; i++) {
 		AST_Def_Arg * def_arg = &def_func->args[i];
+
+		arg_offsets[i] = arg_size;
 
 		if (i < 4) {
 			if (context_call_reg_is_reserved(ctx, i)) {
@@ -1301,9 +1308,7 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 
 	// Evaluate arguments and put them into the right register / stack address
 	// The first 4 arguments go in registers, the rest spills onto the stack
-	int arg_offset = 0;
-
-	for (int i = 0; i < expr->expr_call.arg_count; i++) {
+	for (int i = 0; i < call_arg_count; i++) {
 		Result result_arg = codegen_expression(ctx, expr->expr_call.args[i].expr);
 
 		AST_Def_Arg * def_arg = &def_func->args[i];
@@ -1329,29 +1334,21 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 
 		if (i < 4) {
 			context_emit_code(ctx, "%s %s, %s ; arg %i\n", mov, get_reg_name_call(i, 8, type_is_float(result_arg.type)), get_reg_name_scratch(result_arg.reg, 8), i + 1);
-
-			arg_offset += 8;
 		} else {
-			int type_size  = type_get_size (def_arg->type, ctx->current_scope);
-			int type_align = type_get_align(def_arg->type, ctx->current_scope);
-			
+			int type_size = type_get_size(def_arg->type, ctx->current_scope);
 			char const * word = get_word_name(type_size);
 
-			context_emit_code(ctx, "%s %s [rsp + %i], %s ; arg %i\n", mov, word, arg_offset, get_reg_name_scratch(result_arg.reg, type_size), i + 1);
-
-			align(&arg_offset, type_align);
-			arg_offset += type_size;
+			context_emit_code(ctx, "%s %s [rsp + %i], %s ; arg %i\n", mov, word, arg_offsets[i], get_reg_name_scratch(result_arg.reg, type_size), i + 1);
 		}
 
 		context_reg_free(ctx, result_arg.reg);
 	}
 
 	context_emit_code(ctx, "call %s\n", expr->expr_call.function_name);
-
 	context_emit_code(ctx, "add rsp, %i ; pop arguments\n", arg_size);
 
 	// Check if any registers were pushed before this call and need to be restored
-	for (int i = min(3, expr->expr_call.arg_count - 1); i >= 0; i--) {
+	for (int i = min(3, call_arg_count - 1); i >= 0; i--) {
 		if (pushed_regs_call[i]) {
 			context_emit_code(ctx, "pop %s ; restore\n", get_reg_name_call(i, 8, type_is_float(def_func->args[i].type)));
 		} else {
