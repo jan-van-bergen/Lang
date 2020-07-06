@@ -18,10 +18,9 @@ typedef enum AST_Expression_Type {
 } AST_Expression_Type;
 
 typedef struct AST_Call_Arg {
-	struct AST_Expression * expr;
-	struct AST_Call_Arg   * next;
-
 	int height;
+
+	struct AST_Expression * expr;
 } AST_Call_Arg;
 
 typedef struct AST_Expression {
@@ -74,6 +73,7 @@ typedef struct AST_Expression {
 		struct Call {
 			char const * function_name;
 
+			int                   arg_count;
 			struct AST_Call_Arg * args;
 		} expr_call;
 	};
@@ -99,7 +99,6 @@ typedef enum AST_Statement_Type {
 typedef struct AST_Def_Arg {
 	char const * name;
 	Type const * type;
-	struct AST_Def_Arg * next;
 } AST_Def_Arg;
 
 typedef struct AST_Statement {

@@ -9,31 +9,11 @@ static void print_indent(int level) {
 	}
 }
 
-static void print_def_args(AST_Def_Arg const * arg) {
-	if (arg) {
-		char str_type[128];
-		type_to_string(arg->type, str_type, sizeof(str_type));
+static void print_def_arg(AST_Def_Arg const * arg) {
+	char str_type[128];
+	type_to_string(arg->type, str_type, sizeof(str_type));
 
-		printf("%s: %s", arg->name, str_type);
-
-		if (arg->next) {
-			printf(", ");
-			print_def_args(arg->next);
-		}
-	}
-}
-
-static void print_expression(AST_Expression const * expr);
-
-static void print_call_args(AST_Call_Arg const * arg) {
-	if (arg) {
-		print_expression(arg->expr);
-
-		if (arg->next) {
-			printf(", ");
-			print_call_args(arg->next);
-		}
-	}
+	printf("%s: %s", arg->name, str_type);
 }
 
 static void print_expression(AST_Expression const * expr) {
@@ -120,7 +100,11 @@ static void print_expression(AST_Expression const * expr) {
 
 		case AST_EXPRESSION_CALL_FUNC: {
 			printf("%s(", expr->expr_call.function_name);
-			print_call_args(expr->expr_call.args);
+
+			for (int i = 0; i < expr->expr_call.arg_count; i++) {
+				print_expression(expr->expr_call.args[i].expr);
+			}
+
 			printf(")");
 
 			break;
@@ -179,8 +163,8 @@ static void print_statement(AST_Statement const * stat, int indent) {
 			print_indent(indent);
 			printf("func %s(", stat->stat_def_func.function_def->name);
 
-			if (stat->stat_def_func.function_def->args) {
-				print_def_args(stat->stat_def_func.function_def->args);
+			for (int i = 0; i < stat->stat_def_func.function_def->arg_count; i++) {
+				print_def_arg(&stat->stat_def_func.function_def->args[i]);
 			}
 
 			char str_type[128];
@@ -272,27 +256,6 @@ void ast_pretty_print(AST_Statement const * program) {
 	print_statement(program, 0);
 }
 
-
-static void ast_free_expression(AST_Expression * expr);
-
-static void ast_free_def_args(AST_Def_Arg * arg) {
-	if (arg == NULL) return;
-
-	ast_free_def_args(arg->next);
-
-	free(arg->name);
-	free(arg);
-}
-
-static void ast_free_call_args(AST_Call_Arg * arg) {
-	if (arg == NULL) return;
-	
-	ast_free_call_args(arg->next);
-
-	ast_free_expression(arg->expr);
-	free(arg);
-}
-
 static void ast_free_expression(AST_Expression * expr) {
 	if (expr == NULL) return;
 
@@ -322,7 +285,10 @@ static void ast_free_expression(AST_Expression * expr) {
 		case AST_EXPRESSION_CALL_FUNC: {
 			free(expr->expr_call.function_name);
 
-			ast_free_call_args(expr->expr_call.args);
+			for (int i = 0; i < expr->expr_call.arg_count; i++) {
+				ast_free_expression(expr->expr_call.args[i].expr);
+			}
+			free(expr->expr_call.args);
 
 			break;
 		}
@@ -363,9 +329,12 @@ void ast_free_statement(AST_Statement * stat) {
 
 		case AST_STATEMENT_DEF_FUNC: {
 			free(stat->stat_def_func.function_def->name);
-			//free(stat->stat_def_func.return_type);
 
-			ast_free_def_args(stat->stat_def_func.function_def->args);
+			for (int i = 0; i < stat->stat_def_func.function_def->arg_count; i++) {
+				free(stat->stat_def_func.function_def->args[i].name);
+			}
+			free(stat->stat_def_func.function_def->args);
+
 			ast_free_statement(stat->stat_def_func.body);
 
 			break;
