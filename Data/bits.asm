@@ -31,12 +31,9 @@ main:
     mov ebx, DWORD [rbp + -8]
     mov r10, 4278190335
     cmp rbx, r10
-    je L0
-    mov rbx, 0
-    jmp L1
-    L0:
-    mov rbx, 1
-    L1:
+    sete bl
+    and bl, 1
+    movzx rbx, bl
     mov rcx, rbx ; arg 0
     call assert
     add rsp, 32 ; pop arguments
@@ -53,12 +50,9 @@ main:
     mov ebx, DWORD [rbp + -8]
     mov r10, 255
     cmp rbx, r10
-    je L2
-    mov rbx, 0
-    jmp L3
-    L2:
-    mov rbx, 1
-    L3:
+    sete bl
+    and bl, 1
+    movzx rbx, bl
     mov rcx, rbx ; arg 0
     call assert
     add rsp, 32 ; pop arguments
@@ -87,12 +81,9 @@ main:
     mov ebx, DWORD [rbp + -8]
     mov r10, 16711935
     cmp rbx, r10
-    je L4
-    mov rbx, 0
-    jmp L5
-    L4:
-    mov rbx, 1
-    L5:
+    sete bl
+    and bl, 1
+    movzx rbx, bl
     mov rcx, rbx ; arg 0
     call assert
     add rsp, 32 ; pop arguments
@@ -121,14 +112,14 @@ assert:
     mov BYTE [rbp + 16], cl ; push arg 0 
     movzx rbx, BYTE [rbp + 16]
     test rbx, rbx
-    jne L_lnot_false_6
+    jne L_lnot_false_0
     mov rbx, 1
-    jmp L_lnot_exit_6
-    L_lnot_false_6:
+    jmp L_lnot_exit_0
+    L_lnot_false_0:
     mov rbx, 0
-    L_lnot_exit_6:
+    L_lnot_exit_0:
     cmp rbx, 0
-    je L_exit7
+    je L_exit1
         sub rsp, 32 ; reserve shadow space and 1 arguments
         mov rbx, 1
         mov rcx, rbx ; arg 0
@@ -136,7 +127,7 @@ assert:
         add rsp, 32 ; pop arguments
         mov rbx, rax ; get return value
         
-    L_exit7:
+    L_exit1:
     
     xor rax, rax ; Default return value 0
     L_function_assert_exit:

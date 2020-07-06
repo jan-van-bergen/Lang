@@ -30,14 +30,11 @@ malloc:
     mov rbx, QWORD [REL heap]
     mov r10, QWORD [REL NULL]
     cmp rbx, r10
-    je L0
-    mov rbx, 0
-    jmp L1
-    L0:
-    mov rbx, 1
-    L1:
+    sete bl
+    and bl, 1
+    movzx rbx, bl
     cmp rbx, 0
-    je L_exit2
+    je L_exit0
         sub rsp, 32 ; reserve shadow space and 0 arguments
         call GetProcessHeap
         add rsp, 32 ; pop arguments
@@ -45,7 +42,7 @@ malloc:
         lea r10, QWORD [REL heap] ; get address of 'heap'
         mov QWORD [r10], rbx
         
-    L_exit2:
+    L_exit0:
     
     sub rsp, 32 ; reserve shadow space and 3 arguments
     mov rbx, QWORD [REL heap]
@@ -75,12 +72,9 @@ free:
     mov rbx, QWORD [rbp + 16]
     mov r10, QWORD [REL NULL]
     cmp rbx, r10
-    jne L3
-    mov rbx, 0
-    jmp L4
-    L3:
-    mov rbx, 1
-    L4:
+    setne bl
+    and bl, 1
+    movzx rbx, bl
     mov rcx, rbx ; arg 0
     call assert
     add rsp, 32 ; pop arguments
@@ -90,12 +84,9 @@ free:
     mov rbx, QWORD [REL heap]
     mov r10, QWORD [REL NULL]
     cmp rbx, r10
-    jne L5
-    mov rbx, 0
-    jmp L6
-    L5:
-    mov rbx, 1
-    L6:
+    setne bl
+    and bl, 1
+    movzx rbx, bl
     mov rcx, rbx ; arg 0
     call assert
     add rsp, 32 ; pop arguments
@@ -125,14 +116,14 @@ assert:
     mov BYTE [rbp + 16], cl ; push arg 0 
     movzx rbx, BYTE [rbp + 16]
     test rbx, rbx
-    jne L_lnot_false_7
+    jne L_lnot_false_1
     mov rbx, 1
-    jmp L_lnot_exit_7
-    L_lnot_false_7:
+    jmp L_lnot_exit_1
+    L_lnot_false_1:
     mov rbx, 0
-    L_lnot_exit_7:
+    L_lnot_exit_1:
     cmp rbx, 0
-    je L_exit8
+    je L_exit2
         sub rsp, 32 ; reserve shadow space and 1 arguments
         mov rbx, 1
         mov rcx, rbx ; arg 0
@@ -140,7 +131,7 @@ assert:
         add rsp, 32 ; pop arguments
         mov rbx, rax ; get return value
         
-    L_exit8:
+    L_exit2:
     
     xor rax, rax ; Default return value 0
     L_function_assert_exit:
@@ -198,29 +189,26 @@ strlen:
     mov r10, 0
     mov DWORD [rbx], r10d
     
-    L_loop9:
+    L_loop3:
     mov rbx, QWORD [rbp + 16]
     movsx r10, DWORD [rbp + -16]
     add rbx, r10
     movzx rbx, BYTE [rbx]
     mov r10, 0
     cmp rbx, r10
-    jne L10
-    mov rbx, 0
-    jmp L11
-    L10:
-    mov rbx, 1
-    L11:
+    setne bl
+    and bl, 1
+    movzx rbx, bl
     cmp rbx, 0
-    je L_exit9
+    je L_exit3
         movsx rbx, DWORD [rbp + -16]
         mov r10, 1
         add rbx, r10
         lea r10, QWORD [rbp + -16] ; get address of 'len'
         mov DWORD [r10], ebx
         
-    jmp L_loop9
-    L_exit9:
+    jmp L_loop3
+    L_exit3:
     
     movsx rbx, DWORD [rbp + -16]
     mov rax, rbx ; return via rax

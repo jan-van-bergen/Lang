@@ -69,12 +69,9 @@ print_num:
     movsx rbx, DWORD [rbp + 16]
     mov r10, 0
     cmp rbx, r10
-    jg L1
-    mov rbx, 0
-    jmp L2
-    L1:
-    mov rbx, 1
-    L2:
+    setg bl
+    and bl, 1
+    movzx rbx, bl
     cmp rbx, 0
     je L_exit0
         movsx rbx, DWORD [rbp + 16]
@@ -116,7 +113,7 @@ print_num:
     mov r10, 0
     mov DWORD [rbx], r10d
     
-    L_loop3:
+    L_loop1:
     movsx rbx, DWORD [rbp + -24]
     mov r10, 2
     mov rax, rbx
@@ -125,14 +122,11 @@ print_num:
     mov rbx, rax
     movsx r10, DWORD [rbp + -16]
     cmp r10, rbx
-    jl L4
-    mov r10, 0
-    jmp L5
-    L4:
-    mov r10, 1
-    L5:
+    setl r10b
+    and r10b, 1
+    movzx r10, r10b
     cmp r10, 0
-    je L_exit3
+    je L_exit1
         mov rbx, QWORD [rbp + -32]
         movsx r10, DWORD [rbp + -16]
         add rbx, r10
@@ -170,8 +164,8 @@ print_num:
         inc r11
         mov DWORD [r10], r11d
         
-    jmp L_loop3
-    L_exit3:
+    jmp L_loop1
+    L_exit1:
     
     mov rbx, QWORD [rbp + -32]
     movsx r10, DWORD [rbp + -24]
@@ -206,18 +200,15 @@ fizzbuzz:
     mov r10, 1
     mov DWORD [rbx], r10d
     
-    L_loop6:
+    L_loop2:
     movsx rbx, DWORD [rbp + -16]
     movsx r10, DWORD [rbp + 16]
     cmp rbx, r10
-    jle L7
-    mov rbx, 0
-    jmp L8
-    L7:
-    mov rbx, 1
-    L8:
+    setle bl
+    and bl, 1
+    movzx rbx, bl
     cmp rbx, 0
-    je L_exit6
+    je L_exit2
         movsx rbx, DWORD [rbp + -16]
         mov r10, 3
         mov rax, rbx
@@ -226,12 +217,9 @@ fizzbuzz:
         mov rbx, rdx
         mov r10, 0
         cmp rbx, r10
-        je L9
-        mov rbx, 0
-        jmp L10
-        L9:
-        mov rbx, 1
-        L10:
+        sete bl
+        and bl, 1
+        movzx rbx, bl
         lea r10, QWORD [rbp + -12] ; get address of 'divisible_by_3'
         mov BYTE [r10], bl
         
@@ -243,28 +231,25 @@ fizzbuzz:
         mov rbx, rdx
         mov r10, 0
         cmp rbx, r10
-        je L11
-        mov rbx, 0
-        jmp L12
-        L11:
-        mov rbx, 1
-        L12:
+        sete bl
+        and bl, 1
+        movzx rbx, bl
         lea r10, QWORD [rbp + -11] ; get address of 'divisible_by_5'
         mov BYTE [r10], bl
         
         movzx rbx, BYTE [rbp + -11]
         test rbx, rbx
-        je L_land_false_13
+        je L_land_false_3
         movzx r10, BYTE [rbp + -12]
         test r10, r10
-        je L_land_false_13
+        je L_land_false_3
         mov rbx, 1
-        jmp L_land_exit_13
-        L_land_false_13:
+        jmp L_land_exit_3
+        L_land_false_3:
         mov rbx, 0
-        L_land_exit_13:
+        L_land_exit_3:
         cmp rbx, 0
-        je L_else14
+        je L_else4
             sub rsp, 32 ; reserve shadow space and 2 arguments
             lea rbx, [REL lit_str_2]
             mov rcx, rbx ; arg 0
@@ -274,11 +259,11 @@ fizzbuzz:
             add rsp, 32 ; pop arguments
             mov rbx, rax ; get return value
             
-        jmp L_exit14
-        L_else14:
+        jmp L_exit4
+        L_else4:
             movzx rbx, BYTE [rbp + -11]
             cmp rbx, 0
-            je L_else15
+            je L_else5
                 sub rsp, 32 ; reserve shadow space and 2 arguments
                 lea rbx, [REL lit_str_3]
                 mov rcx, rbx ; arg 0
@@ -288,11 +273,11 @@ fizzbuzz:
                 add rsp, 32 ; pop arguments
                 mov rbx, rax ; get return value
                 
-            jmp L_exit15
-            L_else15:
+            jmp L_exit5
+            L_else5:
                 movzx rbx, BYTE [rbp + -12]
                 cmp rbx, 0
-                je L_else16
+                je L_else6
                     sub rsp, 32 ; reserve shadow space and 2 arguments
                     lea rbx, [REL lit_str_4]
                     mov rcx, rbx ; arg 0
@@ -302,8 +287,8 @@ fizzbuzz:
                     add rsp, 32 ; pop arguments
                     mov rbx, rax ; get return value
                     
-                jmp L_exit16
-                L_else16:
+                jmp L_exit6
+                L_else6:
                     sub rsp, 32 ; reserve shadow space and 1 arguments
                     movsx rbx, DWORD [rbp + -16]
                     mov rcx, rbx ; arg 0
@@ -311,11 +296,11 @@ fizzbuzz:
                     add rsp, 32 ; pop arguments
                     mov rbx, rax ; get return value
                     
-                L_exit16:
+                L_exit6:
                 
-            L_exit15:
+            L_exit5:
             
-        L_exit14:
+        L_exit4:
         
         lea rbx, QWORD [rbp + -16] ; get address of 'i'
         mov r10, rbx
@@ -324,8 +309,8 @@ fizzbuzz:
         inc r11
         mov DWORD [r10], r11d
         
-    jmp L_loop6
-    L_exit6:
+    jmp L_loop2
+    L_exit2:
     
     xor rax, rax ; Default return value 0
     L_function_fizzbuzz_exit:

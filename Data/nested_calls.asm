@@ -26,29 +26,26 @@ ayy:
     movzx rbx, BYTE [rbp + 24]
     mov r10, 97
     cmp rbx, r10
-    je L0
-    mov rbx, 0
-    jmp L1
-    L0:
-    mov rbx, 1
-    L1:
+    sete bl
+    and bl, 1
+    movzx rbx, bl
     cmp rbx, 0
-    je L_else2
+    je L_else0
         movsx rbx, DWORD [rbp + 16]
         mov r10, 6
         add rbx, r10
         mov rax, rbx ; return via rax
         jmp L_function_ayy_exit
         
-    jmp L_exit2
-    L_else2:
+    jmp L_exit0
+    L_else0:
         movsx rbx, DWORD [rbp + 16]
         mov r10, 4
         add rbx, r10
         mov rax, rbx ; return via rax
         jmp L_function_ayy_exit
         
-    L_exit2:
+    L_exit0:
     
     xor rax, rax ; Default return value 0
     L_function_ayy_exit:

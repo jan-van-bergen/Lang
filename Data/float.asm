@@ -126,11 +126,6 @@ main:
     mov rbx, rax ; get return value
     
     movss xmm5, DWORD [rbp + -24]
-    cvttss2si rbx, xmm5
-    mov rax, rbx ; return via rax
-    jmp L_function_main_exit
-    
-    movss xmm5, DWORD [rbp + -24]
     cvtss2sd xmm5, xmm5
     movsd xmm6, QWORD [rbp + -16]
     addsd xmm6, xmm5

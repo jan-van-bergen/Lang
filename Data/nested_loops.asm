@@ -32,12 +32,9 @@ main:
         movsx rbx, DWORD [rbp + -4]
         movsx r10, DWORD [rbp + -12]
         cmp rbx, r10
-        jl L2
-        mov rbx, 0
-        jmp L3
-        L2:
-        mov rbx, 1
-        L3:
+        setl bl
+        and bl, 1
+        movzx rbx, bl
         cmp rbx, 0
         je L_exit1
             movsx rbx, DWORD [rbp + -12]
@@ -48,21 +45,18 @@ main:
             mov rbx, rdx
             mov r10, 0
             cmp rbx, r10
-            je L4
-            mov rbx, 0
-            jmp L5
-            L4:
-            mov rbx, 1
-            L5:
+            sete bl
+            and bl, 1
+            movzx rbx, bl
             cmp rbx, 0
-            je L_exit6
+            je L_exit2
                 lea rbx, QWORD [rbp + -8] ; get address of 'i_is_prime'
                 mov r10, 0
                 mov BYTE [rbx], r10b
                 
                 jmp L_exit1
                 
-            L_exit6:
+            L_exit2:
             
             movsx rbx, DWORD [rbp + -4]
             mov r10, 1
@@ -75,7 +69,7 @@ main:
         
         movzx rbx, BYTE [rbp + -8]
         cmp rbx, 0
-        je L_exit7
+        je L_exit3
             sub rsp, 32 ; reserve shadow space and 1 arguments
             movsx rbx, DWORD [rbp + -12]
             mov rcx, rbx ; arg 0
@@ -92,19 +86,16 @@ main:
             movsx rbx, DWORD [rbp + -16]
             movsx r10, DWORD [REL N]
             cmp rbx, r10
-            je L8
-            mov rbx, 0
-            jmp L9
-            L8:
-            mov rbx, 1
-            L9:
+            sete bl
+            and bl, 1
+            movzx rbx, bl
             cmp rbx, 0
-            je L_exit10
+            je L_exit4
                 jmp L_exit0
                 
-            L_exit10:
+            L_exit4:
             
-        L_exit7:
+        L_exit3:
         
         lea rbx, QWORD [rbp + -12] ; get address of 'i'
         mov r10, rbx
@@ -185,18 +176,15 @@ print_num:
     mov r10, 0
     mov DWORD [rbx], r10d
     
-    L_loop11:
+    L_loop5:
     movsx rbx, DWORD [rbp + 16]
     mov r10, 0
     cmp rbx, r10
-    jg L12
-    mov rbx, 0
-    jmp L13
-    L12:
-    mov rbx, 1
-    L13:
+    setg bl
+    and bl, 1
+    movzx rbx, bl
     cmp rbx, 0
-    je L_exit11
+    je L_exit5
         movsx rbx, DWORD [rbp + 16]
         mov r10, 10
         mov rax, rbx
@@ -229,14 +217,14 @@ print_num:
         lea r10, QWORD [rbp + -24] ; get address of 'idx'
         mov DWORD [r10], ebx
         
-    jmp L_loop11
-    L_exit11:
+    jmp L_loop5
+    L_exit5:
     
     lea rbx, QWORD [rbp + -16] ; get address of 'i'
     mov r10, 0
     mov DWORD [rbx], r10d
     
-    L_loop14:
+    L_loop6:
     movsx rbx, DWORD [rbp + -24]
     mov r10, 2
     mov rax, rbx
@@ -245,14 +233,11 @@ print_num:
     mov rbx, rax
     movsx r10, DWORD [rbp + -16]
     cmp r10, rbx
-    jl L15
-    mov r10, 0
-    jmp L16
-    L15:
-    mov r10, 1
-    L16:
+    setl r10b
+    and r10b, 1
+    movzx r10, r10b
     cmp r10, 0
-    je L_exit14
+    je L_exit6
         mov rbx, QWORD [rbp + -32]
         movsx r10, DWORD [rbp + -16]
         add rbx, r10
@@ -289,8 +274,8 @@ print_num:
         lea r10, QWORD [rbp + -16] ; get address of 'i'
         mov DWORD [r10], ebx
         
-    jmp L_loop14
-    L_exit14:
+    jmp L_loop6
+    L_exit6:
     
     mov rbx, QWORD [rbp + -32]
     movsx r10, DWORD [rbp + -24]

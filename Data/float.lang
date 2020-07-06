@@ -19,8 +19,6 @@ func main() -> int {
 	square_f(&f, &f);
 	square_d(&d, &d);
 
-	return cast(int) f;
-
 	let result: double = d + cast(double) f;
 	return round_d(&result);
 }

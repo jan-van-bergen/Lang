@@ -10,19 +10,16 @@ factorial_recursive:
     movsx rbx, DWORD [rbp + 16]
     mov r10, 0
     cmp rbx, r10
-    je L0
-    mov rbx, 0
-    jmp L1
-    L0:
-    mov rbx, 1
-    L1:
+    sete bl
+    and bl, 1
+    movzx rbx, bl
     cmp rbx, 0
-    je L_exit2
+    je L_exit0
         mov rbx, 1
         mov rax, rbx ; return via rax
         jmp L_function_factorial_recursive_exit
         
-    L_exit2:
+    L_exit0:
     
     sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [rbp + 16]
@@ -53,18 +50,15 @@ factorial_loop:
     mov r10, 1
     mov DWORD [rbx], r10d
     
-    L_loop3:
+    L_loop1:
     movsx rbx, DWORD [rbp + 16]
     mov r10, 0
     cmp rbx, r10
-    jg L4
-    mov rbx, 0
-    jmp L5
-    L4:
-    mov rbx, 1
-    L5:
+    setg bl
+    and bl, 1
+    movzx rbx, bl
     cmp rbx, 0
-    je L_exit3
+    je L_exit1
         movsx rbx, DWORD [rbp + -16]
         movsx r10, DWORD [rbp + 16]
         imul rbx, r10
@@ -77,8 +71,8 @@ factorial_loop:
         lea r10, QWORD [rbp + 16] ; get address of 'n'
         mov DWORD [r10], ebx
         
-    jmp L_loop3
-    L_exit3:
+    jmp L_loop1
+    L_exit1:
     
     movsx rbx, DWORD [rbp + -16]
     mov rax, rbx ; return via rax
@@ -120,12 +114,9 @@ main:
     movsx rbx, DWORD [rbp + -12]
     movsx r10, DWORD [rbp + -8]
     cmp rbx, r10
-    je L6
-    mov rbx, 0
-    jmp L7
-    L6:
-    mov rbx, 1
-    L7:
+    sete bl
+    and bl, 1
+    movzx rbx, bl
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
     

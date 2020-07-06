@@ -231,7 +231,7 @@ static void context_add_string_literal(Context * ctx, char const * str_name, cha
 	int str_name_len = strlen(str_name);
 	int str_lit_len  = strlen(str_lit);
 
-	int    str_lit_cpy_size = str_name_len + str_lit_len * 9 + 1;
+	int    str_lit_cpy_size = str_name_len + 6 + str_lit_len * 9 + 1;
 	char * str_lit_cpy      = malloc(str_lit_cpy_size);
 
 	int idx = sprintf_s(str_lit_cpy, str_lit_cpy_size, "%s db ", str_name);
@@ -606,54 +606,37 @@ static Result codegen_expression_sizeof(Context * ctx, AST_Expression * expr) {
 }
 
 // Helper function used by relational and equality operators
-static void codegen_compare_branch(Context * ctx, char const * jump_inst, char const * reg_name_left, char const * reg_name_right) {
-	int label_else = context_new_label(ctx);
-	int label_exit = context_new_label(ctx);
+static void codegen_compare(Context * ctx, char const * cmp_inst, char const * set_inst, int reg_left, int reg_right, int reg_result) {
+	char const * reg_name_left  = get_reg_name_scratch(reg_left,  8);
+	char const * reg_name_right = get_reg_name_scratch(reg_right, 8);
 
-	context_emit_code(ctx, "cmp %s, %s\n", reg_name_left, reg_name_right);
-	context_emit_code(ctx, "%s L%i\n", jump_inst, label_else);
-	context_emit_code(ctx, "mov %s, 0\n", reg_name_left);
-	context_emit_code(ctx, "jmp L%i\n", label_exit);
-	context_emit_code(ctx, "L%i:\n",    label_else);
-	context_emit_code(ctx, "mov %s, 1\n", reg_name_left);
-	context_emit_code(ctx, "L%i:\n", label_exit);
-}
-
-// Helper function used by relational operators
-static int codegen_compare_branch_float(Context * ctx, char const * cmp_inst, char const * jump_inst, char const * reg_name_left, char const * reg_name_right) {
-	int label_else = context_new_label(ctx);
-	int label_exit = context_new_label(ctx);
-
-	// Allocate new register, because we cant store a boolean (integral 0/1) value in a float register
-	int reg = context_reg_request(ctx);
-	char const * reg_name = get_reg_name_scratch(reg, 8);
+	char const * reg_name_result_full = get_reg_name_scratch(reg_result, 8);
+	char const * reg_name_result_byte = get_reg_name_scratch(reg_result, 1);
 
 	context_emit_code(ctx, "%s %s, %s\n", cmp_inst, reg_name_left, reg_name_right);
-	context_emit_code(ctx, "%s L%i\n", jump_inst, label_else);
-	context_emit_code(ctx, "mov %s, 1\n", reg_name);
-	context_emit_code(ctx, "jmp L%i\n", label_exit);
-	context_emit_code(ctx, "L%i:\n",    label_else);
-	context_emit_code(ctx, "mov %s, 0\n", reg_name);
-	context_emit_code(ctx, "L%i:\n", label_exit);
-
-	return reg;
+	context_emit_code(ctx, "%s %s\n",     set_inst, reg_name_result_byte);
+	context_emit_code(ctx, "and %s, 1\n",    reg_name_result_byte);
+	context_emit_code(ctx, "movzx %s, %s\n", reg_name_result_full, reg_name_result_byte);
 }
 
 // Helper function used by relational operators
-static void codegen_compare(Context * ctx, char const * operator, char const * jump_instr, Result * result_left, Result * result_right) {
-	char const * reg_name_left  = get_reg_name_scratch(result_left ->reg, 8);
-	char const * reg_name_right = get_reg_name_scratch(result_right->reg, 8);
-
+static void codegen_relational(Context * ctx, char const * operator, char const * set_inst, Result * result_left, Result * result_right) {
 	if ((type_is_integral(result_left->type) && type_is_integral(result_right->type)) ||
 		(type_is_pointer (result_left->type) && type_is_pointer (result_right->type) && types_unifiable(result_left->type, result_right->type))
 	) {
-		codegen_compare_branch(ctx, jump_instr, reg_name_left, reg_name_right);
+		codegen_compare(ctx, "cmp", set_inst, result_left->reg, result_right->reg, result_left->reg);
 	} else if (type_is_f32(result_left->type) && type_is_f32(result_right->type)) {
 		context_reg_free(ctx, result_left->reg);
-		result_left->reg = codegen_compare_branch_float(ctx, "comiss", jump_instr, reg_name_left, reg_name_right);
+		int reg = context_reg_request(ctx);
+
+		codegen_compare(ctx, "comiss", set_inst, result_left->reg, result_right->reg, reg);
+		result_left->reg = reg;
 	} else if (type_is_f64(result_left->type) && type_is_f64(result_right->type)) {
 		context_reg_free(ctx, result_left->reg);
-		result_left->reg = codegen_compare_branch_float(ctx, "comisd", jump_instr, reg_name_left, reg_name_right);
+		int reg = context_reg_request(ctx);
+
+		codegen_compare(ctx, "comisd", set_inst, result_left->reg, result_right->reg, reg);
+		result_left->reg = reg;
 	} else {
 		type_error("Operator '%s' requires two integral, float, or pointer types", operator);
 	}
@@ -942,13 +925,13 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			break;
 		}
 
-		case TOKEN_OPERATOR_LT:    codegen_compare(ctx, "<", "jl",   &result_left, &result_right); break;
-		case TOKEN_OPERATOR_LT_EQ: codegen_compare(ctx, "<=", "jle", &result_left, &result_right); break;
-		case TOKEN_OPERATOR_GT:    codegen_compare(ctx, ">", "jg",   &result_left, &result_right); break;
-		case TOKEN_OPERATOR_GT_EQ: codegen_compare(ctx, ">=", "jge", &result_left, &result_right); break;
+		case TOKEN_OPERATOR_LT:    codegen_relational(ctx, "<",  "setl",  &result_left, &result_right); break;
+		case TOKEN_OPERATOR_LT_EQ: codegen_relational(ctx, "<=", "setle", &result_left, &result_right); break;
+		case TOKEN_OPERATOR_GT:    codegen_relational(ctx, ">",  "setg",  &result_left, &result_right); break;
+		case TOKEN_OPERATOR_GT_EQ: codegen_relational(ctx, ">=", "setge", &result_left, &result_right); break;
 
 		case TOKEN_OPERATOR_EQ: {
-			codegen_compare_branch(ctx, "je", reg_name_left, reg_name_right);
+			codegen_compare(ctx, "cmp", "sete", result_left.reg, result_right.reg, result_left.reg);
 			
 			if (!types_unifiable(result_left.type, result_right.type)) {
 				type_error("Operator '==' requires equal types on both sides");
@@ -960,7 +943,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 		}
 
 		case TOKEN_OPERATOR_NE: {
-			codegen_compare_branch(ctx, "jne", reg_name_left, reg_name_right);
+			codegen_compare(ctx, "cmp", "setne", result_left.reg, result_right.reg, result_left.reg);
 			
 			if (!types_unifiable(result_left.type, result_right.type)) {
 				type_error("Operator '!=' requires equal types on both sides");

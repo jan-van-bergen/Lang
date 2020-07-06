@@ -60,12 +60,9 @@ main:
     movzx rbx, BYTE [rbp + -16]
     mov r10, 1
     cmp rbx, r10
-    je L3
-    mov rbx, 0
-    jmp L4
-    L3:
-    mov rbx, 1
-    L4:
+    sete bl
+    and bl, 1
+    movzx rbx, bl
     mov rcx, rbx ; arg 0
     call assert
     add rsp, 32 ; pop arguments
@@ -73,15 +70,15 @@ main:
     
     mov rbx, 0
     test rbx, rbx
-    je L_land_false_5
+    je L_land_false_3
     mov r10, 1
     test r10, r10
-    je L_land_false_5
+    je L_land_false_3
     mov rbx, 1
-    jmp L_land_exit_5
-    L_land_false_5:
+    jmp L_land_exit_3
+    L_land_false_3:
     mov rbx, 0
-    L_land_exit_5:
+    L_land_exit_3:
     lea r10, QWORD [rbp + -16] ; get address of 'a'
     mov BYTE [r10], bl
     
@@ -89,12 +86,9 @@ main:
     movzx rbx, BYTE [rbp + -16]
     mov r10, 0
     cmp rbx, r10
-    je L6
-    mov rbx, 0
-    jmp L7
-    L6:
-    mov rbx, 1
-    L7:
+    sete bl
+    and bl, 1
+    movzx rbx, bl
     mov rcx, rbx ; arg 0
     call assert
     add rsp, 32 ; pop arguments
@@ -102,22 +96,22 @@ main:
     
     movzx rbx, BYTE [rbp + -16]
     test rbx, rbx
-    jne L_lor_true_8
+    jne L_lor_true_4
     movzx r10, BYTE [rbp + -16]
     test r10, r10
-    jne L_lnot_false_9
+    jne L_lnot_false_5
     mov r10, 1
-    jmp L_lnot_exit_9
-    L_lnot_false_9:
+    jmp L_lnot_exit_5
+    L_lnot_false_5:
     mov r10, 0
-    L_lnot_exit_9:
+    L_lnot_exit_5:
     test r10, r10
-    jne L_lor_true_8
+    jne L_lor_true_4
     mov rbx, 0
-    jmp L_lor_exit_8
-    L_lor_true_8:
+    jmp L_lor_exit_4
+    L_lor_true_4:
     mov rbx, 1
-    L_lor_exit_8:
+    L_lor_exit_4:
     lea r10, QWORD [rbp + -16] ; get address of 'a'
     mov BYTE [r10], bl
     
@@ -125,12 +119,9 @@ main:
     movzx rbx, BYTE [rbp + -16]
     mov r10, 1
     cmp rbx, r10
-    je L10
-    mov rbx, 0
-    jmp L11
-    L10:
-    mov rbx, 1
-    L11:
+    sete bl
+    and bl, 1
+    movzx rbx, bl
     mov rcx, rbx ; arg 0
     call assert
     add rsp, 32 ; pop arguments

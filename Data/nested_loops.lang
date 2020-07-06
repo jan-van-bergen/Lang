@@ -28,7 +28,7 @@ func main() -> int {
 				break;
 			}		
 		}
-	
+
 		i++;
 	}
 	

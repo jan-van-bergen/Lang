@@ -15,12 +15,9 @@ main:
     movsx rbx, DWORD [rbp + -16]
     mov r10, 64
     cmp rbx, r10
-    jl L1
-    mov rbx, 0
-    jmp L2
-    L1:
-    mov rbx, 1
-    L2:
+    setl bl
+    and bl, 1
+    movzx rbx, bl
     cmp rbx, 0
     je L_exit0
         movsx rbx, DWORD [rbp + -16]
@@ -49,18 +46,15 @@ main:
     mov r10, 0
     mov DWORD [rbx], r10d
     
-    L_loop3:
+    L_loop1:
     movsx rbx, DWORD [rbp + -16]
     mov r10, 64
     cmp rbx, r10
-    jl L4
-    mov rbx, 0
-    jmp L5
-    L4:
-    mov rbx, 1
-    L5:
+    setl bl
+    and bl, 1
+    movzx rbx, bl
     cmp rbx, 0
-    je L_exit3
+    je L_exit1
         movsx rbx, DWORD [rbp + -16]
         mov r10, 4 ; sizeof 'u32'
         imul rbx, r10
@@ -79,8 +73,8 @@ main:
         inc r11
         mov DWORD [r10], r11d
         
-    jmp L_loop3
-    L_exit3:
+    jmp L_loop1
+    L_exit1:
     
     movsx rbx, DWORD [rbp + -12]
     mov rax, rbx ; return via rax

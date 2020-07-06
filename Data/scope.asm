@@ -32,23 +32,17 @@ main:
     movsx rbx, DWORD [rbp + -32]
     mov r10, 5
     cmp rbx, r10
-    jne L1
-    mov rbx, 0
-    jmp L2
-    L1:
-    mov rbx, 1
-    L2:
+    setne bl
+    and bl, 1
+    movzx rbx, bl
     test rbx, rbx
     jne L_lor_true_0
     movsx r10, DWORD [rbp + -28]
     mov r11, 3
     cmp r10, r11
-    jne L3
-    mov r10, 0
-    jmp L4
-    L3:
-    mov r10, 1
-    L4:
+    setne r10b
+    and r10b, 1
+    movzx r10, r10b
     test r10, r10
     jne L_lor_true_0
     mov rbx, 0
@@ -57,12 +51,12 @@ main:
     mov rbx, 1
     L_lor_exit_0:
     cmp rbx, 0
-    je L_exit5
+    je L_exit1
         mov rbx, -1
         mov rax, rbx ; return via rax
         jmp L_function_main_exit
         
-    L_exit5:
+    L_exit1:
     
     lea rbx, QWORD [rbp + -24] ; get address of 'common_name'
     mov r10, 3
@@ -74,7 +68,7 @@ main:
     
     mov rbx, 1
     cmp rbx, 0
-    je L_exit6
+    je L_exit2
         mov DWORD [rbp + -16], 0 ; zero initialize 'common_name'
         
         lea rbx, QWORD [rbp + -16] ; get address of 'common_name'
@@ -85,24 +79,21 @@ main:
         movsx r10, DWORD [rbp + -16]
         mov DWORD [rbx], r10d
         
-    L_exit6:
+    L_exit2:
     
     movsx rbx, DWORD [rbp + -20]
     mov r10, 5
     cmp rbx, r10
-    jne L7
-    mov rbx, 0
-    jmp L8
-    L7:
-    mov rbx, 1
-    L8:
+    setne bl
+    and bl, 1
+    movzx rbx, bl
     cmp rbx, 0
-    je L_exit9
+    je L_exit3
         mov rbx, -1
         mov rax, rbx ; return via rax
         jmp L_function_main_exit
         
-    L_exit9:
+    L_exit3:
     
     movsx rbx, DWORD [rbp + -24]
     mov rax, rbx ; return via rax
@@ -123,13 +114,13 @@ test:
     sub rsp, 16 ; reserve stack space for 1 locals
     movzx rbx, BYTE [rbp + 16]
     cmp rbx, 0
-    je L_else10
+    je L_else4
         movsx rbx, DWORD [rbp + 24]
         mov rax, rbx ; return via rax
         jmp L_function_test_exit
         
-    jmp L_exit10
-    L_else10:
+    jmp L_exit4
+    L_else4:
         lea rbx, QWORD [rbp + -16] ; get address of 'arg'
         mov r10, 3
         mov DWORD [rbx], r10d
@@ -138,7 +129,7 @@ test:
         mov rax, rbx ; return via rax
         jmp L_function_test_exit
         
-    L_exit10:
+    L_exit4:
     
     xor rax, rax ; Default return value 0
     L_function_test_exit:

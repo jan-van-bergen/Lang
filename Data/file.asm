@@ -52,19 +52,16 @@ main:
     mov rbx, -1
     mov r10, QWORD [rbp + -32]
     cmp r10, rbx
-    je L0
-    mov r10, 0
-    jmp L1
-    L0:
-    mov r10, 1
-    L1:
+    sete r10b
+    and r10b, 1
+    movzx r10, r10b
     cmp r10, 0
-    je L_exit2
+    je L_exit0
         mov rbx, -1
         mov rax, rbx ; return via rax
         jmp L_function_main_exit
         
-    L_exit2:
+    L_exit0:
     
     lea rbx, QWORD [rbp + -168] ; get address of 'ofstruct'
     add rbx, 8 ; member offset 'szPathName'
@@ -109,19 +106,16 @@ main:
     movzx rbx, BYTE [rbp + -8]
     mov r10, 0
     cmp rbx, r10
-    je L3
-    mov rbx, 0
-    jmp L4
-    L3:
-    mov rbx, 1
-    L4:
+    sete bl
+    and bl, 1
+    movzx rbx, bl
     cmp rbx, 0
-    je L_exit5
+    je L_exit1
         mov rbx, -1
         mov rax, rbx ; return via rax
         jmp L_function_main_exit
         
-    L_exit5:
+    L_exit1:
     
     mov rbx, 0
     mov rax, rbx ; return via rax

@@ -16,25 +16,22 @@ main:
     movsx rbx, DWORD [rbp + -16]
     mov r10, 0
     cmp rbx, r10
-    jg L0
-    mov rbx, 0
-    jmp L1
-    L0:
-    mov rbx, 1
-    L1:
+    setg bl
+    and bl, 1
+    movzx rbx, bl
     cmp rbx, 0
-    je L_else2
+    je L_else0
         lea rbx, QWORD [rbp + -12] ; get address of 'b'
         mov r10, 49374
         mov DWORD [rbx], r10d
         
-    jmp L_exit2
-    L_else2:
+    jmp L_exit0
+    L_else0:
         lea rbx, QWORD [rbp + -12] ; get address of 'b'
         mov r10, 48879
         mov DWORD [rbx], r10d
         
-    L_exit2:
+    L_exit0:
     
     movsx rbx, DWORD [rbp + -12]
     mov rax, rbx ; return via rax

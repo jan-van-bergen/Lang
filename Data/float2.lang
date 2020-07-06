@@ -1,0 +1,20 @@
+func min(a: double *, b: double *, result: double *) {
+	let x: double = *a;
+	let y: double = *b;
+	
+	if (x < y) {
+		*result = x;
+	} else {
+		*result = y;
+	}
+}
+
+func main() -> int {
+	let a: double = 4.25;
+	let b: double = 2.74;
+	
+	let m: double;
+	min(&a, &b, &m);
+
+	return cast(int) (m + 0.5);
+}

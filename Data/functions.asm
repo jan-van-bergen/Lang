@@ -61,19 +61,16 @@ recursive:
     movsx rbx, DWORD [rbp + 16]
     mov r10, 0
     cmp rbx, r10
-    je L0
-    mov rbx, 0
-    jmp L1
-    L0:
-    mov rbx, 1
-    L1:
+    sete bl
+    and bl, 1
+    movzx rbx, bl
     cmp rbx, 0
-    je L_exit2
+    je L_exit0
         movsx rbx, DWORD [rbp + 24]
         mov rax, rbx ; return via rax
         jmp L_function_recursive_exit
         
-    L_exit2:
+    L_exit0:
     
     movsx rbx, DWORD [rbp + 24]
     mov r10, 2

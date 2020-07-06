@@ -62,4 +62,5 @@ void run_tests() {
 	run_test("Data\\array.lang",           85344, "");
 	run_test("Data\\nested_calls.lang",        2, "");
 	run_test("Data\\short_circuit.lang",       0, "");
+	run_test("Data\\float.lang",             288, "");
 }
