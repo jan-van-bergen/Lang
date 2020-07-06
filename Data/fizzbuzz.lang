@@ -1,5 +1,5 @@
 extern GetStdHandle(std_handle: int) -> void *;
-extern WriteFile(handle: void *, buffer: void *, bytes_to_write: int, bytes_written: int *, overlapped: int) -> bool;
+extern WriteFile(handle: void *, buffer: void *, bytes_to_write: int, bytes_written: int *, overlapped: u64) -> bool;
 extern strlen(str: char *) -> int;
 
 let STD_OUTPUT_HANDLE: int = -11;

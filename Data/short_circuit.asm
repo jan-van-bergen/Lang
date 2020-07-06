@@ -11,7 +11,7 @@ fail:
     mov rbp, rsp ; stack frame
     sub rsp, 32 ; reserve shadow space and 1 arguments
     mov rbx, -1
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     call ExitProcess
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value

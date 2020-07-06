@@ -28,7 +28,7 @@ two:
     sub rsp, 16 ; reserve stack space for 1 locals
     sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [rbp + 16]
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     call one
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
@@ -37,7 +37,7 @@ two:
     
     sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [rbp + 24]
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     call one
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
@@ -86,9 +86,9 @@ recursive:
     
     sub rsp, 32 ; reserve shadow space and 2 arguments
     movsx rbx, DWORD [rbp + 16]
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     movsx rbx, DWORD [rbp + 24]
-    mov rdx, rbx ; arg 1
+    mov rdx, rbx ; arg 2
     call recursive
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
@@ -108,9 +108,9 @@ main:
     sub rsp, 16 ; reserve stack space for 2 locals
     sub rsp, 32 ; reserve shadow space and 2 arguments
     mov rbx, 1
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     mov rbx, 2
-    mov rdx, rbx ; arg 1
+    mov rdx, rbx ; arg 2
     call two
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
@@ -119,7 +119,7 @@ main:
     
     sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [rbp + -16]
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     call one
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
@@ -130,14 +130,14 @@ main:
     push rcx ; preserve
     sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [rbp + -16]
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     call one
     add rsp, 32 ; pop arguments
     pop rcx ; restore
     mov rbx, rax ; get return value
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     mov rbx, 0
-    mov rdx, rbx ; arg 1
+    mov rdx, rbx ; arg 2
     call recursive
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value

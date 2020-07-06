@@ -35,7 +35,7 @@ deref:
     
     sub rsp, 32 ; reserve shadow space and 1 arguments
     lea rbx, QWORD [rbp + -16] ; get address of 'local'
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     call bla
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
@@ -69,7 +69,7 @@ main:
     
     sub rsp, 32 ; reserve shadow space and 1 arguments
     mov rbx, QWORD [rbp + -16]
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     call deref
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value

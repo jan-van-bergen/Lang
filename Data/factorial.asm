@@ -25,7 +25,7 @@ factorial_recursive:
     movsx rbx, DWORD [rbp + 16]
     mov r10, 1
     sub rbx, r10
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     call factorial_recursive
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
@@ -95,7 +95,7 @@ main:
     
     sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [rbp + -16]
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     call factorial_recursive
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
@@ -104,7 +104,7 @@ main:
     
     sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [rbp + -16]
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     call factorial_loop
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value

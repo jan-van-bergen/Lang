@@ -62,18 +62,18 @@ fun:
     mov QWORD [rbp + 32], r8 ; push arg 2 
     sub rsp, 32 ; reserve shadow space and 2 arguments
     mov rbx, 2
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     push rcx ; preserve
     sub rsp, 32 ; reserve shadow space and 1 arguments
     mov rbx, 98
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     call identity
     add rsp, 32 ; pop arguments
     pop rcx ; restore
     mov rbx, rax ; get return value
     movzx r10, BYTE [rbp + 24]
     sub rbx, r10
-    mov rdx, rbx ; arg 1
+    mov rdx, rbx ; arg 2
     call ayy
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
@@ -96,32 +96,32 @@ main:
     mov rbp, rsp ; stack frame
     sub rsp, 32 ; reserve shadow space and 3 arguments
     mov rbx, 3
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     push rcx ; preserve
     sub rsp, 32 ; reserve shadow space and 1 arguments
     push rcx ; preserve
     sub rsp, 32 ; reserve shadow space and 1 arguments
     mov rbx, 1
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     call identity
     add rsp, 32 ; pop arguments
     pop rcx ; restore
     mov rbx, rax ; get return value
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     call identity
     add rsp, 32 ; pop arguments
     pop rcx ; restore
     mov rbx, rax ; get return value
-    mov rdx, rbx ; arg 1
+    mov rdx, rbx ; arg 2
     push rcx ; preserve
     sub rsp, 32 ; reserve shadow space and 1 arguments
     mov rbx, 2
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     call identity
     add rsp, 32 ; pop arguments
     pop rcx ; restore
     mov rbx, rax ; get return value
-    mov r8, rbx ; arg 2
+    mov r8, rbx ; arg 3
     call fun
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value

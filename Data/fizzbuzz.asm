@@ -21,7 +21,7 @@ print:
     sub rsp, 16 ; reserve stack space for 2 locals
     sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [REL STD_OUTPUT_HANDLE]
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     call GetStdHandle
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
@@ -32,15 +32,15 @@ print:
     
     sub rsp, 48 ; reserve shadow space and 5 arguments
     mov rbx, QWORD [rbp + -16]
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     mov rbx, QWORD [rbp + 16]
-    mov rdx, rbx ; arg 1
+    mov rdx, rbx ; arg 2
     movsx rbx, DWORD [rbp + 24]
-    mov r8, rbx ; arg 2
+    mov r8, rbx ; arg 3
     lea rbx, QWORD [rbp + -8] ; get address of 'bytes_written'
-    mov r9, rbx ; arg 3
+    mov r9, rbx ; arg 4
     mov rbx, 0
-    mov QWORD [rsp + 32], rbx ; arg 4
+    mov QWORD [rsp + 32], rbx ; arg 5
     call WriteFile
     add rsp, 48 ; pop arguments
     mov rbx, rax ; get return value
@@ -175,11 +175,11 @@ print_num:
     
     sub rsp, 32 ; reserve shadow space and 2 arguments
     mov rbx, QWORD [rbp + -32]
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     movsx rbx, DWORD [rbp + -24]
     mov r10, 1
     add rbx, r10
-    mov rdx, rbx ; arg 1
+    mov rdx, rbx ; arg 2
     call print
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
@@ -252,9 +252,9 @@ fizzbuzz:
         je L_else4
             sub rsp, 32 ; reserve shadow space and 2 arguments
             lea rbx, [REL lit_str_2]
-            mov rcx, rbx ; arg 0
+            mov rcx, rbx ; arg 1
             mov rbx, 9
-            mov rdx, rbx ; arg 1
+            mov rdx, rbx ; arg 2
             call print
             add rsp, 32 ; pop arguments
             mov rbx, rax ; get return value
@@ -266,9 +266,9 @@ fizzbuzz:
             je L_else5
                 sub rsp, 32 ; reserve shadow space and 2 arguments
                 lea rbx, [REL lit_str_3]
-                mov rcx, rbx ; arg 0
+                mov rcx, rbx ; arg 1
                 mov rbx, 5
-                mov rdx, rbx ; arg 1
+                mov rdx, rbx ; arg 2
                 call print
                 add rsp, 32 ; pop arguments
                 mov rbx, rax ; get return value
@@ -280,9 +280,9 @@ fizzbuzz:
                 je L_else6
                     sub rsp, 32 ; reserve shadow space and 2 arguments
                     lea rbx, [REL lit_str_4]
-                    mov rcx, rbx ; arg 0
+                    mov rcx, rbx ; arg 1
                     mov rbx, 5
-                    mov rdx, rbx ; arg 1
+                    mov rdx, rbx ; arg 2
                     call print
                     add rsp, 32 ; pop arguments
                     mov rbx, rax ; get return value
@@ -291,7 +291,7 @@ fizzbuzz:
                 L_else6:
                     sub rsp, 32 ; reserve shadow space and 1 arguments
                     movsx rbx, DWORD [rbp + -16]
-                    mov rcx, rbx ; arg 0
+                    mov rcx, rbx ; arg 1
                     call print_num
                     add rsp, 32 ; pop arguments
                     mov rbx, rax ; get return value
@@ -324,7 +324,7 @@ main:
     mov rbp, rsp ; stack frame
     sub rsp, 32 ; reserve shadow space and 1 arguments
     mov rbx, 20
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     call fizzbuzz
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value

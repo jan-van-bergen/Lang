@@ -109,18 +109,18 @@ main:
     
     sub rsp, 32 ; reserve shadow space and 2 arguments
     lea rbx, QWORD [rbp + -24] ; get address of 'f'
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     lea rbx, QWORD [rbp + -24] ; get address of 'f'
-    mov rdx, rbx ; arg 1
+    mov rdx, rbx ; arg 2
     call square_f
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     
     sub rsp, 32 ; reserve shadow space and 2 arguments
     lea rbx, QWORD [rbp + -16] ; get address of 'd'
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     lea rbx, QWORD [rbp + -16] ; get address of 'd'
-    mov rdx, rbx ; arg 1
+    mov rdx, rbx ; arg 2
     call square_d
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
@@ -134,7 +134,7 @@ main:
     
     sub rsp, 32 ; reserve shadow space and 1 arguments
     lea rbx, QWORD [rbp + -8] ; get address of 'result'
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     call round_d
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value

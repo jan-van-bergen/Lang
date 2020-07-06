@@ -20,7 +20,7 @@ main:
     sub rsp, 16 ; reserve stack space for 3 locals
     sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [REL STD_OUTPUT_HANDLE]
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     call GetStdHandle
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
@@ -29,7 +29,7 @@ main:
     
     sub rsp, 32 ; reserve shadow space and 1 arguments
     lea rbx, QWORD [REL string] ; get address of 'string'
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     call strlen
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
@@ -40,15 +40,15 @@ main:
     
     sub rsp, 48 ; reserve shadow space and 5 arguments
     mov rbx, QWORD [rbp + -16]
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     lea rbx, QWORD [REL string] ; get address of 'string'
-    mov rdx, rbx ; arg 1
+    mov rdx, rbx ; arg 2
     movsx rbx, DWORD [rbp + -8]
-    mov r8, rbx ; arg 2
+    mov r8, rbx ; arg 3
     lea rbx, QWORD [rbp + -4] ; get address of 'bytes_written'
-    mov r9, rbx ; arg 3
+    mov r9, rbx ; arg 4
     mov rbx, 0
-    mov QWORD [rsp + 32], rbx ; arg 4
+    mov DWORD [rsp + 32], ebx ; arg 5
     call WriteFile
     add rsp, 48 ; pop arguments
     mov rbx, rax ; get return value

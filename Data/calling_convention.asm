@@ -36,17 +36,17 @@ main:
     mov rbp, rsp ; stack frame
     sub rsp, 48 ; reserve shadow space and 6 arguments
     mov rbx, 1
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     mov rbx, 2
-    mov rdx, rbx ; arg 1
+    mov rdx, rbx ; arg 2
     mov rbx, 3
-    mov r8, rbx ; arg 2
+    mov r8, rbx ; arg 3
     mov rbx, 4
-    mov r9, rbx ; arg 3
+    mov r9, rbx ; arg 4
     mov rbx, 5
-    mov QWORD [rsp + 32], rbx ; arg 4
+    mov DWORD [rsp + 32], ebx ; arg 5
     mov rbx, 6
-    mov QWORD [rsp + 36], rbx ; arg 5
+    mov DWORD [rsp + 36], ebx ; arg 6
     call calling_convention
     add rsp, 48 ; pop arguments
     mov rbx, rax ; get return value

@@ -46,11 +46,11 @@ malloc:
     
     sub rsp, 32 ; reserve shadow space and 3 arguments
     mov rbx, QWORD [REL heap]
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     mov rbx, 0
-    mov rdx, rbx ; arg 1
+    mov rdx, rbx ; arg 2
     movsx rbx, DWORD [rbp + 16]
-    mov r8, rbx ; arg 2
+    mov r8, rbx ; arg 3
     call HeapAlloc
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
@@ -75,7 +75,7 @@ free:
     setne bl
     and bl, 1
     movzx rbx, bl
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     call assert
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
@@ -87,18 +87,18 @@ free:
     setne bl
     and bl, 1
     movzx rbx, bl
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     call assert
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     
     sub rsp, 32 ; reserve shadow space and 3 arguments
     mov rbx, QWORD [REL heap]
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     mov rbx, 0
-    mov rdx, rbx ; arg 1
+    mov rdx, rbx ; arg 2
     mov rbx, QWORD [rbp + 16]
-    mov r8, rbx ; arg 2
+    mov r8, rbx ; arg 3
     call HeapFree
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
@@ -126,7 +126,7 @@ assert:
     je L_exit2
         sub rsp, 32 ; reserve shadow space and 1 arguments
         mov rbx, 1
-        mov rcx, rbx ; arg 0
+        mov rcx, rbx ; arg 1
         call ExitProcess
         add rsp, 32 ; pop arguments
         mov rbx, rax ; get return value
@@ -149,7 +149,7 @@ print:
     sub rsp, 16 ; reserve stack space for 2 locals
     sub rsp, 32 ; reserve shadow space and 1 arguments
     movsx rbx, DWORD [REL STD_OUTPUT_HANDLE]
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     call GetStdHandle
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
@@ -160,15 +160,15 @@ print:
     
     sub rsp, 48 ; reserve shadow space and 5 arguments
     mov rbx, QWORD [rbp + -16]
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     mov rbx, QWORD [rbp + 16]
-    mov rdx, rbx ; arg 1
+    mov rdx, rbx ; arg 2
     movsx rbx, DWORD [rbp + 24]
-    mov r8, rbx ; arg 2
+    mov r8, rbx ; arg 3
     lea rbx, QWORD [rbp + -8] ; get address of 'bytes_written'
-    mov r9, rbx ; arg 3
+    mov r9, rbx ; arg 4
     mov rbx, 0
-    mov QWORD [rsp + 32], rbx ; arg 4
+    mov DWORD [rsp + 32], ebx ; arg 5
     call WriteFile
     add rsp, 48 ; pop arguments
     mov rbx, rax ; get return value
@@ -227,7 +227,7 @@ main:
     sub rsp, 32 ; reserve stack space for 3 locals
     sub rsp, 32 ; reserve shadow space and 1 arguments
     mov rbx, 16
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     call malloc
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
@@ -290,7 +290,7 @@ main:
     
     sub rsp, 32 ; reserve shadow space and 1 arguments
     mov rbx, QWORD [rbp + -32]
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     call strlen
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
@@ -299,23 +299,23 @@ main:
     
     sub rsp, 32 ; reserve shadow space and 2 arguments
     mov rbx, QWORD [rbp + -32]
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     movsx rbx, DWORD [rbp + -24]
-    mov rdx, rbx ; arg 1
+    mov rdx, rbx ; arg 2
     call print
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     
     sub rsp, 32 ; reserve shadow space and 1 arguments
     mov rbx, QWORD [rbp + -32]
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     call free
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     
     sub rsp, 32 ; reserve shadow space and 1 arguments
     mov rbx, 16
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     call malloc
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value

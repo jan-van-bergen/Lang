@@ -298,19 +298,25 @@ static char const * get_reg_name_scratch(int reg_index, int size) {
 	}
 }
 
-static char const * get_reg_name_call(int reg_index, int size) {
+static char const * get_reg_name_call(int reg_index, int type_size, bool is_float) {
 	static char const * reg_names_8bit [4] = {  "cl",  "dl", "r8b", "r9b" };
 	static char const * reg_names_16bit[4] = {  "cx",  "dx", "r8w", "r9w" };
 	static char const * reg_names_32bit[4] = { "ecx", "edx", "r8d", "r9d" };
 	static char const * reg_names_64bit[4] = { "rcx", "rdx", "r8",  "r9"  }; 
 
-	switch (size) {
-		case 1: return reg_names_8bit [reg_index];
-		case 2: return reg_names_16bit[reg_index];
-		case 4: return reg_names_32bit[reg_index];
-		case 8: return reg_names_64bit[reg_index];
+	static char const * reg_names_float[4] = { "xmm0", "xmm1", "xmm2", "xmm3" };
 
-		default: abort();
+	if (is_float) {
+		return reg_names_float[reg_index];
+	} else {
+		switch (type_size) {
+			case 1: return reg_names_8bit [reg_index];
+			case 2: return reg_names_16bit[reg_index];
+			case 4: return reg_names_32bit[reg_index];
+			case 8: return reg_names_64bit[reg_index];
+
+			default: abort();
+		}
 	}
 }
 
@@ -1259,21 +1265,21 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 	int arg_size = 0;
 
 	for (int i = 0; i < expr->expr_call.arg_count; i++) {
+		AST_Def_Arg * def_arg = &def_func->args[i];
+
 		if (i < 4) {
 			if (context_call_reg_is_reserved(ctx, i)) {
 				// If the call registers is already in use (i.e. this is a nested
 				// function call), push the register on the stack to preserve it
 				pushed_regs_call[i] = true;
 
-				context_emit_code(ctx, "push %s ; preserve\n", get_reg_name_call(i, 8));
+				context_emit_code(ctx, "push %s ; preserve\n", get_reg_name_call(i, 8, type_is_float(def_arg->type)));
 			} else {
 				context_call_reg_reserve(ctx, i);
 			}
 
 			arg_size += 8;
 		} else {
-			AST_Def_Arg * def_arg = &def_func->args[i];
-
 			int type_size  = type_get_size (def_arg->type, ctx->current_scope);
 			int type_align = type_get_align(def_arg->type, ctx->current_scope);
 
@@ -1312,15 +1318,24 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 			);
 		}
 
+		char const * mov = "mov";
+		if (type_is_f32(result_arg.type)) {
+			mov = "movss";
+		} else if (type_is_f64(result_arg.type)) {
+			mov = "movsd";
+		}
+
 		if (i < 4) {
-			context_emit_code(ctx, "mov %s, %s ; arg %i\n", get_reg_name_call(i, 8), get_reg_name_scratch(result_arg.reg, 8), i);
+			context_emit_code(ctx, "%s %s, %s ; arg %i\n", mov, get_reg_name_call(i, 8, type_is_float(result_arg.type)), get_reg_name_scratch(result_arg.reg, 8), i + 1);
 
 			arg_offset += 8;
 		} else {
-			context_emit_code(ctx, "mov QWORD [rsp + %i], %s ; arg %i\n", arg_offset, get_reg_name_scratch(result_arg.reg, 8), i);
-
 			int type_size  = type_get_size (def_arg->type, ctx->current_scope);
 			int type_align = type_get_align(def_arg->type, ctx->current_scope);
+			
+			char const * word = get_word_name(type_size);
+
+			context_emit_code(ctx, "%s %s [rsp + %i], %s ; arg %i\n", mov, word, arg_offset, get_reg_name_scratch(result_arg.reg, type_size), i + 1);
 
 			align(&arg_offset, type_align);
 			arg_offset += type_size;
@@ -1336,7 +1351,7 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 	// Check if any registers were pushed before this call and need to be restored
 	for (int i = min(3, expr->expr_call.arg_count - 1); i >= 0; i--) {
 		if (pushed_regs_call[i]) {
-			context_emit_code(ctx, "pop %s ; restore\n", get_reg_name_call(i, 8));
+			context_emit_code(ctx, "pop %s ; restore\n", get_reg_name_call(i, 8, type_is_float(def_func->args[i].type)));
 		} else {
 			context_call_reg_free(ctx, i);
 		}
@@ -1349,10 +1364,21 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 	}
 
 	Result result;
-	result.reg = context_reg_request(ctx);
 	result.type = def_func->return_type;
 
-	context_emit_code(ctx, "mov %s, rax ; get return value\n", get_reg_name_scratch(result.reg, 8));
+	if (type_is_float(result.type)) {
+		result.reg = context_reg_request_float(ctx);
+
+		if (type_is_f32(result.type)) {
+			context_emit_code(ctx, "movss %s, xmm0 ; get return value\n", get_reg_name_scratch(result.reg, 8));
+		} else {
+			context_emit_code(ctx, "movsd %s, xmm0 ; get return value\n", get_reg_name_scratch(result.reg, 8));
+		}
+	} else {
+		result.reg = context_reg_request(ctx);
+
+		context_emit_code(ctx, "mov %s, rax ; get return value\n", get_reg_name_scratch(result.reg, 8));
+	}
 
 	return result;
 }
@@ -1470,8 +1496,15 @@ static void codegen_statement_def_func(Context * ctx, AST_Statement const * stat
 	for (int i = 0; i < min(arg_count, 4); i++) {
 		Variable * var = scope_get_variable(scope_args, stat->stat_def_func.function_def->args[i].name);
 
+		char const * mov = "mov";
+		if (type_is_f32(var->type)) {
+			mov = "movss";
+		} else if (type_is_f64(var->type)) {
+			mov = "movsd";
+		}
+
 		int type_size = type_get_size(var->type, scope_args);
-		context_emit_code(ctx, "mov %s [rbp + %i], %s ; push arg %i \n", get_word_name(type_size), var->offset, get_reg_name_call(i, type_size), i);
+		context_emit_code(ctx, "%s %s [rbp + %i], %s ; push arg %i \n", mov, get_word_name(type_size), var->offset, get_reg_name_call(i, type_size, type_is_float(var->type)), i);
 	}
 	
 	// Reserve space on stack for local variables
@@ -1597,11 +1630,14 @@ static void codegen_statement_return(Context * ctx, AST_Statement const * stat) 
 			type_error("Cannot return structs by value from function");
 		}
 
-		if (type_is_float(result.type)) {
-			abort(); // TODO
+		if (type_is_f32(result.type)) {
+			context_emit_code(ctx, "movss xmm0, %s ; return via xmm0\n", get_reg_name_scratch(result.reg, 8));
+		} else if (type_is_f64(result.type)) {
+			context_emit_code(ctx, "movsd xmm0, %s ; return via xmm0\n", get_reg_name_scratch(result.reg, 8));
+		} else {
+			context_emit_code(ctx, "mov rax, %s ; return via rax\n", get_reg_name_scratch(result.reg, 8));
 		}
 
-		context_emit_code(ctx, "mov rax, %s ; return via rax\n", get_reg_name_scratch(result.reg, 8));
 		context_reg_free(ctx, result.reg);
 	} else {
 		context_emit_code(ctx, "mov rax, 0\n");

@@ -9,9 +9,9 @@ main:
     sub rsp, 32 ; reserve stack space for 5 locals
     sub rsp, 32 ; reserve shadow space and 2 arguments
     mov rbx, 1
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     mov rbx, 5
-    mov rdx, rbx ; arg 1
+    mov rdx, rbx ; arg 2
     call test
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
@@ -20,9 +20,9 @@ main:
     
     sub rsp, 32 ; reserve shadow space and 2 arguments
     mov rbx, 0
-    mov rcx, rbx ; arg 0
+    mov rcx, rbx ; arg 1
     mov rbx, 5
-    mov rdx, rbx ; arg 1
+    mov rdx, rbx ; arg 2
     call test
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value

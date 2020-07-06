@@ -6,37 +6,25 @@ SECTION .code
 min:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    mov QWORD [rbp + 16], rcx ; push arg 0 
-    mov QWORD [rbp + 24], rdx ; push arg 1 
-    mov QWORD [rbp + 32], r8 ; push arg 2 
-    sub rsp, 16 ; reserve stack space for 2 locals
-    mov rbx, QWORD [rbp + 16]
-    movsd xmm4, QWORD [rbx]
-    lea rbx, QWORD [rbp + -16] ; get address of 'x'
-    movsd QWORD [rbx], xmm4
-    
-    mov rbx, QWORD [rbp + 24]
-    movsd xmm4, QWORD [rbx]
-    lea rbx, QWORD [rbp + -8] ; get address of 'y'
-    movsd QWORD [rbx], xmm4
-    
-    movsd xmm5, QWORD [rbp + -16]
-    movsd xmm6, QWORD [rbp + -8]
-    comisd xmm5, xmm6
+    movss DWORD [rbp + 16], xmm0 ; push arg 0 
+    movss DWORD [rbp + 24], xmm1 ; push arg 1 
+    movss xmm5, DWORD [rbp + 16]
+    movss xmm6, DWORD [rbp + 24]
+    comiss xmm5, xmm6
     setl bl
     and bl, 1
     movzx rbx, bl
     cmp rbx, 0
     je L_else0
-        mov rbx, QWORD [rbp + 32]
-        movsd xmm5, QWORD [rbp + -16]
-        movsd QWORD [rbx], xmm5
+        movss xmm5, DWORD [rbp + 16]
+        movss xmm0, xmm5 ; return via xmm0
+        jmp L_function_min_exit
         
     jmp L_exit0
     L_else0:
-        mov rbx, QWORD [rbp + 32]
-        movsd xmm5, QWORD [rbp + -8]
-        movsd QWORD [rbx], xmm5
+        movss xmm5, DWORD [rbp + 24]
+        movss xmm0, xmm5 ; return via xmm0
+        jmp L_function_min_exit
         
     L_exit0:
     
@@ -50,32 +38,30 @@ min:
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    sub rsp, 32 ; reserve stack space for 3 locals
-    lea rbx, QWORD [rbp + -32] ; get address of 'a'
-    movsd xmm4, QWORD [REL lit_flt_0]
-    movsd QWORD [rbx], xmm4
+    sub rsp, 16 ; reserve stack space for 3 locals
+    lea rbx, QWORD [rbp + -16] ; get address of 'a'
+    movss xmm4, DWORD [REL lit_flt_0]
+    movss DWORD [rbx], xmm4
     
-    lea rbx, QWORD [rbp + -24] ; get address of 'b'
-    movsd xmm4, QWORD [REL lit_flt_1]
-    movsd QWORD [rbx], xmm4
+    lea rbx, QWORD [rbp + -12] ; get address of 'b'
+    movss xmm4, DWORD [REL lit_flt_1]
+    movss DWORD [rbx], xmm4
     
-    mov QWORD [rbp + -16], 0 ; zero initialize 'm'
-    
-    sub rsp, 32 ; reserve shadow space and 3 arguments
-    lea rbx, QWORD [rbp + -32] ; get address of 'a'
-    mov rcx, rbx ; arg 0
-    lea rbx, QWORD [rbp + -24] ; get address of 'b'
-    mov rdx, rbx ; arg 1
-    lea rbx, QWORD [rbp + -16] ; get address of 'm'
-    mov r8, rbx ; arg 2
+    sub rsp, 32 ; reserve shadow space and 2 arguments
+    movss xmm5, DWORD [rbp + -16]
+    movss xmm0, xmm5 ; arg 1
+    movss xmm5, DWORD [rbp + -12]
+    movss xmm1, xmm5 ; arg 2
     call min
     add rsp, 32 ; pop arguments
-    mov rbx, rax ; get return value
+    movss xmm4, xmm0 ; get return value
+    lea rbx, QWORD [rbp + -8] ; get address of 'm'
+    movss DWORD [rbx], xmm4
     
-    movsd xmm5, QWORD [rbp + -16]
-    movsd xmm4, QWORD [REL lit_flt_2]
-    addsd xmm5, xmm4
-    cvttsd2si rbx, xmm5
+    movss xmm5, DWORD [rbp + -8]
+    movss xmm4, DWORD [REL lit_flt_2]
+    addss xmm5, xmm4
+    cvttss2si rbx, xmm5
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
     
@@ -88,6 +74,6 @@ main:
 
 
 SECTION .data
-lit_flt_0 dq 4011000000000000h ; 4.250000
-lit_flt_1 dq 4005eb851eb851ech ; 2.740000
-lit_flt_2 dq 3fe0000000000000h ; 0.500000
+lit_flt_0 dq 40880000h ; 4.250000f
+lit_flt_1 dq 402f5c29h ; 2.740000f
+lit_flt_2 dq 3f000000h ; 0.500000f
