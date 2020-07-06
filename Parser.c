@@ -78,6 +78,8 @@ static bool parser_match_expression(Parser const * parser) {
 		parser_match(parser, TOKEN_OPERATOR_BITWISE_NOT) ||
 		parser_match(parser, TOKEN_OPERATOR_LOGICAL_NOT) ||
 		parser_match(parser, TOKEN_LITERAL_INT)    || // Constant values
+		parser_match(parser, TOKEN_LITERAL_F32)    ||
+		parser_match(parser, TOKEN_LITERAL_F64)    ||
 		parser_match(parser, TOKEN_LITERAL_BOOL)   ||
 		parser_match(parser, TOKEN_LITERAL_STRING) ||
 		parser_match(parser, TOKEN_PARENTESES_OPEN); // Subexpression
@@ -170,6 +172,10 @@ static Type const * parser_parse_type(Parser * parser) {
 		type->type = TYPE_U32;
 	} else if (strcmp(identifier, "u64") == 0) {
 		type->type = TYPE_U64;
+	} else if (strcmp(identifier, "f32") == 0 || strcmp(identifier, "float") == 0) {
+		type->type = TYPE_F32;
+	} else if (strcmp(identifier, "f64") == 0 || strcmp(identifier, "double") == 0) {
+		type->type = TYPE_F64;
 	} else if (strcmp(identifier, "bool") == 0) {
 		type->type = TYPE_BOOL;
 	} else {
@@ -264,6 +270,8 @@ static AST_Expression * parser_parse_expression_elementary(Parser * parser) {
 		}
 	} else if (
 		parser_match(parser, TOKEN_LITERAL_INT)  ||
+		parser_match(parser, TOKEN_LITERAL_F32)  ||
+		parser_match(parser, TOKEN_LITERAL_F64)  ||
 		parser_match(parser, TOKEN_LITERAL_BOOL) ||
 		parser_match(parser, TOKEN_LITERAL_STRING)
 	) {

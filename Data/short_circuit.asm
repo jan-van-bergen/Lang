@@ -30,9 +30,11 @@ main:
     mov rbx, 0
     test rbx, rbx
     je L_land_false_0
+    push rbx ; preserve
     sub rsp, 32 ; reserve shadow space and 0 arguments
     call fail
     add rsp, 32 ; pop arguments
+    pop rbx ; restore
     mov r10, rax ; get return value
     test r10, r10
     je L_land_false_0
@@ -47,9 +49,11 @@ main:
     mov rbx, 1
     test rbx, rbx
     jne L_lor_true_1
+    push rbx ; preserve
     sub rsp, 32 ; reserve shadow space and 0 arguments
     call fail
     add rsp, 32 ; pop arguments
+    pop rbx ; restore
     mov r10, rax ; get return value
     test r10, r10
     jne L_lor_true_1

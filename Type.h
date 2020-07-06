@@ -14,6 +14,9 @@ typedef enum Type_Type {
 	TYPE_U32,
 	TYPE_U64,
 
+	TYPE_F32,
+	TYPE_F64,
+
 	TYPE_BOOL,
 
 	TYPE_POINTER,
@@ -51,6 +54,9 @@ Type const * make_type_u16();
 Type const * make_type_u32();
 Type const * make_type_u64();
 
+Type const * make_type_f32();
+Type const * make_type_f64();
+
 Type const * make_type_bool();
 
 Type const * make_type_array  (Type const * base_type, int size);
@@ -79,16 +85,23 @@ bool type_is_u16(Type const * type);
 bool type_is_u32(Type const * type);
 bool type_is_u64(Type const * type);
 
-bool type_is_signed_integral  (Type const * type);
-bool type_is_unsigned_integral(Type const * type);
-bool type_is_integral(Type const * type);
+bool type_is_f32(Type const * type);
+bool type_is_f64(Type const * type);
 
-bool type_is_boolean(Type const * type);
+bool type_is_bool(Type const * type);
 
 bool type_is_array  (Type const * type);
 bool type_is_pointer(Type const * type);
 
 bool type_is_struct(Type const * type);
+
+bool type_is_integral_signed  (Type const * type);
+bool type_is_integral_unsigned(Type const * type);
+bool type_is_integral         (Type const * type);
+
+bool type_is_float(Type const * type);
+
+bool type_is_arithmetic(Type const * type);
 
 bool type_is_void_pointer(Type const * type);
 

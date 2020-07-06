@@ -10,11 +10,11 @@ factorial_recursive:
     movsx rbx, DWORD [rbp + 16]
     mov r10, 0
     cmp rbx, r10
-    jne L0
-    mov rbx, 1
+    je L0
+    mov rbx, 0
     jmp L1
     L0:
-    mov rbx, 0
+    mov rbx, 1
     L1:
     cmp rbx, 0
     je L_exit2
@@ -57,11 +57,11 @@ factorial_loop:
     movsx rbx, DWORD [rbp + 16]
     mov r10, 0
     cmp rbx, r10
-    jle L4
-    mov rbx, 1
+    jg L4
+    mov rbx, 0
     jmp L5
     L4:
-    mov rbx, 0
+    mov rbx, 1
     L5:
     cmp rbx, 0
     je L_exit3
@@ -120,11 +120,11 @@ main:
     movsx rbx, DWORD [rbp + -12]
     movsx r10, DWORD [rbp + -8]
     cmp rbx, r10
-    jne L6
-    mov rbx, 1
+    je L6
+    mov rbx, 0
     jmp L7
     L6:
-    mov rbx, 0
+    mov rbx, 1
     L7:
     mov rax, rbx ; return via rax
     jmp L_function_main_exit

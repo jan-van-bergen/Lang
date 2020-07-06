@@ -31,11 +31,11 @@ main:
     mov ebx, DWORD [rbp + -8]
     mov r10, 4278190335
     cmp rbx, r10
-    jne L0
-    mov rbx, 1
+    je L0
+    mov rbx, 0
     jmp L1
     L0:
-    mov rbx, 0
+    mov rbx, 1
     L1:
     mov rcx, rbx ; arg 0
     call assert
@@ -53,11 +53,11 @@ main:
     mov ebx, DWORD [rbp + -8]
     mov r10, 255
     cmp rbx, r10
-    jne L2
-    mov rbx, 1
+    je L2
+    mov rbx, 0
     jmp L3
     L2:
-    mov rbx, 0
+    mov rbx, 1
     L3:
     mov rcx, rbx ; arg 0
     call assert
@@ -87,11 +87,11 @@ main:
     mov ebx, DWORD [rbp + -8]
     mov r10, 16711935
     cmp rbx, r10
-    jne L4
-    mov rbx, 1
+    je L4
+    mov rbx, 0
     jmp L5
     L4:
-    mov rbx, 0
+    mov rbx, 1
     L5:
     mov rcx, rbx ; arg 0
     call assert

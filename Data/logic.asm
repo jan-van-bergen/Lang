@@ -60,11 +60,11 @@ main:
     movzx rbx, BYTE [rbp + -16]
     mov r10, 1
     cmp rbx, r10
-    jne L3
-    mov rbx, 1
+    je L3
+    mov rbx, 0
     jmp L4
     L3:
-    mov rbx, 0
+    mov rbx, 1
     L4:
     mov rcx, rbx ; arg 0
     call assert
@@ -89,11 +89,11 @@ main:
     movzx rbx, BYTE [rbp + -16]
     mov r10, 0
     cmp rbx, r10
-    jne L6
-    mov rbx, 1
+    je L6
+    mov rbx, 0
     jmp L7
     L6:
-    mov rbx, 0
+    mov rbx, 1
     L7:
     mov rcx, rbx ; arg 0
     call assert
@@ -125,11 +125,11 @@ main:
     movzx rbx, BYTE [rbp + -16]
     mov r10, 1
     cmp rbx, r10
-    jne L10
-    mov rbx, 1
+    je L10
+    mov rbx, 0
     jmp L11
     L10:
-    mov rbx, 0
+    mov rbx, 1
     L11:
     mov rcx, rbx ; arg 0
     call assert

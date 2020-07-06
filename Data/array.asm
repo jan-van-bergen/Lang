@@ -15,11 +15,11 @@ main:
     movsx rbx, DWORD [rbp + -16]
     mov r10, 64
     cmp rbx, r10
-    jge L1
-    mov rbx, 1
+    jl L1
+    mov rbx, 0
     jmp L2
     L1:
-    mov rbx, 0
+    mov rbx, 1
     L2:
     cmp rbx, 0
     je L_exit0
@@ -53,11 +53,11 @@ main:
     movsx rbx, DWORD [rbp + -16]
     mov r10, 64
     cmp rbx, r10
-    jge L4
-    mov rbx, 1
+    jl L4
+    mov rbx, 0
     jmp L5
     L4:
-    mov rbx, 0
+    mov rbx, 1
     L5:
     cmp rbx, 0
     je L_exit3

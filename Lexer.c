@@ -138,8 +138,10 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 		return;
 	}
 
-	// Parse integer literal
+	// Parse integer or float/double literal
 	if (isdigit(curr) || ((curr == '+' || curr == '-') && isdigit(lexer->source[lexer->index + 1]))) {
+		int index_lit_start = lexer->index;
+		
 		bool is_negative = false;
 
 		if (curr == '+' || curr == '-') {
@@ -159,9 +161,26 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 			curr = lexer_next(lexer);
 		}
 
-		token->type      = TOKEN_LITERAL_INT;
-		token->sign      = is_negative;
-		token->value_int = value * (is_negative ? -1 : 1);
+		// If we encounter a dot parse as float/double literal
+		if (curr == '.') {
+			curr = lexer_next(lexer);
+
+			while (isdigit(curr)) curr = lexer_next(lexer);
+
+			if (curr == 'f') {
+				lexer_next(lexer);
+
+				token->type        = TOKEN_LITERAL_F32;
+				token->value_float = strtof(lexer->source + index_lit_start, NULL);
+			} else {
+				token->type         = TOKEN_LITERAL_F64;
+				token->value_double = atof(lexer->source + index_lit_start);
+			}
+		} else {
+			token->type      = TOKEN_LITERAL_INT;
+			token->sign      = is_negative;
+			token->value_int = value * (is_negative ? -1 : 1);
+		}
 
 		return;
 	}
@@ -205,21 +224,6 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 		return;
 	}
 	
-	// Keywords
-	if (match_length = lexer_match(lexer, "let"))      { token->type = TOKEN_KEYWORD_LET;      lexer->index += match_length; return; }
-	if (match_length = lexer_match(lexer, "cast"))     { token->type = TOKEN_KEYWORD_CAST;     lexer->index += match_length; return; }
-	if (match_length = lexer_match(lexer, "sizeof"))   { token->type = TOKEN_KEYWORD_SIZEOF;   lexer->index += match_length; return; }
-	if (match_length = lexer_match(lexer, "extern"))   { token->type = TOKEN_KEYWORD_EXTERN;   lexer->index += match_length; return; }
-	if (match_length = lexer_match(lexer, "if"))       { token->type = TOKEN_KEYWORD_IF;       lexer->index += match_length; return; }
-	if (match_length = lexer_match(lexer, "else"))     { token->type = TOKEN_KEYWORD_ELSE;     lexer->index += match_length; return; }
-	//if (match_length = lexer_match(lexer, "for"))    { token->type = TOKEN_KEYWORD_FOR;    lexer->index += match_length; return; }
-	if (match_length = lexer_match(lexer, "while"))    { token->type = TOKEN_KEYWORD_WHILE;    lexer->index += match_length; return; }
-	if (match_length = lexer_match(lexer, "break"))    { token->type = TOKEN_KEYWORD_BREAK;    lexer->index += match_length; return; }
-	if (match_length = lexer_match(lexer, "continue")) { token->type = TOKEN_KEYWORD_CONTINUE; lexer->index += match_length; return; }
-	if (match_length = lexer_match(lexer, "func"))     { token->type = TOKEN_KEYWORD_FUNC;     lexer->index += match_length; return; }
-	if (match_length = lexer_match(lexer, "return"))   { token->type = TOKEN_KEYWORD_RETURN;   lexer->index += match_length; return; }
-	if (match_length = lexer_match(lexer, "struct"))   { token->type = TOKEN_KEYWORD_STRUCT;   lexer->index += match_length; return; }
-
 	// Bitshift Operators
 	if (match_length = lexer_match(lexer, "<<")) { token->type = TOKEN_OPERATOR_SHIFT_LEFT;  lexer->index += match_length; return; }
 	if (match_length = lexer_match(lexer, ">>")) { token->type = TOKEN_OPERATOR_SHIFT_RIGHT; lexer->index += match_length; return; }
@@ -282,8 +286,7 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 		case ';': token->type = TOKEN_SEMICOLON; lexer_next(lexer); return;
 	}
 
-	// Token will be identifier
-
+	// Token will be identifier or keyword from now on
 	int index_str_start = lexer->index;
 		
 	curr = lexer_next(lexer); // Consume first letter of identifier
@@ -297,6 +300,20 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 
 	memcpy(str, lexer->source + index_str_start, index_str_end - index_str_start);
 	str[str_len] = '\0';
+
+	// Keywords
+	if (strcmp(str, "let")      == 0) { token->type = TOKEN_KEYWORD_LET;      return; }
+	if (strcmp(str, "cast")     == 0) { token->type = TOKEN_KEYWORD_CAST;     return; }
+	if (strcmp(str, "sizeof")   == 0) { token->type = TOKEN_KEYWORD_SIZEOF;   return; }
+	if (strcmp(str, "extern")   == 0) { token->type = TOKEN_KEYWORD_EXTERN;   return; }
+	if (strcmp(str, "if")       == 0) { token->type = TOKEN_KEYWORD_IF;       return; }
+	if (strcmp(str, "else")     == 0) { token->type = TOKEN_KEYWORD_ELSE;     return; }
+	if (strcmp(str, "while")    == 0) { token->type = TOKEN_KEYWORD_WHILE;    return; }
+	if (strcmp(str, "break")    == 0) { token->type = TOKEN_KEYWORD_BREAK;    return; }
+	if (strcmp(str, "continue") == 0) { token->type = TOKEN_KEYWORD_CONTINUE; return; }
+	if (strcmp(str, "func")     == 0) { token->type = TOKEN_KEYWORD_FUNC;     return; }
+	if (strcmp(str, "return")   == 0) { token->type = TOKEN_KEYWORD_RETURN;   return; }
+	if (strcmp(str, "struct")   == 0) { token->type = TOKEN_KEYWORD_STRUCT;   return; }
 
 	token->type = TOKEN_IDENTIFIER;
 	token->value_str = str;

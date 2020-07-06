@@ -30,11 +30,11 @@ malloc:
     mov rbx, QWORD [REL heap]
     mov r10, QWORD [REL NULL]
     cmp rbx, r10
-    jne L0
-    mov rbx, 1
+    je L0
+    mov rbx, 0
     jmp L1
     L0:
-    mov rbx, 0
+    mov rbx, 1
     L1:
     cmp rbx, 0
     je L_exit2
@@ -75,11 +75,11 @@ free:
     mov rbx, QWORD [rbp + 16]
     mov r10, QWORD [REL NULL]
     cmp rbx, r10
-    je L3
-    mov rbx, 1
+    jne L3
+    mov rbx, 0
     jmp L4
     L3:
-    mov rbx, 0
+    mov rbx, 1
     L4:
     mov rcx, rbx ; arg 0
     call assert
@@ -90,11 +90,11 @@ free:
     mov rbx, QWORD [REL heap]
     mov r10, QWORD [REL NULL]
     cmp rbx, r10
-    je L5
-    mov rbx, 1
+    jne L5
+    mov rbx, 0
     jmp L6
     L5:
-    mov rbx, 0
+    mov rbx, 1
     L6:
     mov rcx, rbx ; arg 0
     call assert
@@ -205,11 +205,11 @@ strlen:
     movzx rbx, BYTE [rbx]
     mov r10, 0
     cmp rbx, r10
-    je L10
-    mov rbx, 1
+    jne L10
+    mov rbx, 0
     jmp L11
     L10:
-    mov rbx, 0
+    mov rbx, 1
     L11:
     cmp rbx, 0
     je L_exit9

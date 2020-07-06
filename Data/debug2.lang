@@ -1,0 +1,11 @@
+func fun(x: int) -> int { 
+	let i: int = x;
+	
+	return i + 2;
+}
+
+func otherfun(x: int) -> int { return x + 1; }
+
+func main() -> int {
+	return function(otherfun(2) + otherfun(3));
+}

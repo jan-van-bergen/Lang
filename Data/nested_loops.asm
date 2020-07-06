@@ -32,11 +32,11 @@ main:
         movsx rbx, DWORD [rbp + -4]
         movsx r10, DWORD [rbp + -12]
         cmp rbx, r10
-        jge L2
-        mov rbx, 1
+        jl L2
+        mov rbx, 0
         jmp L3
         L2:
-        mov rbx, 0
+        mov rbx, 1
         L3:
         cmp rbx, 0
         je L_exit1
@@ -48,11 +48,11 @@ main:
             mov rbx, rdx
             mov r10, 0
             cmp rbx, r10
-            jne L4
-            mov rbx, 1
+            je L4
+            mov rbx, 0
             jmp L5
             L4:
-            mov rbx, 0
+            mov rbx, 1
             L5:
             cmp rbx, 0
             je L_exit6
@@ -92,11 +92,11 @@ main:
             movsx rbx, DWORD [rbp + -16]
             movsx r10, DWORD [REL N]
             cmp rbx, r10
-            jne L8
-            mov rbx, 1
+            je L8
+            mov rbx, 0
             jmp L9
             L8:
-            mov rbx, 0
+            mov rbx, 1
             L9:
             cmp rbx, 0
             je L_exit10
@@ -178,7 +178,7 @@ print_num:
     mov DWORD [rbp + 16], ecx ; push arg 0 
     sub rsp, 32 ; reserve stack space for 5 locals
     lea rbx, QWORD [rbp + -32] ; get address of 'num_str'
-    lea r10, [REL str_lit_1]
+    lea r10, [REL lit_str_1]
     mov QWORD [rbx], r10
     
     lea rbx, QWORD [rbp + -24] ; get address of 'idx'
@@ -189,11 +189,11 @@ print_num:
     movsx rbx, DWORD [rbp + 16]
     mov r10, 0
     cmp rbx, r10
-    jle L12
-    mov rbx, 1
+    jg L12
+    mov rbx, 0
     jmp L13
     L12:
-    mov rbx, 0
+    mov rbx, 1
     L13:
     cmp rbx, 0
     je L_exit11
@@ -245,11 +245,11 @@ print_num:
     mov rbx, rax
     movsx r10, DWORD [rbp + -16]
     cmp r10, rbx
-    jge L15
-    mov r10, 1
+    jl L15
+    mov r10, 0
     jmp L16
     L15:
-    mov r10, 0
+    mov r10, 1
     L16:
     cmp r10, 0
     je L_exit14
@@ -327,4 +327,4 @@ print_num:
 
 SECTION .data
 N dq 100
-str_lit_1 db "         ", 0
+lit_str_1 db "         ", 0

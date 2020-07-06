@@ -26,7 +26,7 @@ main:
     mov rbp, rsp ; stack frame
     sub rsp, 176 ; reserve stack space for 7 locals
     lea rbx, QWORD [rbp + -176] ; get address of 'file_name'
-    lea r10, [REL str_lit_6]
+    lea r10, [REL lit_str_6]
     mov QWORD [rbx], r10
     
     lea rdi, QWORD [rbp + -168] ; zero initialize 'ofstruct'
@@ -52,11 +52,11 @@ main:
     mov rbx, -1
     mov r10, QWORD [rbp + -32]
     cmp r10, rbx
-    jne L0
-    mov r10, 1
+    je L0
+    mov r10, 0
     jmp L1
     L0:
-    mov r10, 0
+    mov r10, 1
     L1:
     cmp r10, 0
     je L_exit2
@@ -109,11 +109,11 @@ main:
     movzx rbx, BYTE [rbp + -8]
     mov r10, 0
     cmp rbx, r10
-    jne L3
-    mov rbx, 1
+    je L3
+    mov rbx, 0
     jmp L4
     L3:
-    mov rbx, 0
+    mov rbx, 1
     L4:
     cmp rbx, 0
     je L_exit5
@@ -142,4 +142,4 @@ CREATE_NEW dq 1
 FILE_ATTRIBUTE_NORMAL dq 128
 OF_CREATE dq 4096
 OF_READ dq 0
-str_lit_6 db "TEST.TXT", 0
+lit_str_6 db "TEST.TXT", 0

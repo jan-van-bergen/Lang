@@ -58,7 +58,7 @@ print_num:
     mov DWORD [rbp + 16], ecx ; push arg 0 
     sub rsp, 32 ; reserve stack space for 5 locals
     lea rbx, QWORD [rbp + -32] ; get address of 'num_str'
-    lea r10, [REL str_lit_1]
+    lea r10, [REL lit_str_1]
     mov QWORD [rbx], r10
     
     lea rbx, QWORD [rbp + -24] ; get address of 'idx'
@@ -69,11 +69,11 @@ print_num:
     movsx rbx, DWORD [rbp + 16]
     mov r10, 0
     cmp rbx, r10
-    jle L1
-    mov rbx, 1
+    jg L1
+    mov rbx, 0
     jmp L2
     L1:
-    mov rbx, 0
+    mov rbx, 1
     L2:
     cmp rbx, 0
     je L_exit0
@@ -125,11 +125,11 @@ print_num:
     mov rbx, rax
     movsx r10, DWORD [rbp + -16]
     cmp r10, rbx
-    jge L4
-    mov r10, 1
+    jl L4
+    mov r10, 0
     jmp L5
     L4:
-    mov r10, 0
+    mov r10, 1
     L5:
     cmp r10, 0
     je L_exit3
@@ -210,11 +210,11 @@ fizzbuzz:
     movsx rbx, DWORD [rbp + -16]
     movsx r10, DWORD [rbp + 16]
     cmp rbx, r10
-    jg L7
-    mov rbx, 1
+    jle L7
+    mov rbx, 0
     jmp L8
     L7:
-    mov rbx, 0
+    mov rbx, 1
     L8:
     cmp rbx, 0
     je L_exit6
@@ -226,11 +226,11 @@ fizzbuzz:
         mov rbx, rdx
         mov r10, 0
         cmp rbx, r10
-        jne L9
-        mov rbx, 1
+        je L9
+        mov rbx, 0
         jmp L10
         L9:
-        mov rbx, 0
+        mov rbx, 1
         L10:
         lea r10, QWORD [rbp + -12] ; get address of 'divisible_by_3'
         mov BYTE [r10], bl
@@ -243,11 +243,11 @@ fizzbuzz:
         mov rbx, rdx
         mov r10, 0
         cmp rbx, r10
-        jne L11
-        mov rbx, 1
+        je L11
+        mov rbx, 0
         jmp L12
         L11:
-        mov rbx, 0
+        mov rbx, 1
         L12:
         lea r10, QWORD [rbp + -11] ; get address of 'divisible_by_5'
         mov BYTE [r10], bl
@@ -266,7 +266,7 @@ fizzbuzz:
         cmp rbx, 0
         je L_else14
             sub rsp, 32 ; reserve shadow space and 2 arguments
-            lea rbx, [REL str_lit_2]
+            lea rbx, [REL lit_str_2]
             mov rcx, rbx ; arg 0
             mov rbx, 9
             mov rdx, rbx ; arg 1
@@ -280,7 +280,7 @@ fizzbuzz:
             cmp rbx, 0
             je L_else15
                 sub rsp, 32 ; reserve shadow space and 2 arguments
-                lea rbx, [REL str_lit_3]
+                lea rbx, [REL lit_str_3]
                 mov rcx, rbx ; arg 0
                 mov rbx, 5
                 mov rdx, rbx ; arg 1
@@ -294,7 +294,7 @@ fizzbuzz:
                 cmp rbx, 0
                 je L_else16
                     sub rsp, 32 ; reserve shadow space and 2 arguments
-                    lea rbx, [REL str_lit_4]
+                    lea rbx, [REL lit_str_4]
                     mov rcx, rbx ; arg 0
                     mov rbx, 5
                     mov rdx, rbx ; arg 1
@@ -354,7 +354,7 @@ main:
 
 SECTION .data
 STD_OUTPUT_HANDLE dq -11
-str_lit_1 db "         ", 0
-str_lit_2 db "fizzbuzz ", 0
-str_lit_3 db "fizz ", 0
-str_lit_4 db "buzz ", 0
+lit_str_1 db "         ", 0
+lit_str_2 db "fizzbuzz ", 0
+lit_str_3 db "fizz ", 0
+lit_str_4 db "buzz ", 0

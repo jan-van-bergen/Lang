@@ -1,0 +1,26 @@
+func square_f(x: float *, result: float *) -> void {
+	*result = *x * *x;
+}
+
+func square_d(x: double *, result: double *) -> void {
+	*result = *x * *x;
+}
+
+func round_f(x: f32 *) -> int { return cast(int) *x + 0.5f; }
+func round_d(x: f64 *) -> int { return cast(int) *x + 0.5; }
+
+func main() -> int {
+	let a: f32 = 5.0f;
+	let b: f32 = 3.0f;
+	
+	let f: float  = a * 3.0f + b / 2.0f; // 16.5
+	let d: double = 4.0;
+
+	square_f(&f, &f);
+	square_d(&d, &d);
+
+	return cast(int) f;
+
+	let result: double = d + cast(double) f;
+	return round_d(&result);
+}

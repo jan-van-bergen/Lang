@@ -5,6 +5,8 @@
 typedef enum Token_Type {
 	TOKEN_IDENTIFIER,
 	TOKEN_LITERAL_INT,
+	TOKEN_LITERAL_F32,
+	TOKEN_LITERAL_F64,
 	TOKEN_LITERAL_BOOL,
 	TOKEN_LITERAL_STRING,
 
@@ -88,6 +90,10 @@ typedef struct Token {
 			unsigned long long value_int;
 			bool sign;
 		};
+
+		float  value_float;
+		double value_double;
+
 		char const * value_str;
 	};
 } Token;
