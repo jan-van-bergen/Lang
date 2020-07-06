@@ -26,7 +26,8 @@ typedef struct Context {
 
 	unsigned flags;
 
-	Scope * current_scope;
+	char const * current_function_name;
+	Scope      * current_scope;
 
 	char * code;
 	int    code_len;
@@ -48,7 +49,8 @@ static void context_init(Context * ctx) {
 
 	ctx->flags = 0;
 
-	ctx->current_scope = NULL;
+	ctx->current_function_name = NULL;
+	ctx->current_scope         = NULL;
 
 	ctx->code_len = 0;
 	ctx->code_cap = 512;
@@ -1482,7 +1484,10 @@ static void codegen_statement_def_var(Context * ctx, AST_Statement const * stat)
 static void codegen_statement_def_func(Context * ctx, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_DEF_FUNC);
 
-	context_emit_code(ctx, "%s:\n", stat->stat_def_func.function_def->name);
+	char const * function_name = stat->stat_def_func.function_def->name;
+	ctx->current_function_name = function_name;
+
+	context_emit_code(ctx, "%s:\n", function_name);
 	ctx->indent++;
 
 	context_emit_code(ctx, "push rbp ; save RBP\n");
@@ -1490,9 +1495,9 @@ static void codegen_statement_def_func(Context * ctx, AST_Statement const * stat
 
 	Scope * scope_args = stat->stat_def_func.scope_args;
 	
-	// Push arguments on stack
 	int arg_count = stat->stat_def_func.function_def->arg_count;
 
+	// Push first 4 arguments (if we have that many) that were passed in registers onto the stack
 	for (int i = 0; i < min(arg_count, 4); i++) {
 		Variable * var = scope_get_variable(scope_args, stat->stat_def_func.function_def->args[i].name);
 
@@ -1531,6 +1536,7 @@ static void codegen_statement_def_func(Context * ctx, AST_Statement const * stat
 	context_emit_code(ctx, "\n");
 	
 	ctx->current_scope = ctx->current_scope->prev;
+	ctx->current_function_name = NULL;
 
 	ctx->indent--;
 }
@@ -1623,11 +1629,20 @@ static void codegen_statement_continue(Context * ctx, AST_Statement const * stat
 static void codegen_statement_return(Context * ctx, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_RETURN);
 
+	Function_Def * func_def = scope_get_function_def(ctx->current_scope, ctx->current_function_name);
+
 	if (stat->stat_return.expr) {
 		Result result = codegen_expression(ctx, stat->stat_return.expr);
 
 		if (type_is_struct(result.type)) {
 			type_error("Cannot return structs by value from function");
+		}
+
+		if (!types_unifiable(result.type, func_def->return_type)) {
+			char str_ret_type[128]; type_to_string(result.type,           str_ret_type, sizeof(str_ret_type));
+			char str_def_type[128]; type_to_string(func_def->return_type, str_def_type, sizeof(str_def_type));
+
+			type_error("Return statement in function '%s' cannot unify types '%s' and '%s'", ctx->current_function_name, str_ret_type, str_def_type);
 		}
 
 		if (type_is_f32(result.type)) {
@@ -1640,6 +1655,13 @@ static void codegen_statement_return(Context * ctx, AST_Statement const * stat) 
 
 		context_reg_free(ctx, result.reg);
 	} else {
+		if (!type_is_void(func_def->return_type)) {
+			char str_ret_type[128];
+			type_to_string(func_def->return_type, str_ret_type, sizeof(str_ret_type));
+
+			type_error("Return statement without expression in function '%s', which should return type '%s'", ctx->current_function_name, str_ret_type);
+		}
+
 		context_emit_code(ctx, "mov rax, 0\n");
 	}
 	

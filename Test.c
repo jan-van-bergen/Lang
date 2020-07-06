@@ -26,8 +26,8 @@ static void run_test(char const * filename, int expected_exit_code, char const *
 		printf("Testcase SUCCESS: '%s' Exit code was %i, output was: '%s'\n", filename, exit_code, output);
 	} else {
 		printf("Testcase FAILED:  '%s' Exit code was %i, expected %i.\n", filename, exit_code, expected_exit_code);
-		printf("Output:   %s\n", output);
-		printf("Expected: %s\n", expected_output);
+		printf("Output:   '%s'\n", output);
+		printf("Expected: '%s'\n", expected_output);
 
 		__debugbreak();
 	}

@@ -22,5 +22,5 @@ func main() -> int {
 	let a: int = factorial_recursive(arg);
 	let b: int = factorial_loop     (arg);
 
-	return a == b;
+	return cast(int) a == b;
 }
