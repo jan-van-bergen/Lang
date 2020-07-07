@@ -190,7 +190,7 @@ static void context_add_data_seg(Context * ctx, char const * data) {
 }
 
 // Adds global variable to data segment
-static void context_add_global(Context * ctx, Variable * var, int value) {
+static void context_add_global(Context * ctx, Variable * var, bool sign, unsigned long long value) {
 	int var_name_len = strlen(var->name);
 
 	int    global_size = var_name_len + 5 + 32;
@@ -198,7 +198,7 @@ static void context_add_global(Context * ctx, Variable * var, int value) {
 
 	if (type_is_struct(var->type)) {
 		if (value != 0) {
-			type_error("Cannot initialize global struct variable '%s' with value '%i'", var->name, value);
+			type_error("Cannot initialize global struct variable '%s' with value '%llu'", var->name, value);
 		}
 
 		// Fill struct with 0 quad words
@@ -209,8 +209,10 @@ static void context_add_global(Context * ctx, Variable * var, int value) {
 		for (int i = 1; i < struct_size; i++) {
 			strcat_s(global, global_size, ", 0");
 		}
+	} else if (sign) {
+		sprintf_s(global, global_size, "%s dq %lld", var->name, value);
 	} else {
-		sprintf_s(global, global_size, "%s dq %i", var->name, value);
+		sprintf_s(global, global_size, "%s dq %llu", var->name, value);
 	}
 
 	context_add_data_seg(ctx, global);
@@ -501,7 +503,7 @@ static Result codegen_expression_var(Context * ctx, AST_Expression const * expr)
 	if (by_address || is_global_char_ptr || type_is_array(var->type)) {
 		context_emit_code(ctx, "lea %s, QWORD [%s] ; get address of '%s'\n", get_reg_name_scratch(result.reg, 8), var_address, var_name);
 	} else {
-		result.reg = codegen_deref_address(ctx, result.reg, result.type, var_address, var_name);
+		result.reg = codegen_deref_address(ctx, result.reg, result.type, var_address);
 	}
 
 	return result;
@@ -1140,13 +1142,8 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 		case TOKEN_OPERATOR_LOGICAL_NOT: {
 			int label = context_new_label(ctx);
 
-			context_emit_code(ctx, "test %s, %s\n", reg_name, reg_name);
-			context_emit_code(ctx, "jne L_lnot_false_%i\n", label);
-			context_emit_code(ctx, "mov %s, 1\n",   reg_name);
-			context_emit_code(ctx, "jmp L_lnot_exit_%i\n", label);
-			context_emit_code(ctx, "L_lnot_false_%i:\n", label);
-			context_emit_code(ctx, "mov %s, 0\n",   reg_name);
-			context_emit_code(ctx, "L_lnot_exit_%i:\n",  label);
+			context_emit_code(ctx, "xor %s, -1\n", reg_name);
+			context_emit_code(ctx, "and %s, 1\n",  reg_name);
 
 			if (!type_is_bool(result.type)) {
 				type_error("Operator '!' requires operand of boolean type");
@@ -1427,7 +1424,7 @@ static void codegen_statement_def_var(Context * ctx, AST_Statement const * stat)
 			switch (literal_type) {
 				case TOKEN_LITERAL_INT: 
 				case TOKEN_LITERAL_BOOL: {
-					context_add_global(ctx, var, literal->expr_const.token.value_int);
+					context_add_global(ctx, var, literal->expr_const.token.sign, literal->expr_const.token.value_int);
 
 					break;
 				}
@@ -1441,7 +1438,7 @@ static void codegen_statement_def_var(Context * ctx, AST_Statement const * stat)
 				default: abort();
 			}
 		} else {
-			context_add_global(ctx, var, 0);
+			context_add_global(ctx, var, false, 0);
 		}
 	} else {
 		char var_address[32];

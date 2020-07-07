@@ -10,13 +10,8 @@ assert:
     mov rbp, rsp ; stack frame
     mov BYTE [rbp + 16], cl ; push arg 0 
     movzx rbx, BYTE [rbp + 16]
-    test rbx, rbx
-    jne L_lnot_false_0
-    mov rbx, 1
-    jmp L_lnot_exit_0
-    L_lnot_false_0:
-    mov rbx, 0
-    L_lnot_exit_0:
+    xor rbx, -1
+    and rbx, 1
     cmp rbx, 0
     je L_exit1
         sub rsp, 32 ; reserve shadow space and 1 arguments
@@ -97,13 +92,8 @@ main:
     test rbx, rbx
     jne L_lor_true_4
     movzx r10, BYTE [rbp + -16]
-    test r10, r10
-    jne L_lnot_false_5
-    mov r10, 1
-    jmp L_lnot_exit_5
-    L_lnot_false_5:
-    mov r10, 0
-    L_lnot_exit_5:
+    xor r10, -1
+    and r10, 1
     test r10, r10
     jne L_lor_true_4
     mov rbx, 0
