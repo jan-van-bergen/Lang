@@ -54,7 +54,7 @@ main:
     movss xmm1, xmm5 ; arg 2
     call min
     add rsp, 32 ; pop arguments
-    movss xmm4, xmm0 ; get return value
+    movss xmm4, xmm0 ; get return value (f32)
     lea rbx, QWORD [rbp + -8] ; get address of 'm'
     movss DWORD [rbx], xmm4
     

@@ -1,0 +1,42 @@
+extern GetStdHandle(std_handle: int) -> void *;
+extern WriteFile(handle: void *, buffer: void *, bytes_to_write: int, bytes_written: int *, overlapped: int) -> bool;
+
+func strlen(str: char *) -> int {
+	let len: int = 0;
+	
+	while (*(str + len) != 0) len = len + 1;
+	
+	return len;
+}
+
+func print(str: char *) -> void {
+	let std_handle: void * = GetStdHandle(-11);
+
+	let str_len: int = strlen(str);
+
+	let bytes_written: int;
+	WriteFile(std_handle, str, str_len, &bytes_written, 0);
+}
+
+let str_0: char * = "Hello\n";
+let str_1: char * = "\tworld\n";
+let str_2: char * = "Ola\n";
+let str_3: char * = "\tmundo\n";
+let str_4: char * = "Bye\n";
+
+func main() -> int {
+	let strings: char *[5];
+	
+	*(strings + 0 * sizeof(char *)) = str_0;
+	*(strings + 1 * sizeof(char *)) = str_1;
+	*(strings + 2 * sizeof(char *)) = str_2;
+	*(strings + 3 * sizeof(char *)) = str_3;
+	*(strings + 4 * sizeof(char *)) = str_4;
+	
+	let i: int = 0;
+	while (i < 5) {
+		print(*(strings + i * sizeof(char *)));
+		
+		i++;
+	}
+}

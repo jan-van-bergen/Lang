@@ -1,0 +1,14 @@
+func fun(f: float, d: double) -> double {
+	return (cast(double) f) + d;
+}
+
+func function(d: double, f: float) -> float {
+	return cast(float) (fun(1.5f, d) + fun(f, 1.25));
+}
+
+func main() -> int {
+	let d: double = 4.5;
+	let f: float  = 3.25f;
+
+	return cast(int) function(d, f);
+}

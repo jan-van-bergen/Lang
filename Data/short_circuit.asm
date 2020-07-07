@@ -5,7 +5,6 @@ GLOBAL main
 SECTION .code
 EXTERN ExitProcess
 
-
 fail:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame

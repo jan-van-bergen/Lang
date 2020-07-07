@@ -1,0 +1,26 @@
+struct Point {
+	x: float;
+	y: float;
+}
+
+struct Line {
+	start: Point;
+	end:   Point;
+}
+
+func line_squared_length(line: Line *) -> float {
+	let dx: float = (*line).end.x - (*line).start.x;
+	let dy: float = (*line).end.y - (*line).start.y;
+	
+	return dx*dx + dy*dy;
+}
+
+func main() -> int {
+	let line: Line;
+	line.start.x = 2.0f;
+	line.start.y = 1.0f;
+	line.end.x = 5.0f;
+	line.end.y = 2.0f;
+	
+	return cast(int) line_squared_length(&line);
+}

@@ -105,7 +105,6 @@ main:
 
 EXTERN ExitProcess
 
-
 assert:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame

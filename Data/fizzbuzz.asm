@@ -5,12 +5,9 @@ GLOBAL main
 SECTION .code
 EXTERN GetStdHandle
 
-
 EXTERN WriteFile
 
-
 EXTERN strlen
-
 
 
 print:
@@ -77,7 +74,7 @@ print_num:
         movsx rbx, DWORD [rbp + 16]
         mov r10, 10
         mov rax, rbx
-        cdq
+        cqo
         idiv r10
         mov rbx, rdx
         lea r10, QWORD [rbp + -20] ; get address of 'digit'
@@ -94,7 +91,7 @@ print_num:
         movsx rbx, DWORD [rbp + 16]
         mov r10, 10
         mov rax, rbx
-        cdq
+        cqo
         idiv r10
         mov rbx, rax
         lea r10, QWORD [rbp + 16] ; get address of 'num'
@@ -117,7 +114,7 @@ print_num:
     movsx rbx, DWORD [rbp + -24]
     mov r10, 2
     mov rax, rbx
-    cdq
+    cqo
     idiv r10
     mov rbx, rax
     movsx r10, DWORD [rbp + -16]
@@ -212,7 +209,7 @@ fizzbuzz:
         movsx rbx, DWORD [rbp + -16]
         mov r10, 3
         mov rax, rbx
-        cdq
+        cqo
         idiv r10
         mov rbx, rdx
         mov r10, 0
@@ -226,7 +223,7 @@ fizzbuzz:
         movsx rbx, DWORD [rbp + -16]
         mov r10, 5
         mov rax, rbx
-        cdq
+        cqo
         idiv r10
         mov rbx, rdx
         mov r10, 0

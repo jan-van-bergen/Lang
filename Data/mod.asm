@@ -10,7 +10,7 @@ main:
     mov rbx, 321
     mov r10, 43
     mov rax, rbx
-    cdq
+    cqo
     idiv r10
     mov rbx, rdx
     lea r10, QWORD [rbp + -16] ; get address of 'a'
@@ -19,7 +19,7 @@ main:
     mov rbx, 3
     mov r10, 5
     mov rax, rbx
-    cdq
+    cqo
     idiv r10
     mov rbx, rdx
     lea r10, QWORD [rbp + -12] ; get address of 'b'
@@ -28,7 +28,7 @@ main:
     movsx rbx, DWORD [rbp + -16]
     movsx r10, DWORD [rbp + -12]
     mov rax, rbx
-    cdq
+    cqo
     idiv r10
     mov rbx, rdx
     mov rax, rbx ; return via rax

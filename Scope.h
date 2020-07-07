@@ -43,6 +43,7 @@ typedef struct Function_Def {
 	struct AST_Def_Arg  * args;
 } Function_Def;
 
+
 typedef struct Scope {
 	struct Scope * prev;
 

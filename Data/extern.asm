@@ -5,12 +5,9 @@ GLOBAL main
 SECTION .code
 EXTERN GetStdHandle
 
-
 EXTERN WriteFile
 
-
 EXTERN strlen
-
 
 
 

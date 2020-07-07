@@ -27,6 +27,7 @@ void type_table_init() {
 	type_block_first = malloc(sizeof(Type_Block));
 	type_block_first->next = NULL;
 
+	// Fill with primitive types
 	type_block_first->table[TYPE_VOID] = (Type){ TYPE_VOID, 0 };
 
 	type_block_first->table[TYPE_I8 ] = (Type){ TYPE_I8,  0 };

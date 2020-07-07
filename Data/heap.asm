@@ -5,21 +5,15 @@ GLOBAL main
 SECTION .code
 EXTERN GetProcessHeap
 
-
 EXTERN HeapAlloc
-
 
 EXTERN HeapFree
 
-
 EXTERN GetStdHandle
-
 
 EXTERN WriteFile
 
-
 EXTERN ExitProcess
-
 
 
 

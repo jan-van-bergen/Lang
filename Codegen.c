@@ -696,23 +696,13 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 		int type_size_right = type_get_size(result_right.type, ctx->current_scope);
 
 		if (!types_unifiable(result_left.type, result_right.type)) {
-			char str_type_left [128];
-			char str_type_right[128];
-
-			type_to_string(result_left .type, str_type_left,  sizeof(str_type_left));
-			type_to_string(result_right.type, str_type_right, sizeof(str_type_right));
+			char str_type_left [128]; type_to_string(result_left .type, str_type_left,  sizeof(str_type_left));
+			char str_type_right[128]; type_to_string(result_right.type, str_type_right, sizeof(str_type_right));
 
 			type_error("Cannot assign instance of type '%s' a value of type '%s'", str_type_left, str_type_right);
-		} else if (
-			type_is_primitive(result_left .type) &&
-			type_is_primitive(result_right.type) &&
-			type_size_right > type_size_left
-		) {
-			char str_type_left [128];
-			char str_type_right[128];
-
-			type_to_string(result_left .type, str_type_left,  sizeof(str_type_left));
-			type_to_string(result_right.type, str_type_right, sizeof(str_type_right));
+		} else if (type_is_primitive(result_left .type) && type_is_primitive(result_right.type) && type_size_right > type_size_left) {
+			char str_type_left [128]; type_to_string(result_left .type, str_type_left,  sizeof(str_type_left));
+			char str_type_right[128]; type_to_string(result_right.type, str_type_right, sizeof(str_type_right));
 
 			type_error("Implicit narrowing conversion from type '%s' to '%s' is not allowed. Explicit cast required", str_type_right, str_type_left);
 		}
@@ -823,7 +813,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			} else if (type_is_f64(result_left.type) && type_is_f64(result_right.type)) {
 				context_emit_code(ctx, "mulsd %s, %s\n", reg_name_left, reg_name_right);
 			} else {
-				type_error("Operator '*' only works with integral types");
+				type_error("Operator '*' only works with integral or float types");
 			}
 
 			break;
@@ -832,7 +822,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 		case TOKEN_OPERATOR_DIVIDE: {
 			if (type_is_integral(result_left.type) && type_is_integral(result_right.type)) {
 				context_emit_code(ctx, "mov rax, %s\n", reg_name_left);
-				context_emit_code(ctx, "cdq\n");
+				context_emit_code(ctx, "cqo\n");
 				context_emit_code(ctx, "idiv %s\n",     reg_name_right);
 				context_emit_code(ctx, "mov %s, rax\n", reg_name_left);
 
@@ -850,7 +840,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 
 		case TOKEN_OPERATOR_MODULO: {
 			context_emit_code(ctx, "mov rax, %s\n", reg_name_left);
-			context_emit_code(ctx, "cdq\n");
+			context_emit_code(ctx, "cqo\n");
 			context_emit_code(ctx, "idiv %s\n",     reg_name_right);
 			context_emit_code(ctx, "mov %s, rdx\n", reg_name_left); // RDX contains remainder after division
 
@@ -1369,9 +1359,9 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 		result.reg = context_reg_request_float(ctx);
 
 		if (type_is_f32(result.type)) {
-			context_emit_code(ctx, "movss %s, xmm0 ; get return value\n", get_reg_name_scratch(result.reg, 8));
+			context_emit_code(ctx, "movss %s, xmm0 ; get return value (f32)\n", get_reg_name_scratch(result.reg, 8));
 		} else {
-			context_emit_code(ctx, "movsd %s, xmm0 ; get return value\n", get_reg_name_scratch(result.reg, 8));
+			context_emit_code(ctx, "movsd %s, xmm0 ; get return value (f64)\n", get_reg_name_scratch(result.reg, 8));
 		}
 	} else {
 		result.reg = context_reg_request(ctx);
@@ -1541,7 +1531,7 @@ static void codegen_statement_def_func(Context * ctx, AST_Statement const * stat
 static void codegen_statement_extern(Context * ctx, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_EXTERN);
 
-	context_emit_code(ctx, "EXTERN %s\n\n", stat->stat_extern.function_def->name);
+	context_emit_code(ctx, "EXTERN %s\n", stat->stat_extern.function_def->name);
 }
 
 static void codegen_statement_if(Context * ctx, AST_Statement const * stat) {
@@ -1679,6 +1669,19 @@ static void codegen_statement_program(Context * ctx, AST_Statement const * stat)
 	assert(stat->type == AST_STATEMENT_PROGRAM);
 
 	ctx->current_scope = stat->stat_program.global_scope;
+
+	bool has_main = false;
+
+	for (int i = 0; i < ctx->current_scope->function_defs_len; i++) {
+		if (strcmp(ctx->current_scope->function_defs[i].name, "main") == 0) {
+			has_main = true;
+		}
+	}
+
+	if (!has_main) {
+		printf("ERROR: A function called 'main' should be defined as the entry point of the program!");
+		abort();
+	}
 
 	codegen_statement(ctx, stat->stat_program.stat);
 }

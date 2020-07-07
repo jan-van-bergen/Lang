@@ -64,4 +64,5 @@ void run_tests() {
 	run_test("Data\\short_circuit.lang",       0, "");
 	run_test("Data\\float.lang",             288, "");
 	run_test("Data\\float2.lang",              3, "");
+	run_test("Data\\ptrarray.lang",            0, "Hello\n\tworld\nOla\n\tmundo\nBye\n");
 }

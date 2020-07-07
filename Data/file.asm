@@ -5,15 +5,11 @@ GLOBAL main
 SECTION .code
 EXTERN OpenFile
 
-
 EXTERN WriteFile
-
 
 EXTERN CloseHandle
 
-
 EXTERN strlen
-
 
 
 
