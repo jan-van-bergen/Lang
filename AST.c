@@ -91,14 +91,14 @@ AST_Expression * ast_make_expr_op_post(Token const * token, AST_Expression * exp
 }
 
 AST_Expression * ast_make_expr_call(char const * function_name, int arg_count, AST_Call_Arg * args) {
-	int height = 1;
+	int height = 0;
 	for (int i = 0; i < arg_count; i++) {
 		height = max(height, args[i].height);
 	}
 
 	AST_Expression * expr = malloc(sizeof(AST_Expression));
 	expr->type = AST_EXPRESSION_CALL_FUNC;
-	expr->height = height;
+	expr->height = height + 1;
 
 	expr->expr_call.function_name = function_name;
 
@@ -166,8 +166,8 @@ AST_Statement * ast_make_stat_def_func(Function_Def * function_def, Variable_Buf
 	stat->type = AST_STATEMENT_DEF_FUNC;
 
 	stat->stat_def_func.function_def = function_def;
-	stat->stat_def_func.buffer_args = buffer_args;
-	stat->stat_def_func.buffer_vars = buffer_vars;
+	stat->stat_def_func.buffer_args  = buffer_args;
+	stat->stat_def_func.buffer_vars  = buffer_vars;
 
 	stat->stat_def_func.scope_args = scope_args;
 
@@ -230,18 +230,12 @@ AST_Statement * ast_make_stat_return(AST_Expression * expr) {
 }
 
 
-void print_fmt(char * string, int * string_offset, int string_size, char const * fmt, ...) {
-	va_list args;
-	va_start(args, fmt);
-
-	*string_offset += vsprintf_s(string + *string_offset, string_size - *string_offset, fmt, args);
-
-	va_end(args);
-}
+#define  SPRINTF(fmt)      (*string_offset += sprintf_s(string + *string_offset, string_size - *string_offset, fmt))
+#define VSPRINTF(fmt, ...) (*string_offset += sprintf_s(string + *string_offset, string_size - *string_offset, fmt, __VA_ARGS__))
 
 static void print_indent(int indentation_level, char * string, int * string_offset, int string_size) {
 	for (int i = 0; i < indentation_level; i++) {
-		print_fmt(string, string_offset, string_size, "    ");
+		SPRINTF("    ");
 	}
 }
 
@@ -249,7 +243,7 @@ static void print_def_arg(AST_Def_Arg const * arg, char * string, int * string_o
 	char str_type[128];
 	type_to_string(arg->type, str_type, sizeof(str_type));
 
-	print_fmt(string, string_offset, string_size, "%s: %s", arg->name, str_type);
+	VSPRINTF("%s: %s", arg->name, str_type);
 }
 
 static void print_expression(AST_Expression const * expr, char * string, int * string_offset, int string_size) {
@@ -258,20 +252,20 @@ static void print_expression(AST_Expression const * expr, char * string, int * s
 			char str_token[128];
 			token_to_string(&expr->expr_const.token, str_token, sizeof(str_token));
 			
-			print_fmt(string, string_offset, string_size, "%s", str_token);
+			VSPRINTF("%s", str_token);
 
 			break;
 		}
 
 		case AST_EXPRESSION_VAR: {
-			print_fmt(string, string_offset, string_size, "%s", expr->expr_var.name);
+			VSPRINTF("%s", expr->expr_var.name);
 
 			break;
 		}
 
 		case AST_EXPRESSION_STRUCT_MEMBER: {
 			print_expression(expr->expr_struct_member.expr, string, string_offset, string_size);
-			print_fmt(string, string_offset, string_size, ".%s", expr->expr_struct_member.member_name);
+			VSPRINTF(".%s", expr->expr_struct_member.member_name);
 
 			break;
 		}
@@ -280,7 +274,7 @@ static void print_expression(AST_Expression const * expr, char * string, int * s
 			char str_type[128];
 			type_to_string(expr->expr_cast.new_type, str_type, sizeof(str_type));
 
-			print_fmt(string, string_offset, string_size, "cast(%s) ", str_type);
+			VSPRINTF("cast(%s) ", str_type);
 			print_expression(expr->expr_cast.expr, string, string_offset, string_size);
 
 			break;
@@ -290,64 +284,64 @@ static void print_expression(AST_Expression const * expr, char * string, int * s
 			char str_type[128];
 			type_to_string(expr->expr_sizeof.type, str_type, sizeof(str_type));
 
-			print_fmt(string, string_offset, string_size, "sizeof(%s)", str_type);
+			VSPRINTF("sizeof(%s)", str_type);
 
 			break;
 		}
 
 		case AST_EXPRESSION_OPERATOR_BIN: {
-			print_fmt(string, string_offset, string_size, "(");
+			SPRINTF("(");
 			print_expression(expr->expr_op_bin.expr_left, string, string_offset, string_size);
 
 			char token_string[128];
 			token_to_string(&expr->expr_op_bin.token, token_string, sizeof(token_string));
-			print_fmt(string, string_offset, string_size, " %s ", token_string);
+			VSPRINTF(" %s ", token_string);
 			
 			print_expression(expr->expr_op_bin.expr_right, string, string_offset, string_size);
-			print_fmt(string, string_offset, string_size, ")");
+			SPRINTF(")");
 
 			break;
 		}
 
 		case AST_EXPRESSION_OPERATOR_PRE: {
-			print_fmt(string, string_offset, string_size, "(");
+			SPRINTF("(");
 
 			char token_string[128];
 			token_to_string(&expr->expr_op_pre.token, token_string, sizeof(token_string));
-			print_fmt(string, string_offset, string_size, "%s", token_string);
+			VSPRINTF("%s", token_string);
 			
 			print_expression(expr->expr_op_pre.expr, string, string_offset, string_size);
-			print_fmt(string, string_offset, string_size, ")");
+			SPRINTF(")");
 
 			break;
 		}
 
 		case AST_EXPRESSION_OPERATOR_POST: {
-			print_fmt(string, string_offset, string_size, "(");
+			SPRINTF("(");
 
 			print_expression(expr->expr_op_post.expr, string, string_offset, string_size);
 			
 			char token_string[128];
 			token_to_string(&expr->expr_op_post.token, token_string, sizeof(token_string));
-			print_fmt(string, string_offset, string_size, "%s", token_string);
-			print_fmt(string, string_offset, string_size, ")");
+			VSPRINTF("%s", token_string);
+			SPRINTF (string, string_offset, string_size, ")");
 
 			break;
 		}
 
 		case AST_EXPRESSION_CALL_FUNC: {
-			print_fmt(string, string_offset, string_size, "%s(", expr->expr_call.function_name);
+			VSPRINTF("%s(", expr->expr_call.function_name);
 
 			for (int i = 0; i < expr->expr_call.arg_count; i++) {
 				print_expression(expr->expr_call.args[i].expr, string, string_offset, string_size);
 			}
 
-			print_fmt(string, string_offset, string_size, ")");
+			SPRINTF(")");
 
 			break;
 		}
 
-		default: print_fmt(string, string_offset, string_size, "Unprintable Expression!\n"); return;
+		default: SPRINTF("Unprintable Expression!\n"); return;
 	}
 }
 
@@ -375,7 +369,7 @@ static void print_statement(AST_Statement const * stat, char * string, int * str
 		case AST_STATEMENT_EXPR: {
 			print_indent(indent, string, string_offset, string_size);
 			print_expression(stat->stat_expr.expr, string, string_offset, string_size);
-			print_fmt(string, string_offset, string_size, ";\n");
+			SPRINTF(";\n");
 
 			break;
 		}
@@ -385,20 +379,20 @@ static void print_statement(AST_Statement const * stat, char * string, int * str
 			type_to_string(stat->stat_def_var.type, str_type, sizeof(str_type));
 
 			print_indent(indent, string, string_offset, string_size);
-			print_fmt(string, string_offset, string_size, "let %s: %s", stat->stat_def_var.name, str_type);
+			VSPRINTF("let %s: %s", stat->stat_def_var.name, str_type);
 
 			if (stat->stat_def_var.assign) {
-				print_fmt(string, string_offset, string_size, "; ");
+				SPRINTF("; ");
 				print_expression(stat->stat_def_var.assign, string, string_offset, string_size);
 			}
-			print_fmt(string, string_offset, string_size, ";\n");
+			SPRINTF(";\n");
 
 			break;
 		}
 
 		case AST_STATEMENT_DEF_FUNC: {
 			print_indent(indent, string, string_offset, string_size);
-			print_fmt(string, string_offset, string_size, "func %s(", stat->stat_def_func.function_def->name);
+			VSPRINTF("func %s(", stat->stat_def_func.function_def->name);
 
 			for (int i = 0; i < stat->stat_def_func.function_def->arg_count; i++) {
 				print_def_arg(&stat->stat_def_func.function_def->args[i], string, string_offset, string_size);
@@ -407,87 +401,90 @@ static void print_statement(AST_Statement const * stat, char * string, int * str
 			char str_type[128];
 			type_to_string(stat->stat_def_func.function_def->return_type, str_type, sizeof(str_type));
 
-			print_fmt(string, string_offset, string_size, ") -> %s {\n", str_type);
+			VSPRINTF(") -> %s {\n", str_type);
 
 			print_statement(stat->stat_def_func.body, string, string_offset, string_size, indent + 1);
 
 			print_indent(indent, string, string_offset, string_size);
-			print_fmt(string, string_offset, string_size, "}\n");
+			SPRINTF("}\n");
 
 			break;
 		}
 
 		case AST_STATEMENT_EXTERN: {
 			print_indent(indent, string, string_offset, string_size);
-			print_fmt(string, string_offset, string_size, "extern %s\n", stat->stat_extern.function_def->name);
+			VSPRINTF("extern %s\n", stat->stat_extern.function_def->name);
 
 			break;
 		}
 
 		case AST_STATEMENT_IF: {
 			print_indent(indent, string, string_offset, string_size);
-			print_fmt(string, string_offset, string_size, "if (");
+			SPRINTF("if (");
 			print_expression(stat->stat_if.condition, string, string_offset, string_size);
-			print_fmt(string, string_offset, string_size, ") {\n");
+			SPRINTF(") {\n");
 			print_statement(stat->stat_if.case_true, string, string_offset, string_size, indent + 1);
 
 			if (stat->stat_if.case_false) {
 				print_indent(indent, string, string_offset, string_size);
-				print_fmt(string, string_offset, string_size, "} else {\n");
+				SPRINTF("} else {\n");
 				print_statement(stat->stat_if.case_false, string, string_offset, string_size, indent + 1);
 			}
 		
 			print_indent(indent, string, string_offset, string_size);
-			print_fmt(string, string_offset, string_size, "}\n");
+			SPRINTF("}\n");
 
 			break;
 		}
 
 		case AST_STATEMENT_WHILE: {
 			print_indent(indent, string, string_offset, string_size);
-			print_fmt(string, string_offset, string_size, "while (");
+			SPRINTF("while (");
 			print_expression(stat->stat_while.condition, string, string_offset, string_size);
-			print_fmt(string, string_offset, string_size, ") {\n");
+			SPRINTF(") {\n");
 
 			print_statement(stat->stat_while.body, string, string_offset, string_size, indent + 1);
 
 			print_indent(indent, string, string_offset, string_size);
-			print_fmt(string, string_offset, string_size, "}\n");
+			SPRINTF("}\n");
 
 			break;
 		}
 
 		case AST_STATEMENT_RETURN: {
 			print_indent(indent, string, string_offset, string_size);
-			print_fmt(string, string_offset, string_size, "return");
+			SPRINTF("return");
 
 			if (stat->stat_return.expr) {
-				print_fmt(string, string_offset, string_size, " ");
+				SPRINTF(" ");
 				print_expression(stat->stat_return.expr, string, string_offset, string_size);
 			}
 
-			print_fmt(string, string_offset, string_size, ";\n");
+			SPRINTF(";\n");
 
 			break;
 		}
 
 		case AST_STATEMENT_BREAK: {
 			print_indent(indent, string, string_offset, string_size);
-			print_fmt(string, string_offset, string_size, "break;\n");
+			SPRINTF("break;\n");
 
 			break;
 		}
 
 		case AST_STATEMENT_CONTINUE: {
 			print_indent(indent, string, string_offset, string_size);
-			print_fmt(string, string_offset, string_size, "continue;\n");
+			SPRINTF("continue;\n");
 
 			break;
 		}
 
-		default: print_fmt(string, string_offset, string_size, "Unprintable Statement!\n");
+		default: SPRINTF("Unprintable Statement!\n");
 	}
 }
+
+#undef  SPRINTF
+#undef VSPRINTF
 
 void ast_print_expression(AST_Expression const * expr, char * string, int string_size) {
 	int string_offset = 0;
