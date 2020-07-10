@@ -1,4 +1,7 @@
 # Lang
 Compiler in C for a simple programming language that compiles to x64 assembly (NASM syntax).
 
-Windows x64 calling convention is used, and various test rely on Win API functions, such as `WriteFile` and `HeapAlloc`.
+## Dependencies
+
+- <b>NASM</b> (https://www.nasm.us/): used as assembler and should be added to the system `Path` variable.
+- <b>Microsoft Linker</b> (included with Visual Studio) is used for linking.
