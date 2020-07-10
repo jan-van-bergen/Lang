@@ -86,11 +86,14 @@ typedef enum AST_Statement_Type {
 	AST_STATEMENT_BLOCK,
 
 	AST_STATEMENT_EXPR,
+
 	AST_STATEMENT_DEF_VAR,
 	AST_STATEMENT_DEF_FUNC,
 	AST_STATEMENT_EXTERN,
+
 	AST_STATEMENT_IF,
 	AST_STATEMENT_WHILE,
+
 	AST_STATEMENT_BREAK,
 	AST_STATEMENT_CONTINUE,
 	AST_STATEMENT_RETURN
@@ -167,7 +170,42 @@ typedef struct AST_Statement {
 	};
 } AST_Statement;
 
+AST_Expression * ast_make_expr_const(Token const * token);
+AST_Expression * ast_make_expr_var  (char  const * name);
+
+AST_Expression * ast_make_expr_struct_member(AST_Expression * expr_struct, char  const * member_name);
+
+AST_Expression * ast_make_expr_cast  (Type const * type, AST_Expression * expr);
+AST_Expression * ast_make_expr_sizeof(Type const * type);
+
+AST_Expression * ast_make_expr_op_bin (Token const * token, AST_Expression * expr_left, AST_Expression * expr_right);
+AST_Expression * ast_make_expr_op_pre (Token const * token, AST_Expression * expr);
+AST_Expression * ast_make_expr_op_post(Token const * token, AST_Expression * expr);
+
+AST_Expression * ast_make_expr_call(char const * function_name, int arg_count, AST_Call_Arg * args); 
+
+
+AST_Statement * ast_make_stat_program(Variable_Buffer * globals, Scope * global_scope, AST_Statement * stat);
+
+AST_Statement * ast_make_stat_stats(AST_Statement * head, AST_Statement * cons);
+AST_Statement * ast_make_stat_block(Scope * scope, AST_Statement * stat);
+
+AST_Statement * ast_make_stat_expr(AST_Expression * expr);
+
+AST_Statement * ast_make_stat_def_var (char const * name, Type const * type, AST_Expression * assign);
+AST_Statement * ast_make_stat_def_func(Function_Def * function_def, Variable_Buffer * buffer_args, Variable_Buffer * buffer_vars, Scope * scope_args, AST_Statement * body);
+AST_Statement * ast_make_stat_extern  (Function_Def * function_def);
+
+AST_Statement * ast_make_stat_if   (AST_Expression * condition, AST_Statement * case_true, AST_Statement * case_false);
+AST_Statement * ast_make_stat_while(AST_Expression * condition, AST_Statement * body);
+
+AST_Statement * ast_make_stat_break   ();
+AST_Statement * ast_make_stat_continue();
+AST_Statement * ast_make_stat_return  (AST_Expression * expr);
+
+
 void ast_print_expression(AST_Expression const * expr, char * string, int string_size);
 void ast_print_statement (AST_Statement  const * stat, char * string, int string_size);
+
 
 void ast_free_statement(AST_Statement * stat);
