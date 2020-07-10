@@ -6,6 +6,7 @@
 void token_to_string(Token const * token, char * string, int string_size) {
 	switch (token->type) {
 		case TOKEN_IDENTIFIER: sprintf_s(string, string_size, "%s", token->value_str); return;
+
 		case TOKEN_LITERAL_INT: {
 			if (token->sign) {
 				sprintf_s(string, string_size, "%lld", token->value_int);
@@ -15,6 +16,10 @@ void token_to_string(Token const * token, char * string, int string_size) {
 
 			return;
 		}
+
+		case TOKEN_LITERAL_F32: sprintf_s(string, string_size, "%ff", token->value_float);  break;
+		case TOKEN_LITERAL_F64: sprintf_s(string, string_size, "%f",  token->value_double); break;
+
 		case TOKEN_LITERAL_BOOL:   sprintf_s(string, string_size, "%s",     token->value_int ? "true" : "false"); return;
 		case TOKEN_LITERAL_STRING: sprintf_s(string, string_size, "\"%s\"", token->value_str);                    return;
 

@@ -167,6 +167,7 @@ typedef struct AST_Statement {
 	};
 } AST_Statement;
 
-void ast_pretty_print(AST_Statement const * program);
+void ast_print_expression(AST_Expression const * expr, char * string, int string_size);
+void ast_print_statement (AST_Statement  const * stat, char * string, int string_size);
 
 void ast_free_statement(AST_Statement * stat);

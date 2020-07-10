@@ -8,6 +8,21 @@
 #include <stdarg.h>
 #include <stdbool.h>
 
+typedef struct Trace_Element {
+	enum Trace_Element_Type {
+		TRACE_EXPRESSION,
+		TRACE_STATEMENT
+	} type;
+
+	union {
+		AST_Expression * expr;
+		AST_Statement  * stat;
+	};
+} Trace_Element;
+
+#define MAX_TRACE 64
+
+
 #define SCRATCH_REG_COUNT       7
 #define SCRATCH_REG_COUNT_FLOAT 8
 
@@ -36,6 +51,9 @@ typedef struct Context {
 	char const ** data_seg_vals;
 	int           data_seg_len;
 	int           data_seg_cap;
+
+	int           trace_stack_size;
+	Trace_Element trace_stack[MAX_TRACE];
 } Context;
 
 static void context_init(Context * ctx) {
@@ -59,6 +77,8 @@ static void context_init(Context * ctx) {
 	ctx->data_seg_len  = 0;
 	ctx->data_seg_cap  = 16;
 	ctx->data_seg_vals = malloc(ctx->data_seg_cap * sizeof(char const *));
+
+	ctx->trace_stack_size = 0;
 }
 
 static int context_reg_request(Context * ctx) {
@@ -125,28 +145,6 @@ static void context_flag_unset(Context * ctx, Context_Flags flag) {
 	ctx->flags &= ~flag;
 }
 
-static void variable_get_address(Variable const * var, char * address, int address_size) {
-	if (var->is_global) {
-		sprintf_s(address, address_size, "REL %s", var->name); // Globals by name
-	} else {
-		sprintf_s(address, address_size, "rbp + %i", var->offset); // Locals / Arguments relative to stack frame pointer
-	}
-}
-
-static void type_error(char const * msg, ...) {
-	va_list args;
-	va_start(args, msg);
-
-	char str_error[512];
-	vsprintf_s(str_error, sizeof(str_error), msg, args);
-
-	printf("TYPE ERROR: %s\n", str_error);
-
-	va_end(args);
-	
-	abort();
-}
-
 static void context_emit_code(Context * ctx, char const * fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
@@ -189,97 +187,60 @@ static void context_add_data_seg(Context * ctx, char const * data) {
 	ctx->data_seg_vals[ctx->data_seg_len++] = data;
 }
 
-// Adds global variable to data segment
-static void context_add_global(Context * ctx, Variable * var, bool sign, unsigned long long value) {
-	int var_name_len = strlen(var->name);
+static void context_trace_push_expr(Context * ctx, AST_Expression * expr) {
+	if (ctx->trace_stack_size == MAX_TRACE) abort();
 
-	int    global_size = var_name_len + 5 + 32;
-	char * global = malloc(global_size);
-
-	if (type_is_struct(var->type)) {
-		if (value != 0) {
-			type_error("Cannot initialize global struct variable '%s' with value '%llu'", var->name, value);
-		}
-
-		// Fill struct with 0 quad words
-		sprintf_s(global, global_size, "%s dq 0", var->name);
-
-		int struct_size = type_get_size(var->type, ctx->current_scope) / 8;
-
-		for (int i = 1; i < struct_size; i++) {
-			strcat_s(global, global_size, ", 0");
-		}
-	} else if (sign) {
-		sprintf_s(global, global_size, "%s dq %lld", var->name, value);
-	} else {
-		sprintf_s(global, global_size, "%s dq %llu", var->name, value);
-	}
-
-	context_add_data_seg(ctx, global);
+	Trace_Element * trace_elem = ctx->trace_stack + ctx->trace_stack_size++;
+	trace_elem->type = TRACE_EXPRESSION;
+	trace_elem->expr = expr;
 }
 
-// Adds float literal to data segment
-static void context_add_float_literal(Context * ctx, char const * flt_name, char const * flt_lit) {
-	int flt_name_len = strlen(flt_name);
-	int flt_lit_len  = strlen(flt_lit);
+static void context_trace_push_stat(Context * ctx, AST_Statement * stat) {
+	if (ctx->trace_stack_size == MAX_TRACE) abort();
 
-	int    str_lit_len = flt_name_len + 4 + flt_lit_len + 1;
-	char * str_lit = malloc(str_lit_len);
-	sprintf_s(str_lit, str_lit_len, "%s dq %s", flt_name, flt_lit);
-
-	context_add_data_seg(ctx, str_lit);
+	Trace_Element * trace_elem = ctx->trace_stack + ctx->trace_stack_size++;
+	trace_elem->type = TRACE_STATEMENT;
+	trace_elem->stat = stat;
 }
 
-// Adds string literal to data segment
-static void context_add_string_literal(Context * ctx, char const * str_name, char const * str_lit) {
-	int str_name_len = strlen(str_name);
-	int str_lit_len  = strlen(str_lit);
+static void context_trace_pop(Context * ctx) {
+	assert(ctx->trace_stack_size > 0);
+	ctx->trace_stack_size--;
+}
 
-	int    str_lit_cpy_size = str_name_len + 6 + str_lit_len * 9 + 1;
-	char * str_lit_cpy      = malloc(str_lit_cpy_size);
+static void print_trace(Context * ctx) {
+	for (int i = 0; i < ctx->trace_stack_size; i++) {
+		char str[4 * 1024];
 
-	int idx = sprintf_s(str_lit_cpy, str_lit_cpy_size, "%s db ", str_name);
-
-	str_lit_cpy[idx++] = '\"';
-
-	char const * curr = str_lit;
-	while (*curr) {
-		if (*curr == '\\') {
-			switch (*(curr + 1)) {
-				case '0':  strcpy_s(str_lit_cpy + idx, str_lit_cpy_size - idx, "\", 0, \"");   idx += 7; break;
-				case 'r':  strcpy_s(str_lit_cpy + idx, str_lit_cpy_size - idx, "\", 0Dh, \""); idx += 9; break;
-				case 'n':  strcpy_s(str_lit_cpy + idx, str_lit_cpy_size - idx, "\", 0Ah, \""); idx += 9; break;
-				case 't':  strcpy_s(str_lit_cpy + idx, str_lit_cpy_size - idx, "\", 09h, \""); idx += 9; break;
-
-				case '\\': str_lit_cpy[idx++] = '\\'; break;
-
-				default: abort();
-			}
-
-			curr += 2;
-		} else {	
-			str_lit_cpy[idx++] = *curr;
-
-			curr++;
+		Trace_Element * trace_elem = ctx->trace_stack + i;
+		if (trace_elem->type == TRACE_EXPRESSION) {
+			puts("In expression:");
+			ast_print_expression(trace_elem->expr, str, sizeof(str));
+		} else {
+			puts("In statement:");
+			ast_print_statement(trace_elem->stat, str, sizeof(str));
 		}
+
+		puts(str);
+		puts("");
 	}
+}
+
+static void type_error(Context * ctx, char const * msg, ...) {
+	print_trace(ctx);
+
+	va_list args;
+	va_start(args, msg);
+
+	char str_error[512];
+	vsprintf_s(str_error, sizeof(str_error), msg, args);
+
+	printf("TYPE ERROR: %s\n", str_error);
+
+	va_end(args);
 	
-	str_lit_cpy[idx++] = '\"';
-	str_lit_cpy[idx++] = '\0';
-
-	strcat_s(str_lit_cpy, str_lit_cpy_size, ", 0");
-
-	context_add_data_seg(ctx, str_lit_cpy);
+	abort();
 }
-
-// Result of an AST_Expression
-typedef struct Result {
-	int          reg;
-	Type const * type;
-} Result;
-
-static Result codegen_expression(Context * ctx, AST_Expression const * expr);
-static void   codegen_statement (Context * ctx, AST_Statement  const * stat);
 
 static char const * get_reg_name_scratch(int reg_index, int size) {
 	static char const * reg_names_8bit [SCRATCH_REG_COUNT] = {  "bl", "r10b", "r11b", "r12b", "r13b", "r14b", "r15b" };
@@ -334,6 +295,106 @@ static char const * get_word_name(int size) {
 	}
 }
 
+static void variable_get_address(Variable const * var, char * address, int address_size) {
+	if (var->is_global) {
+		sprintf_s(address, address_size, "REL %s", var->name); // Globals by name
+	} else {
+		sprintf_s(address, address_size, "rbp + %i", var->offset); // Locals / Arguments relative to stack frame pointer
+	}
+}
+
+// Adds global variable to data segment
+static void codegen_add_global(Context * ctx, Variable * var, bool sign, unsigned long long value) {
+	int var_name_len = strlen(var->name);
+
+	int    global_size = var_name_len + 5 + 32;
+	char * global = malloc(global_size);
+
+	if (type_is_struct(var->type)) {
+		if (value != 0) {
+			type_error(ctx, ctx, "Cannot initialize global struct variable '%s' with value '%llu'", var->name, value);
+		}
+
+		// Fill struct with 0 quad words
+		sprintf_s(global, global_size, "%s dq 0", var->name);
+
+		int struct_size = type_get_size(var->type, ctx->current_scope) / 8;
+
+		for (int i = 1; i < struct_size; i++) {
+			strcat_s(global, global_size, ", 0");
+		}
+	} else if (sign) {
+		sprintf_s(global, global_size, "%s dq %lld", var->name, value);
+	} else {
+		sprintf_s(global, global_size, "%s dq %llu", var->name, value);
+	}
+
+	context_add_data_seg(ctx, global);
+}
+
+// Adds float literal to data segment
+static void codegen_add_float_literal(Context * ctx, char const * flt_name, char const * flt_lit) {
+	int flt_name_len = strlen(flt_name);
+	int flt_lit_len  = strlen(flt_lit);
+
+	int    str_lit_len = flt_name_len + 4 + flt_lit_len + 1;
+	char * str_lit = malloc(str_lit_len);
+	sprintf_s(str_lit, str_lit_len, "%s dq %s", flt_name, flt_lit);
+
+	context_add_data_seg(ctx, str_lit);
+}
+
+// Adds string literal to data segment
+static void codegen_add_string_literal(Context * ctx, char const * str_name, char const * str_lit) {
+	int str_name_len = strlen(str_name);
+	int str_lit_len  = strlen(str_lit);
+
+	int    str_lit_cpy_size = str_name_len + 6 + str_lit_len * 9 + 1;
+	char * str_lit_cpy      = malloc(str_lit_cpy_size);
+
+	int idx = sprintf_s(str_lit_cpy, str_lit_cpy_size, "%s db ", str_name);
+
+	str_lit_cpy[idx++] = '\"';
+
+	char const * curr = str_lit;
+	while (*curr) {
+		if (*curr == '\\') {
+			switch (*(curr + 1)) {
+				case '0':  strcpy_s(str_lit_cpy + idx, str_lit_cpy_size - idx, "\", 0, \"");   idx += 7; break;
+				case 'r':  strcpy_s(str_lit_cpy + idx, str_lit_cpy_size - idx, "\", 0Dh, \""); idx += 9; break;
+				case 'n':  strcpy_s(str_lit_cpy + idx, str_lit_cpy_size - idx, "\", 0Ah, \""); idx += 9; break;
+				case 't':  strcpy_s(str_lit_cpy + idx, str_lit_cpy_size - idx, "\", 09h, \""); idx += 9; break;
+
+				case '\\': str_lit_cpy[idx++] = '\\'; break;
+
+				default: abort();
+			}
+
+			curr += 2;
+		} else {	
+			str_lit_cpy[idx++] = *curr;
+
+			curr++;
+		}
+	}
+	
+	str_lit_cpy[idx++] = '\"';
+	str_lit_cpy[idx++] = '\0';
+
+	strcat_s(str_lit_cpy, str_lit_cpy_size, ", 0");
+
+	context_add_data_seg(ctx, str_lit_cpy);
+}
+
+// Result of an AST_Expression
+typedef struct Result {
+	int          reg;
+	Type const * type;
+} Result;
+
+static Result codegen_expression(Context * ctx, AST_Expression const * expr);
+static void   codegen_statement (Context * ctx, AST_Statement  const * stat);
+
 static Result codegen_expression_const(Context * ctx, AST_Expression const * expr) {
 	assert(expr->type == AST_EXPRESSION_CONST);
 
@@ -349,7 +410,7 @@ static Result codegen_expression_const(Context * ctx, AST_Expression const * exp
 			char str_lit_name[128];
 			sprintf_s(str_lit_name, sizeof(str_lit_name), "lit_str_%i", ctx->data_seg_len);
 
-			context_add_string_literal(ctx, str_lit_name, expr->expr_const.token.value_str);
+			codegen_add_string_literal(ctx, str_lit_name, expr->expr_const.token.value_str);
 			context_emit_code(ctx, "lea %s, [REL %s]\n", get_reg_name_scratch(result.reg, 8), str_lit_name);
 
 			break;
@@ -402,7 +463,7 @@ static Result codegen_expression_const(Context * ctx, AST_Expression const * exp
 			char str_lit_flt[8 + 4 + 32 + 1];
 			sprintf_s(str_lit_flt, sizeof(str_lit_flt), "%xh ; %ff", flt, expr->expr_const.token.value_float);
 
-			context_add_float_literal(ctx, str_lit_name, str_lit_flt);
+			codegen_add_float_literal(ctx, str_lit_name, str_lit_flt);
 			context_emit_code(ctx, "movss %s, DWORD [REL %s]\n", get_reg_name_scratch(result.reg, 8), str_lit_name);
 
 			break;
@@ -422,7 +483,7 @@ static Result codegen_expression_const(Context * ctx, AST_Expression const * exp
 			char str_lit_flt[16 + 4 + 32 + 1];
 			sprintf_s(str_lit_flt, sizeof(str_lit_flt), "%llxh ; %f", dbl, expr->expr_const.token.value_double);
 
-			context_add_float_literal(ctx, str_lit_name, str_lit_flt);
+			codegen_add_float_literal(ctx, str_lit_name, str_lit_flt);
 			context_emit_code(ctx, "movsd %s, QWORD [REL %s]\n", get_reg_name_scratch(result.reg, 8), str_lit_name);
 
 			break;
@@ -522,7 +583,7 @@ static Result codegen_expression_struct_member(Context * ctx, AST_Expression * e
 		char str_type[128];
 		type_to_string(result.type, str_type, sizeof(str_type));
 
-		type_error("Operator '.' requires left operand to be a struct type. Type was '%s'", str_type);
+		type_error(ctx, "Operator '.' requires left operand to be a struct. Type was '%s'", str_type);
 	}
 
 	// Lookup the struct member by name
@@ -652,7 +713,7 @@ static void codegen_relational(Context * ctx, char const * operator, char const 
 		codegen_compare(ctx, "comisd", set_inst, result_left->reg, result_right->reg, reg);
 		result_left->reg = reg;
 	} else {
-		type_error("Operator '%s' requires two integral, float, or pointer types", operator);
+		type_error(ctx, "Operator '%s' requires two integral, float, or pointer types", operator);
 	}
 
 	result_left->type = make_type_bool();
@@ -674,7 +735,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			expr_left->type != AST_EXPRESSION_OPERATOR_PRE &&
 			expr_left->type != AST_EXPRESSION_STRUCT_MEMBER
 		) {
-			type_error("Operator '=' requires left operand to be an lvalue");
+			type_error(ctx, "Operator '=' requires left operand to be an lvalue");
 		}
 
 		// Traverse tallest subtree first
@@ -701,12 +762,12 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			char str_type_left [128]; type_to_string(result_left .type, str_type_left,  sizeof(str_type_left));
 			char str_type_right[128]; type_to_string(result_right.type, str_type_right, sizeof(str_type_right));
 
-			type_error("Cannot assign instance of type '%s' a value of type '%s'", str_type_left, str_type_right);
+			type_error(ctx, "Cannot assign instance of type '%s' a value of type '%s'", str_type_left, str_type_right);
 		} else if (type_is_primitive(result_left .type) && type_is_primitive(result_right.type) && type_size_right > type_size_left) {
 			char str_type_left [128]; type_to_string(result_left .type, str_type_left,  sizeof(str_type_left));
 			char str_type_right[128]; type_to_string(result_right.type, str_type_right, sizeof(str_type_right));
 
-			type_error("Implicit narrowing conversion from type '%s' to '%s' is not allowed. Explicit cast required", str_type_right, str_type_left);
+			type_error(ctx, "Implicit narrowing conversion from type '%s' to '%s' is not allowed. Explicit cast required", str_type_right, str_type_left);
 		}
 
 		if (type_is_struct(result_left.type) && type_is_struct(result_right.type)) {
@@ -756,7 +817,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 		context_emit_code(ctx, "L_land_exit_%i:\n",  label);
 	
 		if (!type_is_bool(result_left.type) || !type_is_bool(result_right.type)) {
-			type_error("Operator '&&' requires two boolean operands");
+			type_error(ctx, "Operator '&&' requires two boolean operands");
 		}
 		
 		context_reg_free(ctx, result_right.reg);
@@ -783,7 +844,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 		context_emit_code(ctx, "L_lor_exit_%i:\n",  label);
 			
 		if (!type_is_bool(result_left.type) || !type_is_bool(result_right.type)) {
-			type_error("Operator '||' requires two boolean operands");
+			type_error(ctx, "Operator '||' requires two boolean operands");
 		}
 		
 		context_reg_free(ctx, result_right.reg);
@@ -815,7 +876,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			} else if (type_is_f64(result_left.type) && type_is_f64(result_right.type)) {
 				context_emit_code(ctx, "mulsd %s, %s\n", reg_name_left, reg_name_right);
 			} else {
-				type_error("Operator '*' only works with integral or float types");
+				type_error(ctx, "Operator '*' only works with integral or float types");
 			}
 
 			break;
@@ -834,7 +895,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			} else if (type_is_f64(result_left.type) && type_is_f64(result_right.type)) {
 				context_emit_code(ctx, "divsd %s, %s\n", reg_name_left, reg_name_right);
 			} else {
-				type_error("Operator '/' only works with integral or float types");
+				type_error(ctx, "Operator '/' only works with integral or float types");
 			}
 
 			break;
@@ -849,7 +910,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			if (type_is_integral(result_left.type) && type_is_integral(result_right.type)) {
 				result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
 			} else {
-				type_error("Operator '%' only works with integral types");
+				type_error(ctx, "Operator '%' only works with integral types");
 			}
 
 			break;
@@ -871,7 +932,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			} else if (type_is_array(result_left.type) && type_is_integral(result_right.type)) { // array + integral --> pointer
 				result_left.type = make_type_pointer(result_left.type->base);
 			} else {
-				type_error("Left of operator '+' must be integral, float, array, or pointer type, right must be integral or float type!");
+				type_error(ctx, "Left of operator '+' must be integral, float, array, or pointer type, right must be integral or float type!");
 			}
 
 			break;
@@ -893,7 +954,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			} else if (type_is_pointer(result_left.type) && type_is_pointer(result_right.type) && types_unifiable(result_left.type, result_right.type)) { // pointer - pointer --> integral
 				result_left.type = make_type_i64();
 			} else {
-				type_error("Operator '-' cannot cannot have integral type on the left and pointer type on the right");
+				type_error(ctx, "Operator '-' cannot cannot have integral type on the left and pointer type on the right");
 			}
 
 			break;
@@ -904,7 +965,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			context_emit_code(ctx, "shl %s, cl\n",  reg_name_left);
 
 			if (!type_is_integral(result_left.type) || !type_is_integral(result_right.type)) {
-				type_error("Operator '<<' requires two operands of integral type");
+				type_error(ctx, "Operator '<<' requires two operands of integral type");
 			}
 
 			result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
@@ -921,7 +982,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			}
 
 			if (!type_is_integral(result_left.type) || !type_is_integral(result_right.type)) {
-				type_error("Operator '>>' requires two operands of integral type");
+				type_error(ctx, "Operator '>>' requires two operands of integral type");
 			}
 
 			result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
@@ -938,7 +999,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			codegen_compare(ctx, "cmp", "sete", result_left.reg, result_right.reg, result_left.reg);
 			
 			if (!types_unifiable(result_left.type, result_right.type)) {
-				type_error("Operator '==' requires equal types on both sides");
+				type_error(ctx, "Operator '==' requires equal types on both sides");
 			}
 			
 			result_left.type = make_type_bool();
@@ -950,7 +1011,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			codegen_compare(ctx, "cmp", "setne", result_left.reg, result_right.reg, result_left.reg);
 			
 			if (!types_unifiable(result_left.type, result_right.type)) {
-				type_error("Operator '!=' requires equal types on both sides");
+				type_error(ctx, "Operator '!=' requires equal types on both sides");
 			}
 
 			result_left.type = make_type_bool();
@@ -962,7 +1023,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			context_emit_code(ctx, "and %s, %s\n", reg_name_left, reg_name_right);
 
 			if (!type_is_integral(result_left.type) || !type_is_integral(result_right.type)) {
-				type_error("Operator '&' requires two operands of integral type");
+				type_error(ctx, "Operator '&' requires two operands of integral type");
 			}
 
 			result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
@@ -974,7 +1035,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			context_emit_code(ctx, "xor %s, %s\n", reg_name_left, reg_name_right);
 
 			if (!type_is_integral(result_left.type) || !type_is_integral(result_right.type)) {
-				type_error("Operator '^' requires two operands of integral type");
+				type_error(ctx, "Operator '^' requires two operands of integral type");
 			}
 
 			result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
@@ -986,7 +1047,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			context_emit_code(ctx, "or %s, %s\n", reg_name_left, reg_name_right);
 
 			if (!type_is_integral(result_left.type) || !type_is_integral(result_right.type)) {
-				type_error("Operator '|' requires two operands of integral type");
+				type_error(ctx, "Operator '|' requires two operands of integral type");
 			}
 
 			result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
@@ -1015,7 +1076,7 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 		if (operand->type != AST_EXPRESSION_VAR && 
 			operand->type != AST_EXPRESSION_STRUCT_MEMBER
 		) {
-			type_error("Operator '&' can only take address of a variable or struct member");
+			type_error(ctx, "Operator '&' can only take address of a variable or struct member");
 		}
 
 		bool by_address = ctx->flags & CTX_FLAG_VAR_BY_ADDRESS;
@@ -1038,9 +1099,9 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 			char str_type[128];
 			type_to_string(result.type, str_type, sizeof(str_type));
 
-			type_error("Cannot dereference non-pointer type '%s'", str_type);
+			type_error(ctx, "Cannot dereference non-pointer type '%s'", str_type);
 		} else if (type_is_void_pointer(result.type)) {
-			type_error("Cannot dereference 'void *'");
+			type_error(ctx, "Cannot dereference 'void *'");
 		}
 
 		result.type = result.type->base; // Remove 1 level of indirection
@@ -1083,7 +1144,7 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 			context_reg_free(ctx, reg_address);
 
 			if (!type_is_integral(result.type)) {
-				type_error("Operator '++' requires operand of integral type");
+				type_error(ctx, "Operator '++' requires operand of integral type");
 			}
 
 			break;
@@ -1104,7 +1165,7 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 			context_reg_free(ctx, reg_address);
 
 			if (!type_is_integral(result.type)) {
-				type_error("Operator '--' requires operand of integral type");
+				type_error(ctx, "Operator '--' requires operand of integral type");
 			}
 
 			break;
@@ -1114,7 +1175,7 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 			// Unary plus is a no-op, no code is emitted
 
 			if (!type_is_integral(result.type)) {
-				type_error("Operator '+' requires operand of integral type");
+				type_error(ctx, "Operator '+' requires operand of integral type");
 			}
 
 			break;
@@ -1123,7 +1184,7 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 			context_emit_code(ctx, "neg %s\n", reg_name);
 			
 			if (!type_is_integral(result.type)) {
-				type_error("Operator '-' requires operand of integral type");
+				type_error(ctx, "Operator '-' requires operand of integral type");
 			}
 			
 			break;
@@ -1133,7 +1194,7 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 			context_emit_code(ctx, "not %s\n", reg_name);
 
 			if (!type_is_integral(result.type)) {
-				type_error("Operator '~' requires operand of integral type");
+				type_error(ctx, "Operator '~' requires operand of integral type");
 			}
 
 			break;
@@ -1146,7 +1207,7 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 			context_emit_code(ctx, "and %s, 1\n",  reg_name);
 
 			if (!type_is_bool(result.type)) {
-				type_error("Operator '!' requires operand of boolean type");
+				type_error(ctx, "Operator '!' requires operand of boolean type");
 			}
 
 			break;
@@ -1193,7 +1254,7 @@ static Result codegen_expression_op_post(Context * ctx, AST_Expression const * e
 			context_reg_free(ctx, reg_value);
 
 			if (!type_is_integral(result.type)) {
-				type_error("Operator '++' requires operand of integral type");
+				type_error(ctx, "Operator '++' requires operand of integral type");
 			}
 
 			break;
@@ -1217,7 +1278,7 @@ static Result codegen_expression_op_post(Context * ctx, AST_Expression const * e
 			context_reg_free(ctx, reg_value);
 
 			if (!type_is_integral(result.type)) {
-				type_error("Operator '--' requires operand of integral type");
+				type_error(ctx, "Operator '--' requires operand of integral type");
 			}
 
 			break;
@@ -1238,7 +1299,7 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 	Function_Def * def_func = scope_get_function_def(ctx->current_scope, expr->expr_call.function_name);
 
 	if (call_arg_count != def_func->arg_count) {
-		type_error("Incorrect number of arguments to function '%s'! Provided %i, needed %i",
+		type_error(ctx, "Incorrect number of arguments to function '%s'! Provided %i, needed %i",
 			expr->expr_call.function_name, call_arg_count, def_func->arg_count
 		);
 	}
@@ -1307,7 +1368,7 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 			type_to_string(result_arg.type, str_type_given,    sizeof(str_type_given));
 			type_to_string(def_arg->type,   str_type_expected, sizeof(str_type_expected));
 
-			type_error("Argument %i in function call to '%s' has incorrect type. Given type: '%s', expected type: '%s'",
+			type_error(ctx, "Argument %i in function call to '%s' has incorrect type. Given type: '%s', expected type: '%s'",
 				i + 1, expr->expr_call.function_name, str_type_given, str_type_expected
 			);
 		}
@@ -1372,22 +1433,29 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 static Result codegen_expression(Context * ctx, AST_Expression const * expr) {
 	assert(expr->height >= 0);
 
+	context_trace_push_expr(ctx, expr);
+
+	Result result;
 	switch (expr->type) {
-		case AST_EXPRESSION_CONST:         return codegen_expression_const        (ctx, expr);
-		case AST_EXPRESSION_VAR:           return codegen_expression_var          (ctx, expr);
-		case AST_EXPRESSION_STRUCT_MEMBER: return codegen_expression_struct_member(ctx, expr);
+		case AST_EXPRESSION_CONST:         result = codegen_expression_const        (ctx, expr); break;
+		case AST_EXPRESSION_VAR:           result = codegen_expression_var          (ctx, expr); break;
+		case AST_EXPRESSION_STRUCT_MEMBER: result = codegen_expression_struct_member(ctx, expr); break;
 		
-		case AST_EXPRESSION_CAST:   return codegen_expression_cast  (ctx, expr);
-		case AST_EXPRESSION_SIZEOF: return codegen_expression_sizeof(ctx, expr);
+		case AST_EXPRESSION_CAST:   result = codegen_expression_cast  (ctx, expr); break;
+		case AST_EXPRESSION_SIZEOF: result = codegen_expression_sizeof(ctx, expr); break;
 
-		case AST_EXPRESSION_OPERATOR_BIN:  return codegen_expression_op_bin (ctx, expr);
-		case AST_EXPRESSION_OPERATOR_PRE:  return codegen_expression_op_pre (ctx, expr);
-		case AST_EXPRESSION_OPERATOR_POST: return codegen_expression_op_post(ctx, expr);
+		case AST_EXPRESSION_OPERATOR_BIN:  result = codegen_expression_op_bin (ctx, expr); break;
+		case AST_EXPRESSION_OPERATOR_PRE:  result = codegen_expression_op_pre (ctx, expr); break;
+		case AST_EXPRESSION_OPERATOR_POST: result = codegen_expression_op_post(ctx, expr); break;
 
-		case AST_EXPRESSION_CALL_FUNC: return codegen_expression_call_func(ctx, expr);
+		case AST_EXPRESSION_CALL_FUNC: result = codegen_expression_call_func(ctx, expr); break;
 
 		default: abort();
 	}
+	
+	context_trace_pop(ctx);
+
+	return result;
 }
 
 static void codegen_statement_statements(Context * ctx, AST_Statement const * stat) {
@@ -1424,13 +1492,13 @@ static void codegen_statement_def_var(Context * ctx, AST_Statement const * stat)
 			switch (literal_type) {
 				case TOKEN_LITERAL_INT: 
 				case TOKEN_LITERAL_BOOL: {
-					context_add_global(ctx, var, literal->expr_const.token.sign, literal->expr_const.token.value_int);
+					codegen_add_global(ctx, var, literal->expr_const.token.sign, literal->expr_const.token.value_int);
 
 					break;
 				}
 
 				case TOKEN_LITERAL_STRING: {
-					context_add_string_literal(ctx, var_name, literal->expr_const.token.value_str);
+					codegen_add_string_literal(ctx, var_name, literal->expr_const.token.value_str);
 
 					break;
 				}
@@ -1438,7 +1506,7 @@ static void codegen_statement_def_var(Context * ctx, AST_Statement const * stat)
 				default: abort();
 			}
 		} else {
-			context_add_global(ctx, var, false, 0);
+			codegen_add_global(ctx, var, false, 0);
 		}
 	} else {
 		char var_address[32];
@@ -1619,14 +1687,14 @@ static void codegen_statement_return(Context * ctx, AST_Statement const * stat) 
 		Result result = codegen_expression(ctx, stat->stat_return.expr);
 
 		if (type_is_struct(result.type)) {
-			type_error("Cannot return structs by value from function");
+			type_error(ctx, "Cannot return structs by value from function");
 		}
 
 		if (!types_unifiable(result.type, func_def->return_type)) {
 			char str_ret_type[128]; type_to_string(result.type,           str_ret_type, sizeof(str_ret_type));
 			char str_def_type[128]; type_to_string(func_def->return_type, str_def_type, sizeof(str_def_type));
 
-			type_error("Return statement in function '%s' cannot unify types '%s' and '%s'", ctx->current_function_name, str_ret_type, str_def_type);
+			type_error(ctx, "Return statement in function '%s' cannot unify types '%s' and '%s'", ctx->current_function_name, str_ret_type, str_def_type);
 		}
 
 		if (type_is_f32(result.type)) {
@@ -1643,7 +1711,7 @@ static void codegen_statement_return(Context * ctx, AST_Statement const * stat) 
 			char str_ret_type[128];
 			type_to_string(func_def->return_type, str_ret_type, sizeof(str_ret_type));
 
-			type_error("Return statement without expression in function '%s', which should return type '%s'", ctx->current_function_name, str_ret_type);
+			type_error(ctx, "Return statement without expression in function '%s', which should return type '%s'", ctx->current_function_name, str_ret_type);
 		}
 
 		context_emit_code(ctx, "mov rax, 0\n");
@@ -1684,6 +1752,8 @@ static void codegen_statement_program(Context * ctx, AST_Statement const * stat)
 }
 
 static void codegen_statement(Context * ctx, AST_Statement const * stat) {
+	if (stat->type != AST_STATEMENTS) context_trace_push_stat(ctx, stat);
+
 	switch (stat->type) {
 		case AST_STATEMENT_PROGRAM: codegen_statement_program(ctx, stat); break;
 
@@ -1711,6 +1781,8 @@ static void codegen_statement(Context * ctx, AST_Statement const * stat) {
 	assert(ctx->reg_mask_call    == 0);
 
 	if (stat->type != AST_STATEMENTS && stat->type != AST_STATEMENT_BLOCK) context_emit_code(ctx, "\n");
+
+	if (stat->type != AST_STATEMENTS) context_trace_pop(ctx);
 }
 
 char const * codegen_program(AST_Statement const * program) {
