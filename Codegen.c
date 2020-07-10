@@ -208,7 +208,7 @@ static void context_trace_pop(Context * ctx) {
 	ctx->trace_stack_size--;
 }
 
-static void print_trace(Context * ctx) {
+static void print_stack_trace(Context * ctx) {
 	for (int i = 0; i < ctx->trace_stack_size; i++) {
 		char str[4 * 1024];
 
@@ -227,7 +227,7 @@ static void print_trace(Context * ctx) {
 }
 
 static void type_error(Context * ctx, char const * msg, ...) {
-	print_trace(ctx);
+	print_stack_trace(ctx);
 
 	va_list args;
 	va_start(args, msg);
@@ -457,10 +457,9 @@ static Result codegen_expression_const(Context * ctx, AST_Expression const * exp
 			char str_lit_name[128];
 			sprintf_s(str_lit_name, sizeof(str_lit_name), "lit_flt_%i", ctx->data_seg_len);
 
-			unsigned flt;
-			memcpy(&flt, &expr->expr_const.token.value_float, 4);
+			unsigned flt; memcpy(&flt, &expr->expr_const.token.value_float, 4);
 
-			char str_lit_flt[8 + 4 + 32 + 1];
+			char str_lit_flt[64];
 			sprintf_s(str_lit_flt, sizeof(str_lit_flt), "%xh ; %ff", flt, expr->expr_const.token.value_float);
 
 			codegen_add_float_literal(ctx, str_lit_name, str_lit_flt);
@@ -477,13 +476,12 @@ static Result codegen_expression_const(Context * ctx, AST_Expression const * exp
 			char str_lit_name[128];
 			sprintf_s(str_lit_name, sizeof(str_lit_name), "lit_flt_%i", ctx->data_seg_len);
 
-			unsigned long long dbl;
-			memcpy(&dbl, &expr->expr_const.token.value_double, 8);
+			unsigned long long dbl; memcpy(&dbl, &expr->expr_const.token.value_double, 8);
 
-			char str_lit_flt[16 + 4 + 32 + 1];
-			sprintf_s(str_lit_flt, sizeof(str_lit_flt), "%llxh ; %f", dbl, expr->expr_const.token.value_double);
+			char str_lit_dbl[64];
+			sprintf_s(str_lit_dbl, sizeof(str_lit_dbl), "%llxh ; %f", dbl, expr->expr_const.token.value_double);
 
-			codegen_add_float_literal(ctx, str_lit_name, str_lit_flt);
+			codegen_add_float_literal(ctx, str_lit_name, str_lit_dbl);
 			context_emit_code(ctx, "movsd %s, QWORD [REL %s]\n", get_reg_name_scratch(result.reg, 8), str_lit_name);
 
 			break;
@@ -510,6 +508,7 @@ static int codegen_deref_address(Context * ctx, int reg, Type const * type, char
 	int reg_out  = reg;
 	int reg_size = 8;
 
+	// Select correct mov instruction based on Type
 	char const * mov = "mov";
 
 	if (type_is_f32(type)) {
@@ -778,6 +777,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			context_emit_code(ctx, "mov ecx, %i\n", struct_size);
 			context_emit_code(ctx, "rep movsb\n");			
 		} else {
+			// Select appropriate mov instruction
 			char const * mov = "mov";
 			if (type_is_f32(result_right.type)) {
 				mov = "movss";
@@ -795,15 +795,15 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 		return result_left;
 	}
 	
-	// Handle operator that require short-circuit evaluation separately
-	if (operator ==  TOKEN_OPERATOR_LOGICAL_AND) {
+	// Handle operators that require short-circuit evaluation separately
+	if (operator == TOKEN_OPERATOR_LOGICAL_AND) {
 		int label = context_new_label(ctx);
 
-		result_left  = codegen_expression(ctx, expr_left);
+		result_left = codegen_expression(ctx, expr_left);
 		char const * reg_name_left = get_reg_name_scratch(result_left.reg, 8);
 
 		context_emit_code(ctx, "test %s, %s\n", reg_name_left, reg_name_left);
-		context_emit_code(ctx, "je L_land_false_%i\n", label);
+		context_emit_code(ctx, "je L_land_false_%i ; short circuit '&&'\n", label);
 		
 		result_right = codegen_expression(ctx, expr_right);
 		char const * reg_name_right = get_reg_name_scratch(result_right.reg, 8);
@@ -826,11 +826,11 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 	} else if (operator == TOKEN_OPERATOR_LOGICAL_OR) {
 		int label = context_new_label(ctx);
 		
-		result_left  = codegen_expression(ctx, expr_left);
+		result_left = codegen_expression(ctx, expr_left);
 		char const * reg_name_left = get_reg_name_scratch(result_left.reg, 8);
 
 		context_emit_code(ctx, "test %s, %s\n", reg_name_left, reg_name_left);
-		context_emit_code(ctx, "jne L_lor_true_%i\n", label);
+		context_emit_code(ctx, "jne L_lor_true_%i ; short circuit '||'\n", label);
 
 		result_right = codegen_expression(ctx, expr_right);
 		char const * reg_name_right = get_reg_name_scratch(result_right.reg, 8);

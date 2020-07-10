@@ -236,7 +236,7 @@ fizzbuzz:
         
         movzx rbx, BYTE [rbp + -11]
         test rbx, rbx
-        je L_land_false_3
+        je L_land_false_3 ; short circuit '&&'
         movzx r10, BYTE [rbp + -12]
         test r10, r10
         je L_land_false_3

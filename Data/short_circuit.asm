@@ -28,7 +28,7 @@ main:
     sub rsp, 16 ; reserve stack space for 1 locals
     mov rbx, 0
     test rbx, rbx
-    je L_land_false_0
+    je L_land_false_0 ; short circuit '&&'
     push rbx ; preserve
     sub rsp, 32 ; reserve shadow space and 0 arguments
     call fail
@@ -47,7 +47,7 @@ main:
     
     mov rbx, 1
     test rbx, rbx
-    jne L_lor_true_1
+    jne L_lor_true_1 ; short circuit '||'
     push rbx ; preserve
     sub rsp, 32 ; reserve shadow space and 0 arguments
     call fail

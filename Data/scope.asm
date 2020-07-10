@@ -36,7 +36,7 @@ main:
     and bl, 1
     movzx rbx, bl
     test rbx, rbx
-    jne L_lor_true_0
+    jne L_lor_true_0 ; short circuit '||'
     movsx r10, DWORD [rbp + -28]
     mov r11, 3
     cmp r10, r11

@@ -38,7 +38,7 @@ main:
     
     mov rbx, 1
     test rbx, rbx
-    jne L_lor_true_2
+    jne L_lor_true_2 ; short circuit '||'
     mov r10, 0
     test r10, r10
     jne L_lor_true_2
@@ -64,7 +64,7 @@ main:
     
     mov rbx, 0
     test rbx, rbx
-    je L_land_false_3
+    je L_land_false_3 ; short circuit '&&'
     mov r10, 1
     test r10, r10
     je L_land_false_3
@@ -90,7 +90,7 @@ main:
     
     movzx rbx, BYTE [rbp + -16]
     test rbx, rbx
-    jne L_lor_true_4
+    jne L_lor_true_4 ; short circuit '||'
     movzx r10, BYTE [rbp + -16]
     xor r10, -1
     and r10, 1

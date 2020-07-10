@@ -28,7 +28,7 @@ typedef enum Type_Type {
 typedef struct Type {
 	Type_Type type;
 	
-	struct Type const * base;  // NULL if type != TYPE_POINTER
+	struct Type const * base;  // NULL if type is primitive
 
 	union {
 		int array_size;           // Active if type == TYPE_ARRAY
