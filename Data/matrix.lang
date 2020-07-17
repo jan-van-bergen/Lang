@@ -1,0 +1,184 @@
+extern GetStdHandle(std_handle: int) -> void *;
+extern WriteFile(handle: void *, buffer: void *, bytes_to_write: int, bytes_written: int *, overlapped: int) -> bool;
+
+func print(str: char *, str_len: int) -> void {
+	let std_handle: void * = GetStdHandle(-11);
+
+	let bytes_written: int;
+	WriteFile(std_handle, str, str_len, &bytes_written, 0);
+}
+
+func print_num(num: int) -> void {
+	let num_str: char[8];
+	let idx: int = 0;
+
+	if (num == 0) {
+		print("0 ", 2);
+		return;
+	}
+
+	while (num > 0) {
+		let digit: char = cast(char) (num % 10);
+		
+		num_str[idx] = digit + 48;
+		
+		num = num / 10;
+		idx = idx + 1;
+	}
+	
+	let i: int = 0;
+
+	while (i < idx / 2) {
+		let tmp: char = num_str[i];
+		num_str[i] = num_str[idx - i - 1];
+		num_str[idx - i - 1] = tmp;
+
+		i++;
+	}
+	
+	*(num_str + idx) = 32; // space
+	
+	print(num_str, idx + 1);
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct Vector3 {
+	x: float;
+	y: float;
+	z: float;
+}
+
+func vector_init(vector: Vector3 *, x: float, y: float, z: float) {
+	(*vector).x = x;
+	(*vector).y = y;
+	(*vector).z = z;
+}
+
+func vector_dot(a: Vector3 *, b: Vector3 *) -> float {
+	return (*a).x * (*b).x + (*a).y * (*b).y + (*a).z * (*b).z;
+}
+
+
+struct Matrix4 {
+	cells: float[16];
+}
+
+func matrix_identity(matrix: Matrix4 *) {
+	*matrix_index(matrix, 0, 0) = 1.0f; *matrix_index(matrix, 0, 1) = 0.0f; *matrix_index(matrix, 0, 2) = 0.0f; *matrix_index(matrix, 0, 3) = 0.0f;
+	*matrix_index(matrix, 1, 0) = 0.0f; *matrix_index(matrix, 1, 1) = 1.0f; *matrix_index(matrix, 1, 2) = 0.0f; *matrix_index(matrix, 1, 3) = 0.0f;
+	*matrix_index(matrix, 2, 0) = 0.0f; *matrix_index(matrix, 2, 1) = 0.0f; *matrix_index(matrix, 2, 2) = 1.0f; *matrix_index(matrix, 2, 3) = 0.0f;
+	*matrix_index(matrix, 3, 0) = 0.0f; *matrix_index(matrix, 3, 1) = 0.0f; *matrix_index(matrix, 3, 2) = 0.0f; *matrix_index(matrix, 3, 3) = 1.0f;
+}
+
+func matrix_translate(matrix: Matrix4 *, x: float, y: float, z: float) {
+	*matrix_index(matrix, 0, 0) = 1.0f; *matrix_index(matrix, 0, 1) = 0.0f; *matrix_index(matrix, 0, 2) = 0.0f; *matrix_index(matrix, 0, 3) = x;
+	*matrix_index(matrix, 1, 0) = 0.0f; *matrix_index(matrix, 1, 1) = 1.0f; *matrix_index(matrix, 1, 2) = 0.0f; *matrix_index(matrix, 1, 3) = y;
+	*matrix_index(matrix, 2, 0) = 0.0f; *matrix_index(matrix, 2, 1) = 0.0f; *matrix_index(matrix, 2, 2) = 1.0f; *matrix_index(matrix, 2, 3) = z;
+	*matrix_index(matrix, 3, 0) = 0.0f; *matrix_index(matrix, 3, 1) = 0.0f; *matrix_index(matrix, 3, 2) = 0.0f; *matrix_index(matrix, 3, 3) = 1.0f;
+}
+
+func matrix_scale(matrix: Matrix4 *, x: float, y: float, z: float) {
+	(*matrix).cells[0]  = x;    (*matrix).cells[1]  = 0.0f; (*matrix).cells[2]  = 0.0f; (*matrix).cells[3]  = 0.0f;
+	(*matrix).cells[4]  = 0.0f; (*matrix).cells[5]  = y;    (*matrix).cells[6]  = 0.0f; (*matrix).cells[7]  = 0.0f;
+	(*matrix).cells[8]  = 0.0f; (*matrix).cells[9]  = 0.0f; (*matrix).cells[10] = z;    (*matrix).cells[11] = 0.0f;
+	(*matrix).cells[12] = 0.0f; (*matrix).cells[13] = 0.0f; (*matrix).cells[14] = 0.0f; (*matrix).cells[15] = 1.0f;
+}
+
+func matrix_index(matrix: Matrix4 *, i: int, j: int) -> float * {
+	return &(*matrix).cells[i*4 + j];
+}
+
+func matrix_multiply(a: Matrix4 *, b: Matrix4 *, result: Matrix4 *) {
+	let i: int;
+	let j: int;
+
+	while (i < 4) {
+		j = 0;
+
+		while (j < 4) {
+			*matrix_index(result, i, j) = 
+				*matrix_index(a, i, 0) * *matrix_index(b, 0, j) +
+				*matrix_index(a, i, 1) * *matrix_index(b, 1, j) +
+				*matrix_index(a, i, 2) * *matrix_index(b, 2, j) +
+				*matrix_index(a, i, 3) * *matrix_index(b, 3, j);
+				
+			j++;
+		}
+		
+		i++;
+	}
+}
+
+func matrix_transform_position(matrix: Matrix4 *, vector: Vector3 *, result: Vector3 *) {
+	(*result).x = *matrix_index(matrix, 0, 0) * (*vector).x + *matrix_index(matrix, 0, 1) * (*vector).y + *matrix_index(matrix, 0, 2) * (*vector).z + *matrix_index(matrix, 0, 3);
+	(*result).y = *matrix_index(matrix, 1, 0) * (*vector).x + *matrix_index(matrix, 1, 1) * (*vector).y + *matrix_index(matrix, 1, 2) * (*vector).z + *matrix_index(matrix, 1, 3);
+	(*result).z = *matrix_index(matrix, 2, 0) * (*vector).x + *matrix_index(matrix, 2, 1) * (*vector).y + *matrix_index(matrix, 2, 2) * (*vector).z + *matrix_index(matrix, 2, 3);
+}
+
+func matrix_transform_direction(matrix: Matrix4 *, vector: Vector3 *, result: Vector3 *) {
+	(*result).x = *matrix_index(matrix, 0, 0) * (*vector).x + *matrix_index(matrix, 0, 1) * (*vector).y + *matrix_index(matrix, 0, 2) * (*vector).z;
+	(*result).y = *matrix_index(matrix, 1, 0) * (*vector).x + *matrix_index(matrix, 1, 1) * (*vector).y + *matrix_index(matrix, 1, 2) * (*vector).z;
+	(*result).z = *matrix_index(matrix, 2, 0) * (*vector).x + *matrix_index(matrix, 2, 1) * (*vector).y + *matrix_index(matrix, 2, 2) * (*vector).z;
+}
+
+func matrix_trace(matrix: Matrix4 *) -> float {
+	let trace: float;
+
+	let i: int;
+	while (i < 4) {
+		trace = trace + *matrix_index(matrix, i, i);
+
+		i++;
+	}
+	
+	return trace;
+}
+
+func matrix_print(matrix: Matrix4 *) {
+	let i: int;
+	while (i < 4) {
+		let j: int;
+		while (j < 4) {
+			let num: int = cast(int) *matrix_index(matrix, i, j);
+			print_num(num);
+			
+			j++;
+		}
+		
+		let newline: char * = "\n";
+		print(newline, 1);
+		
+		i++;
+	}
+}
+
+
+extern ExitProcess(exit_code: int) -> void;
+
+func assert(expression: bool) -> void {
+	if (!expression) {
+		ExitProcess(1);
+	}
+}
+
+func feq(a: float, b: float) -> bool {
+	let epsilon: float = 0.001f;
+
+	let diff: float = a - b;
+	return diff > -epsilon && diff < epsilon;
+}
+
+func main() -> int {
+	let a: Matrix4; matrix_translate(&a, 2.0f, 0.0f, 1.0f);
+	let b: Matrix4; matrix_scale    (&b, 2.0f, 3.0f, 4.0f);
+	
+	let c: Matrix4; matrix_multiply(&a, &b, &c);
+	matrix_print(&c);
+
+	let v: Vector3; vector_init(&v, 3.0f, 5.0f, 6.0f);
+	
+	let result: Vector3; matrix_transform_position(&c, &v, &result);
+	
+	return cast(int) vector_dot(&v, &result);
+}

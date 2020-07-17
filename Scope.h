@@ -53,13 +53,13 @@ typedef struct Scope {
 
 	Variable_Buffer * variable_buffer;
 
-	int          struct_defs_len;
-	int          struct_defs_cap;
-	Struct_Def * struct_defs;
+	int           struct_defs_len;
+	int           struct_defs_cap;
+	Struct_Def ** struct_defs;
 
-	int            function_defs_len;
-	int            function_defs_cap;
-	Function_Def * function_defs;
+	int             function_defs_len;
+	int             function_defs_cap;
+	Function_Def ** function_defs;
 } Scope;
 
 Scope * make_scope(Variable_Buffer * variable_buffer);

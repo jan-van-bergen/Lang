@@ -210,7 +210,7 @@ static void context_trace_pop(Context * ctx) {
 
 static void print_stack_trace(Context * ctx) {
 	for (int i = 0; i < ctx->trace_stack_size; i++) {
-		char str[4 * 1024];
+		char str[8 * 1024];
 
 		Trace_Element * trace_elem = ctx->trace_stack + i;
 		if (trace_elem->type == TRACE_EXPRESSION) {
@@ -569,6 +569,68 @@ static Result codegen_expression_var(Context * ctx, AST_Expression const * expr)
 	return result;
 }
 
+static Result codegen_expression_array_access(Context * ctx, AST_Expression * expr) {
+	assert(expr->type == AST_EXPRESSION_ARRAY_ACCESS);
+
+	bool var_by_address = ctx->flags & CTX_FLAG_VAR_BY_ADDRESS; 
+	
+	AST_Expression * expr_array = expr->expr_array_access.expr_array;
+	AST_Expression * expr_index = expr->expr_array_access.expr_index;
+
+	Result result_array, result_index;
+
+	// Traverse tallest subtree first
+	if (expr_array->height >= expr_index->height) {
+		// Evaluate lhs by address
+		context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS);
+		result_array = codegen_expression(ctx, expr_array);
+		context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
+
+		result_index = codegen_expression(ctx, expr_index);
+	} else {
+		result_index = codegen_expression(ctx, expr_index);
+
+		// Evaluate lhs by address
+		context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS);
+		result_array = codegen_expression(ctx, expr_array);
+		context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
+	}
+
+	if (!type_is_array(result_array.type)) {
+		char str_type[128];
+		type_to_string(result_array.type, str_type, sizeof(str_type));
+
+		type_error(ctx, "Operator '[]' requires left operand to be an array. Type was '%s'", str_type);
+	}
+	if (!type_is_integral(result_index.type)) {
+		char str_type[128];
+		type_to_string(result_index.type, str_type, sizeof(str_type));
+
+		type_error(ctx, "Operator '[]' requires right operand to be an integral type. Type was '%s'", str_type);
+	}
+	
+	Result result;
+	result.type = result_array.type->base;
+	result.reg  = result_array.reg;
+
+	context_emit_code(ctx, "imul %s, %i\n", get_reg_name_scratch(result_index.reg, 8), type_get_size(result.type, ctx->current_scope));
+	context_emit_code(ctx, "add %s, %s\n",  get_reg_name_scratch(result_array.reg, 8), get_reg_name_scratch(result_index.reg, 8));
+	
+	// Check if we need to return by address or value
+	if (var_by_address) {
+		context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS);
+	} else {
+		// Only dereference primitives, structs and arrays are always returned by address
+		if (type_is_primitive(result.type)) {
+			result.reg = codegen_deref_address(ctx, result.reg, result.type, get_reg_name_scratch(result.reg, 8));
+		}
+	}
+
+	context_reg_free(ctx, result_index.reg);
+
+	return result;
+}
+
 static Result codegen_expression_struct_member(Context * ctx, AST_Expression * expr) {
 	assert(expr->type == AST_EXPRESSION_STRUCT_MEMBER);
 
@@ -730,15 +792,8 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 
 	// Assignment operator is handled separately, because it needs the lhs by address
 	if (operator == TOKEN_ASSIGN) {
-		if (expr_left->type != AST_EXPRESSION_VAR && 
-			expr_left->type != AST_EXPRESSION_OPERATOR_PRE &&
-			expr_left->type != AST_EXPRESSION_STRUCT_MEMBER
-		) {
-			type_error(ctx, "Operator '=' requires left operand to be an lvalue");
-		}
-
 		// Traverse tallest subtree first
-		if (expr->expr_op_bin.expr_left->height >= expr->expr_op_bin.expr_right->height) {
+		if (expr_left->height >= expr_right->height) {
 			// Evaluate lhs by address
 			context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS);
 			result_left  = codegen_expression(ctx, expr_left);
@@ -853,7 +908,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 	}
 
 	// Traverse tallest subtree first
-	if (expr->expr_op_bin.expr_left->height >= expr->expr_op_bin.expr_right->height) {
+	if (expr_left->height >= expr_right->height) {
 		result_left  = codegen_expression(ctx, expr_left);
 		result_right = codegen_expression(ctx, expr_right);
 	} else {
@@ -1074,6 +1129,7 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 	// Check if this is a pointer operator
 	if (operator == TOKEN_OPERATOR_BITWISE_AND) {
 		if (operand->type != AST_EXPRESSION_VAR && 
+			operand->type != AST_EXPRESSION_ARRAY_ACCESS && 
 			operand->type != AST_EXPRESSION_STRUCT_MEMBER
 		) {
 			type_error(ctx, "Operator '&' can only take address of a variable or struct member");
@@ -1174,17 +1230,28 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 		case TOKEN_OPERATOR_PLUS: {
 			// Unary plus is a no-op, no code is emitted
 
-			if (!type_is_integral(result.type)) {
-				type_error(ctx, "Operator '+' requires operand of integral type");
+			if (!type_is_arithmetic(result.type)) {
+				type_error(ctx, "Operator '+' requires operand of integral or float type");
 			}
 
 			break;
 		}
 		case TOKEN_OPERATOR_MINUS: {
-			context_emit_code(ctx, "neg %s\n", reg_name);
-			
-			if (!type_is_integral(result.type)) {
-				type_error(ctx, "Operator '-' requires operand of integral type");
+			if (type_is_float(result.type)) {
+				int          tmp_reg = context_reg_request(ctx);
+				char const * tmp_reg_name = get_reg_name_scratch(tmp_reg, 8);
+
+				context_emit_code(ctx, "movd eax, %s\n",        reg_name);
+				context_emit_code(ctx, "xor eax, 2147483648\n");
+				context_emit_code(ctx, "movd %s, eax\n",        reg_name);
+
+				context_reg_free(ctx, tmp_reg);
+			} else {
+				context_emit_code(ctx, "neg %s\n", reg_name);
+			}
+
+			if (!type_is_arithmetic(result.type)) {
+				type_error(ctx, "Operator '-' requires operand of integral or float type");
 			}
 			
 			break;
@@ -1437,8 +1504,10 @@ static Result codegen_expression(Context * ctx, AST_Expression const * expr) {
 
 	Result result;
 	switch (expr->type) {
-		case AST_EXPRESSION_CONST:         result = codegen_expression_const        (ctx, expr); break;
-		case AST_EXPRESSION_VAR:           result = codegen_expression_var          (ctx, expr); break;
+		case AST_EXPRESSION_CONST: result = codegen_expression_const(ctx, expr); break;
+		case AST_EXPRESSION_VAR:   result = codegen_expression_var  (ctx, expr); break;
+
+		case AST_EXPRESSION_ARRAY_ACCESS:  result = codegen_expression_array_access (ctx, expr); break;
 		case AST_EXPRESSION_STRUCT_MEMBER: result = codegen_expression_struct_member(ctx, expr); break;
 		
 		case AST_EXPRESSION_CAST:   result = codegen_expression_cast  (ctx, expr); break;
@@ -1738,7 +1807,7 @@ static void codegen_statement_program(Context * ctx, AST_Statement const * stat)
 	bool has_main = false;
 
 	for (int i = 0; i < ctx->current_scope->function_defs_len; i++) {
-		if (strcmp(ctx->current_scope->function_defs[i].name, "main") == 0) {
+		if (strcmp(ctx->current_scope->function_defs[i]->name, "main") == 0) {
 			has_main = true;
 		}
 	}

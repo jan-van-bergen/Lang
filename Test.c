@@ -66,4 +66,5 @@ void run_tests() {
 	run_test("Data\\float.lang",             288, "");
 	run_test("Data\\float2.lang",              3, "");
 	run_test("Data\\ptrarray.lang",            0, "Hello\n\tworld\nOla\n\tmundo\nBye\n");
+	run_test("Data\\matrix.lang",            249, "2 0 0 2 \n0 3 0 0 \n0 0 4 1 \n0 0 0 1 \n");
 }

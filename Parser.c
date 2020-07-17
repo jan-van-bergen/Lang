@@ -211,16 +211,16 @@ static void parser_parse_call_arg(Parser * parser, AST_Call_Arg * arg) {
 	arg->height = arg->expr->height;
 }
 
-static void parser_parse_call_args(Parser * parser, int * arg_count, AST_Call_Arg ** args) {
+static AST_Call_Arg * parser_parse_call_args(Parser * parser, int * arg_count) {
 	*arg_count = 0;
 
 	int arg_capacity = 16;
-	*args = malloc(arg_capacity * sizeof(AST_Call_Arg));
+	AST_Call_Arg * args = malloc(arg_capacity * sizeof(AST_Call_Arg));
 
 	parser_match_and_advance(parser, TOKEN_PARENTESES_OPEN);
 	
 	if (parser_match_expression(parser)) {
-		parser_parse_call_arg(parser, *args + (*arg_count)++);
+		parser_parse_call_arg(parser, args + (*arg_count)++);
 	}
 	
 	while (parser_match(parser, TOKEN_COMMA)) {
@@ -228,14 +228,16 @@ static void parser_parse_call_args(Parser * parser, int * arg_count, AST_Call_Ar
 
 		if (*arg_count == arg_capacity) {
 			arg_capacity *= 2;
-			*args = realloc(*args, arg_capacity * sizeof(AST_Call_Arg));
+			args = realloc(args, arg_capacity * sizeof(AST_Call_Arg));
 		}
 
-		AST_Call_Arg * arg = *args + (*arg_count)++;
+		AST_Call_Arg * arg = args + (*arg_count)++;
 		parser_parse_call_arg(parser, arg);
 	}
 
 	parser_match_and_advance(parser, TOKEN_PARENTESES_CLOSE);
+
+	return args;
 }
 
 static AST_Expression * parser_parse_expression_elementary(Parser * parser) {
@@ -243,9 +245,8 @@ static AST_Expression * parser_parse_expression_elementary(Parser * parser) {
 		Token const * identifier = parser_advance(parser);
 
 		if (parser_match(parser, TOKEN_PARENTESES_OPEN)) {
-			int arg_count;
-			AST_Call_Arg * args;
-			parser_parse_call_args(parser, &arg_count, &args);
+			int            arg_count;
+			AST_Call_Arg * args = parser_parse_call_args(parser, &arg_count);
 
 			return ast_make_expr_call(identifier->value_str, arg_count, args);
 		} else {
@@ -304,8 +305,24 @@ static AST_Expression * parser_parse_expression_dot(Parser * parser) {
 	return lhs;
 }
 
+static AST_Expression * parser_parse_expression_array_access(Parser * parser) {
+	AST_Expression * lhs = parser_parse_expression_dot(parser);
+	
+	// Left Associative
+	while (parser_match(parser, TOKEN_SQUARE_BRACES_OPEN)) {
+		parser_advance(parser);
+
+		AST_Expression * expr_index = parser_parse_expression(parser);
+		parser_match_and_advance(parser, TOKEN_SQUARE_BRACES_CLOSE);
+
+		lhs = ast_make_expr_array_access(lhs, expr_index);
+	}
+
+	return lhs;
+}
+
 static AST_Expression * parser_parse_expression_postfix(Parser * parser) {
-	AST_Expression * operand =  parser_parse_expression_dot(parser);
+	AST_Expression * operand =  parser_parse_expression_array_access(parser);
 
 	if (parser_match(parser, TOKEN_OPERATOR_INC) || parser_match(parser, TOKEN_OPERATOR_DEC)) {
 		Token const * operator = parser_advance(parser);
@@ -554,16 +571,16 @@ static void parser_parse_def_arg(Parser * parser,  AST_Def_Arg * arg) {
 	arg->type = parser_parse_type(parser);
 }
 
-static void parser_parse_def_args(Parser * parser, int * arg_count, AST_Def_Arg ** args) {
+static AST_Def_Arg * parser_parse_def_args(Parser * parser, int * arg_count) {
 	*arg_count = 0;
 
 	int arg_capacity = 16;
-	*args = malloc(arg_capacity * sizeof(AST_Def_Arg));
+	AST_Def_Arg * args = malloc(arg_capacity * sizeof(AST_Def_Arg));
 
 	parser_match_and_advance(parser, TOKEN_PARENTESES_OPEN);
 	
 	if (parser_match(parser, TOKEN_IDENTIFIER)) {
-		parser_parse_def_arg(parser, *args + (*arg_count)++);
+		parser_parse_def_arg(parser, args + (*arg_count)++);
 	}
 
 	while (parser_match(parser, TOKEN_COMMA)) {
@@ -571,13 +588,15 @@ static void parser_parse_def_args(Parser * parser, int * arg_count, AST_Def_Arg 
 
 		if (*arg_count == arg_capacity) {
 			arg_capacity *= 2;
-			*args = realloc(*args, arg_capacity * sizeof (AST_Def_Arg));
+			args = realloc(args, arg_capacity * sizeof (AST_Def_Arg));
 		}
 
-		parser_parse_def_arg(parser, *args + (*arg_count)++);
+		parser_parse_def_arg(parser, args + (*arg_count)++);
 	}
 		
 	parser_match_and_advance(parser, TOKEN_PARENTESES_CLOSE);
+
+	return args;
 }
 
 static AST_Statement * parser_parse_statement_def_func(Parser * parser) {
@@ -596,11 +615,10 @@ static AST_Statement * parser_parse_statement_def_func(Parser * parser) {
 
 	Function_Def * function_def = scope_add_function_def(parser->current_scope);
 	function_def->name = func_name;
+	function_def->args = parser_parse_def_args(parser, &function_def->arg_count);
 
 	parser->current_variable_buffer = buffer_args;
 	parser->current_scope           = scope_args;
-
-	parser_parse_def_args(parser, &function_def->arg_count, &function_def->args);
 
 	if (parser_match(parser, TOKEN_ARROW)) {
 		parser_advance(parser);
@@ -660,8 +678,7 @@ static AST_Statement * parser_parse_statement_extern(Parser * parser) {
 
 	Function_Def * function_def = scope_add_function_def(parser->current_scope);
 	function_def->name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
-
-	parser_parse_def_args(parser, &function_def->arg_count, &function_def->args);
+	function_def->args = parser_parse_def_args(parser, &function_def->arg_count);
 	
 	if (parser_match(parser, TOKEN_ARROW)) {
 		parser_advance(parser);

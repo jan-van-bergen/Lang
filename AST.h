@@ -7,6 +7,7 @@
 typedef enum AST_Expression_Type {
 	AST_EXPRESSION_CONST,
 	AST_EXPRESSION_VAR,
+	AST_EXPRESSION_ARRAY_ACCESS,
 	AST_EXPRESSION_STRUCT_MEMBER,
 	AST_EXPRESSION_CAST,
 	AST_EXPRESSION_SIZEOF,
@@ -36,6 +37,11 @@ typedef struct AST_Expression {
 		struct Var {
 			char const * name;
 		} expr_var;
+
+		struct Array_Access {
+			struct AST_Expression * expr_array;
+			struct AST_Expression * expr_index;
+		} expr_array_access;
 
 		struct Struct_Member {
 			struct AST_Expression * expr;
@@ -173,6 +179,7 @@ typedef struct AST_Statement {
 AST_Expression * ast_make_expr_const(Token const * token);
 AST_Expression * ast_make_expr_var  (char  const * name);
 
+AST_Expression * ast_make_expr_array_access (AST_Expression * expr_array, AST_Expression * expr_index);
 AST_Expression * ast_make_expr_struct_member(AST_Expression * expr_struct, char  const * member_name);
 
 AST_Expression * ast_make_expr_cast  (Type const * type, AST_Expression * expr);

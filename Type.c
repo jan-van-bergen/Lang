@@ -298,7 +298,7 @@ bool types_unifiable(Type const * a, Type const * b) {
 		// If either type is a void star and the other is a pointer as well, the types are considered equal
 		if (a->base->type == TYPE_VOID || b->base->type == TYPE_VOID) return true;
 
-		return types_equal(a, b);
+		return types_equal(a->base, b->base);
 	}
 
 	// Arrays can decay to pointers

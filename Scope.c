@@ -134,8 +134,11 @@ Struct_Def * scope_add_struct_def(Scope * scope) {
 		scope->struct_defs_cap *= 2;
 		scope->struct_defs = realloc(scope->struct_defs, scope->struct_defs_cap * sizeof(Struct_Def));
 	}
-	
-	return scope->struct_defs + scope->struct_defs_len++;
+
+	Struct_Def ** struct_def = scope->struct_defs + scope->struct_defs_len++;
+	*struct_def = malloc(sizeof(Struct_Def));
+
+	return *struct_def; 
 }
 
 Function_Def * scope_add_function_def(Scope * scope) {
@@ -144,7 +147,10 @@ Function_Def * scope_add_function_def(Scope * scope) {
 		scope->function_defs = realloc(scope->function_defs, scope->function_defs_cap * sizeof(Struct_Def));
 	}
 	
-	return scope->function_defs + scope->function_defs_len++;
+	Function_Def ** function_def = scope->function_defs + scope->function_defs_len++;
+	*function_def = malloc(sizeof(Function_Def));
+
+	return * function_def;
 }
 
 Variable * scope_get_variable(Scope const * scope, char const * name) {
@@ -171,8 +177,8 @@ Variable * scope_get_variable(Scope const * scope, char const * name) {
 Struct_Def * scope_get_struct_def(Scope const * scope, char const * name) {
 	while (true) {
 		for (int i = 0; i < scope->struct_defs_len; i++) {
-			if (strcmp(scope->struct_defs[i].name, name) == 0) {
-				return scope->struct_defs + i;
+			if (strcmp(scope->struct_defs[i]->name, name) == 0) {
+				return scope->struct_defs[i];
 			}
 		}
 
@@ -188,8 +194,8 @@ Struct_Def * scope_get_struct_def(Scope const * scope, char const * name) {
 Function_Def * scope_get_function_def(Scope const * scope, char const * name) {
 	while (true) {
 		for (int i = 0; i < scope->function_defs_len; i++) {
-			if (strcmp(scope->function_defs[i].name, name) == 0) {
-				return scope->function_defs + i;
+			if (strcmp(scope->function_defs[i]->name, name) == 0) {
+				return scope->function_defs[i];
 			}
 		}
 	

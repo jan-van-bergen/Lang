@@ -24,6 +24,16 @@ AST_Expression * ast_make_expr_var(char const * name) {
 	return expr;
 }
 
+AST_Expression * ast_make_expr_array_access(AST_Expression * expr_array, AST_Expression * expr_index) {
+	AST_Expression * expr = malloc(sizeof(AST_Expression));
+	expr->type = AST_EXPRESSION_ARRAY_ACCESS;
+	expr->height = expr_index->height + 1;
+
+	expr->expr_array_access.expr_array = expr_array;
+	expr->expr_array_access.expr_index = expr_index;
+		
+	return expr;
+}
 AST_Expression * ast_make_expr_struct_member(AST_Expression * expr_struct, char  const * member_name) {
 	AST_Expression * expr = malloc(sizeof(AST_Expression));
 	expr->type = AST_EXPRESSION_STRUCT_MEMBER;
@@ -263,6 +273,15 @@ static void print_expression(AST_Expression const * expr, char * string, int * s
 			break;
 		}
 
+		case AST_EXPRESSION_ARRAY_ACCESS: {
+			print_expression(expr->expr_array_access.expr_array, string, string_offset, string_size);
+			SPRINTF("[");
+			print_expression(expr->expr_array_access.expr_index, string, string_offset, string_size);
+			SPRINTF("]");
+
+			break;
+		}
+
 		case AST_EXPRESSION_STRUCT_MEMBER: {
 			print_expression(expr->expr_struct_member.expr, string, string_offset, string_size);
 			VSPRINTF(".%s", expr->expr_struct_member.member_name);
@@ -324,7 +343,7 @@ static void print_expression(AST_Expression const * expr, char * string, int * s
 			char token_string[128];
 			token_to_string(&expr->expr_op_post.token, token_string, sizeof(token_string));
 			VSPRINTF("%s", token_string);
-			SPRINTF (string, string_offset, string_size, ")");
+			SPRINTF(")");
 
 			break;
 		}
