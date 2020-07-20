@@ -367,7 +367,7 @@ static void codegen_add_string_literal(Context * ctx, char const * str_name, cha
 
 				case '\\': str_lit_cpy[idx++] = '\\'; break;
 
-				default: abort();
+				default: abort(); // Invalid escape char
 			}
 
 			curr += 2;
@@ -596,12 +596,17 @@ static Result codegen_expression_array_access(Context * ctx, AST_Expression * ex
 		context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
 	}
 
-	if (!type_is_array(result_array.type)) {
+	if (!type_is_pointer(result_array.type) && !type_is_array(result_array.type)) {
 		char str_type[128];
 		type_to_string(result_array.type, str_type, sizeof(str_type));
 
-		type_error(ctx, "Operator '[]' requires left operand to be an array. Type was '%s'", str_type);
+		type_error(ctx, "Operator '[]' requires left operand to be a pointer or an array. Type was '%s'", str_type);
 	}
+
+	if (type_is_void_pointer(result_array.type)) {
+		type_error(ctx, "Operator '[]' cannot dereference 'void *'");
+	}
+
 	if (!type_is_integral(result_index.type)) {
 		char str_type[128];
 		type_to_string(result_index.type, str_type, sizeof(str_type));
@@ -612,6 +617,11 @@ static Result codegen_expression_array_access(Context * ctx, AST_Expression * ex
 	Result result;
 	result.type = result_array.type->base;
 	result.reg  = result_array.reg;
+
+	// Dereference pointer, not needed if lhs is array
+	if (type_is_pointer(result_array.type)) {
+		codegen_deref_address(ctx, result_array.reg, result_array.type, get_reg_name_scratch(result_array.reg, 8));
+	}
 
 	context_emit_code(ctx, "imul %s, %i\n", get_reg_name_scratch(result_index.reg, 8), type_get_size(result.type, ctx->current_scope));
 	context_emit_code(ctx, "add %s, %s\n",  get_reg_name_scratch(result_array.reg, 8), get_reg_name_scratch(result_index.reg, 8));

@@ -153,22 +153,6 @@ func matrix_print(matrix: Matrix4 *) {
 	}
 }
 
-
-extern ExitProcess(exit_code: int) -> void;
-
-func assert(expression: bool) -> void {
-	if (!expression) {
-		ExitProcess(1);
-	}
-}
-
-func feq(a: float, b: float) -> bool {
-	let epsilon: float = 0.001f;
-
-	let diff: float = a - b;
-	return diff > -epsilon && diff < epsilon;
-}
-
 func main() -> int {
 	let a: Matrix4; matrix_translate(&a, 2.0f, 0.0f, 1.0f);
 	let b: Matrix4; matrix_scale    (&b, 2.0f, 3.0f, 4.0f);

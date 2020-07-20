@@ -1564,83 +1564,6 @@ matrix_print:
     ret
     
 
-EXTERN ExitProcess
-
-assert:
-    push rbp ; save RBP
-    mov rbp, rsp ; stack frame
-    mov BYTE [rbp + 16], cl ; push arg 0 
-    movzx rbx, BYTE [rbp + 16]
-    xor rbx, -1
-    and rbx, 1
-    cmp rbx, 0
-    je L_exit9
-        sub rsp, 32 ; reserve shadow space and 1 arguments
-        mov rbx, 1
-        mov rcx, rbx ; arg 1
-        call ExitProcess
-        add rsp, 32 ; pop arguments
-        mov rbx, rax ; get return value
-        
-    L_exit9:
-    
-    xor rax, rax ; Default return value 0
-    L_function_assert_exit:
-    mov rsp, rbp
-    pop rbp
-    ret
-    
-
-feq:
-    push rbp ; save RBP
-    mov rbp, rsp ; stack frame
-    movss DWORD [rbp + 16], xmm0 ; push arg 0 
-    movss DWORD [rbp + 24], xmm1 ; push arg 1 
-    sub rsp, 16 ; reserve stack space for 2 locals
-    lea rbx, QWORD [rbp + -16] ; get address of 'epsilon'
-    movss xmm4, DWORD [REL lit_flt_44]
-    movss DWORD [rbx], xmm4
-    
-    movss xmm5, DWORD [rbp + 16]
-    movss xmm6, DWORD [rbp + 24]
-    subss xmm5, xmm6
-    lea rbx, QWORD [rbp + -12] ; get address of 'diff'
-    movss DWORD [rbx], xmm5
-    
-    movss xmm5, DWORD [rbp + -16]
-    movd eax, xmm5
-    xor eax, 2147483648
-    movd xmm5, eax
-    movss xmm6, DWORD [rbp + -12]
-    comiss xmm6, xmm5
-    setg bl
-    and bl, 1
-    movzx rbx, bl
-    test rbx, rbx
-    je L_land_false_10 ; short circuit '&&'
-    movss xmm5, DWORD [rbp + -12]
-    movss xmm6, DWORD [rbp + -16]
-    comiss xmm5, xmm6
-    setl r10b
-    and r10b, 1
-    movzx r10, r10b
-    test r10, r10
-    je L_land_false_10
-    mov rbx, 1
-    jmp L_land_exit_10
-    L_land_false_10:
-    mov rbx, 0
-    L_land_exit_10:
-    mov rax, rbx ; return via rax
-    jmp L_function_feq_exit
-    
-    xor rax, rax ; Default return value 0
-    L_function_feq_exit:
-    mov rsp, rbp
-    pop rbp
-    ret
-    
-
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
@@ -1653,11 +1576,11 @@ main:
     sub rsp, 32 ; reserve shadow space and 4 arguments
     lea rbx, QWORD [rbp + -224] ; get address of 'a'
     mov rcx, rbx ; arg 1
-    movss xmm4, DWORD [REL lit_flt_45]
+    movss xmm4, DWORD [REL lit_flt_44]
     movss xmm1, xmm4 ; arg 2
-    movss xmm4, DWORD [REL lit_flt_46]
+    movss xmm4, DWORD [REL lit_flt_45]
     movss xmm2, xmm4 ; arg 3
-    movss xmm4, DWORD [REL lit_flt_47]
+    movss xmm4, DWORD [REL lit_flt_46]
     movss xmm3, xmm4 ; arg 4
     call matrix_translate
     add rsp, 32 ; pop arguments
@@ -1671,11 +1594,11 @@ main:
     sub rsp, 32 ; reserve shadow space and 4 arguments
     lea rbx, QWORD [rbp + -160] ; get address of 'b'
     mov rcx, rbx ; arg 1
-    movss xmm4, DWORD [REL lit_flt_48]
+    movss xmm4, DWORD [REL lit_flt_47]
     movss xmm1, xmm4 ; arg 2
-    movss xmm4, DWORD [REL lit_flt_49]
+    movss xmm4, DWORD [REL lit_flt_48]
     movss xmm2, xmm4 ; arg 3
-    movss xmm4, DWORD [REL lit_flt_50]
+    movss xmm4, DWORD [REL lit_flt_49]
     movss xmm3, xmm4 ; arg 4
     call matrix_scale
     add rsp, 32 ; pop arguments
@@ -1712,11 +1635,11 @@ main:
     sub rsp, 32 ; reserve shadow space and 4 arguments
     lea rbx, QWORD [rbp + -32] ; get address of 'v'
     mov rcx, rbx ; arg 1
-    movss xmm4, DWORD [REL lit_flt_51]
+    movss xmm4, DWORD [REL lit_flt_50]
     movss xmm1, xmm4 ; arg 2
-    movss xmm4, DWORD [REL lit_flt_52]
+    movss xmm4, DWORD [REL lit_flt_51]
     movss xmm2, xmm4 ; arg 3
-    movss xmm4, DWORD [REL lit_flt_53]
+    movss xmm4, DWORD [REL lit_flt_52]
     movss xmm3, xmm4 ; arg 4
     call vector_init
     add rsp, 32 ; pop arguments
@@ -1803,13 +1726,12 @@ lit_flt_40 dq 0h ; 0.000000f
 lit_flt_41 dq 0h ; 0.000000f
 lit_flt_42 dq 3f800000h ; 1.000000f
 lit_str_43 db "", 0Ah, "", 0
-lit_flt_44 dq 3a83126fh ; 0.001000f
-lit_flt_45 dq 40000000h ; 2.000000f
-lit_flt_46 dq 0h ; 0.000000f
-lit_flt_47 dq 3f800000h ; 1.000000f
-lit_flt_48 dq 40000000h ; 2.000000f
-lit_flt_49 dq 40400000h ; 3.000000f
-lit_flt_50 dq 40800000h ; 4.000000f
-lit_flt_51 dq 40400000h ; 3.000000f
-lit_flt_52 dq 40a00000h ; 5.000000f
-lit_flt_53 dq 40c00000h ; 6.000000f
+lit_flt_44 dq 40000000h ; 2.000000f
+lit_flt_45 dq 0h ; 0.000000f
+lit_flt_46 dq 3f800000h ; 1.000000f
+lit_flt_47 dq 40000000h ; 2.000000f
+lit_flt_48 dq 40400000h ; 3.000000f
+lit_flt_49 dq 40800000h ; 4.000000f
+lit_flt_50 dq 40400000h ; 3.000000f
+lit_flt_51 dq 40a00000h ; 5.000000f
+lit_flt_52 dq 40c00000h ; 6.000000f

@@ -1,0 +1,130 @@
+extern GetProcessHeap() -> void *;
+extern HeapAlloc(heap: void *, flags: int, size: int)   -> void *;
+extern HeapFree (heap: void *, flags: int, ptr: void *) -> void;
+
+extern CopyMemory(dst: void *, src: void *, length: u64) -> void;
+
+extern ExitProcess(exit_code: int) -> void;
+
+func assert(expression: bool) -> void {
+	if (!expression) {
+		ExitProcess(1);
+	}
+}
+
+let NULL: void * = 0;
+
+let heap: void *;
+
+func malloc(size: int) -> void * {
+	if (heap == NULL) {
+		heap = GetProcessHeap();
+	}
+	
+	return HeapAlloc(heap, 0, size);
+}
+
+func free(ptr: void *) -> void {
+	assert(ptr  != NULL);
+	assert(heap != NULL);
+	
+	HeapFree(heap, 0, ptr);
+}
+
+extern GetStdHandle(std_handle: int) -> void *;
+extern WriteFile(handle: void *, buffer: void *, bytes_to_write: int, bytes_written: int *, overlapped: u64) -> bool;
+extern strlen(str: char *) -> int;
+
+let STD_OUTPUT_HANDLE: int = -11;
+
+func print(str: char *, str_len: int) -> void {
+	let std_handle: int * = GetStdHandle(STD_OUTPUT_HANDLE);
+
+	let bytes_written: int;
+	WriteFile(std_handle, str, str_len, &bytes_written, 0);
+}
+
+func print_num(num: int) -> void {
+	let num_str: char * = "         ";
+	let idx: int = 0;
+
+	while (num > 0) {
+		let digit: char = cast(char) (num % 10);
+		
+		*(num_str + idx) = digit + 48;
+		
+		num = num / 10;
+		idx = idx + 1;
+	}
+	
+	let i: int = 0;
+
+	while (i < idx / 2) {
+		let tmp: char = *(num_str + i);
+		*(num_str + i) = *(num_str + idx - i - 1);
+		*(num_str + idx - i - 1) = tmp;
+
+		i++;
+	}
+	
+	*(num_str + idx) = 32; // space
+	
+	print(num_str, idx + 1);
+}
+
+struct List {
+	length:       u64;
+	capacity:     u64;
+	data:         int *;
+}
+
+func list_init(list: List *) {
+	(*list).length   = 0;
+	(*list).capacity = 2;
+	(*list).data = malloc((*list).capacity * sizeof(int));
+}
+
+func list_push(list: List *, element: int) {
+	if ((*list).length == (*list).capacity) {
+		(*list).capacity = (*list).capacity * 2;
+
+		let new_data: int * = malloc((*list).capacity * sizeof(int));
+		//CopyMemory(new_data, (*list).data, (*list).length);
+
+		let i: int;
+		while (i < (*list).length) {
+			new_data[i] = (*list).data[i];
+			
+			i++;
+		}
+		
+		free((*list).data);
+		(*list).data = new_data;
+	}
+
+	(*list).data[(*list).length++] = element;
+}
+
+func main() -> int {
+	let list: List;
+	list_init(&list);
+
+	list_push(&list, 3); // capacity == 2
+	list_push(&list, 1);
+	list_push(&list, 4); // capacity == 4
+	list_push(&list, 1);
+	list_push(&list, 5); // capacity == 8
+	list_push(&list, 9);
+	list_push(&list, 2);
+	list_push(&list, 6);
+	list_push(&list, 5); // capacity == 16
+	list_push(&list, 3);
+	list_push(&list, 5);
+
+	let i: int;
+	while (i < list.length) {
+		print_num(list.data[i]);
+	
+		i++;
+	}
+}
