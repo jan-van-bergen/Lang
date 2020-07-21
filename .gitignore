@@ -340,8 +340,8 @@ ASALocalRun/
 healthchecksdb
 
 # Compiled binaries
-Data/*.obj
-Data/*.exe
+Examples/*.obj
+Examples/*.exe
 
 # Test Output
 test_out.txt
