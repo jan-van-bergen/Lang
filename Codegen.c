@@ -2,11 +2,14 @@
 
 #include <assert.h>
 #include <string.h>
+#include <limits.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdbool.h>
+
+#include "Util.h"
 
 typedef struct Trace_Element {
 	enum Trace_Element_Type {
@@ -1473,7 +1476,7 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 	context_emit_code(ctx, "add rsp, %i ; pop arguments\n", arg_size);
 
 	// Check if any registers were pushed before this call and need to be restored
-	for (int i = min(3, call_arg_count - 1); i >= 0; i--) {
+	for (int i = MIN(3, call_arg_count - 1); i >= 0; i--) {
 		if (pushed_regs_call[i]) {
 			context_emit_code(ctx, "pop %s ; restore\n", get_reg_name_call(i, 8, type_is_float(def_func->args[i].type)));
 		} else {
@@ -1629,7 +1632,7 @@ static void codegen_statement_def_func(Context * ctx, AST_Statement const * stat
 	int arg_count = stat->stat_def_func.function_def->arg_count;
 
 	// Push first 4 arguments (if we have that many) that were passed in registers onto the stack
-	for (int i = 0; i < min(arg_count, 4); i++) {
+	for (int i = 0; i < MIN(arg_count, 4); i++) {
 		Variable * var = scope_get_variable(scope_args, stat->stat_def_func.function_def->args[i].name);
 
 		char const * mov = "mov";

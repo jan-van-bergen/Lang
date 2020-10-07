@@ -8,6 +8,8 @@
 
 #include "Scope.h"
 
+#include "Util.h"
+
 // Types are allocated in Blocks that form a linked list
 // This allows for stable pointers to types
 

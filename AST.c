@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
+#include "Util.h"
+
 AST_Expression * ast_make_expr_const(Token const * token) {
 	AST_Expression * expr = malloc(sizeof(AST_Expression));
 	expr->type = AST_EXPRESSION_CONST;
@@ -69,7 +71,7 @@ AST_Expression * ast_make_expr_sizeof(Type const * type) {
 AST_Expression * ast_make_expr_op_bin(Token const * token, AST_Expression * expr_left, AST_Expression * expr_right) {
 	AST_Expression * expr = malloc(sizeof(AST_Expression));
 	expr->type = AST_EXPRESSION_OPERATOR_BIN;
-	expr->height = max(expr_left->height, expr_right->height) + 1;
+	expr->height = MAX(expr_left->height, expr_right->height) + 1;
 
 	expr->expr_op_bin.token      = *token;
 	expr->expr_op_bin.expr_left  = expr_left;
@@ -103,7 +105,7 @@ AST_Expression * ast_make_expr_op_post(Token const * token, AST_Expression * exp
 AST_Expression * ast_make_expr_call(char const * function_name, int arg_count, AST_Call_Arg * args) {
 	int height = 0;
 	for (int i = 0; i < arg_count; i++) {
-		height = max(height, args[i].height);
+		height = MAX(height, args[i].height);
 	}
 
 	AST_Expression * expr = malloc(sizeof(AST_Expression));
@@ -507,7 +509,7 @@ static void print_statement(AST_Statement const * stat, char * string, int * str
 
 void ast_print_expression(AST_Expression const * expr, char * string, int string_size) {
 	int string_offset = 0;
-	print_expression(expr, string, &string_offset, string_size, 0);
+	print_expression(expr, string, &string_offset, string_size);
 }
 
 void ast_print_statement (AST_Statement  const * stat, char * string, int string_size) {
