@@ -63,7 +63,7 @@ void compile_file(char const * filename, bool show_output) {
 	char const cmd[1024];
 
 	// Assemble
-	sprintf_s(cmd, sizeof(cmd), "nasm -f win64 %s -o \"%s\" %s", file_asm, file_obj, show_output ? "" : "> nul");
+	sprintf_s(cmd, sizeof(cmd), "nasm -f win64 \"%s\" -o \"%s\" %s", file_asm, file_obj, show_output ? "" : "> nul");
 	if (system(cmd) != EXIT_SUCCESS) abort();
 
 	// Link
