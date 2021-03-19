@@ -67,7 +67,7 @@ void compile_file(char const * filename, bool show_output) {
 	if (system(cmd) != EXIT_SUCCESS) abort();
 
 	// Link
-	sprintf_s(cmd, sizeof(cmd), "link \"%s\" /out:\"%s\" /subsystem:CONSOLE /defaultlib:\"%s\" /defaultlib:\"%s\" /defaultlib:\"%s\" /entry:main %s",
+	sprintf_s(cmd, sizeof(cmd), "link \"%s\" /out:\"%s\" /subsystem:CONSOLE /defaultlib:\"%s\" /defaultlib:\"%s\" /defaultlib:\"%s\" /entry:_start %s /DEBUG",
 		file_obj,
 		file_exe,
 		dir_kernel32,

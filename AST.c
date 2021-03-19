@@ -311,41 +311,58 @@ static void print_expression(AST_Expression const * expr, char * string, int * s
 		}
 
 		case AST_EXPRESSION_OPERATOR_BIN: {
-			SPRINTF("(");
+			Precedence precedence_here  = get_precedence(expr);
+			Precedence precedence_left  = get_precedence(expr->expr_op_bin.expr_left);
+			Precedence precedence_right = get_precedence(expr->expr_op_bin.expr_right);
+
+			bool needs_parentheses_left  = precedence_left  > precedence_here;
+			bool needs_parentheses_right = precedence_right > precedence_here;
+
+			if (needs_parentheses_left) SPRINTF("(");
 			print_expression(expr->expr_op_bin.expr_left, string, string_offset, string_size);
+			if (needs_parentheses_left) SPRINTF(")");
 
 			char token_string[128];
 			token_to_string(&expr->expr_op_bin.token, token_string, sizeof(token_string));
 			VSPRINTF(" %s ", token_string);
 			
+			if (needs_parentheses_right) SPRINTF("(");
 			print_expression(expr->expr_op_bin.expr_right, string, string_offset, string_size);
-			SPRINTF(")");
+			if (needs_parentheses_right) SPRINTF(")");
 
 			break;
 		}
 
 		case AST_EXPRESSION_OPERATOR_PRE: {
-			SPRINTF("(");
+			Precedence precedence_here  = get_precedence(expr);
+			Precedence precedence_inner = get_precedence(expr->expr_op_pre.expr);
+
+			bool needs_parentheses = precedence_inner > precedence_here;
 
 			char token_string[128];
 			token_to_string(&expr->expr_op_pre.token, token_string, sizeof(token_string));
 			VSPRINTF("%s", token_string);
 			
+			if (needs_parentheses) SPRINTF("(");
 			print_expression(expr->expr_op_pre.expr, string, string_offset, string_size);
-			SPRINTF(")");
+			if (needs_parentheses) SPRINTF(")");
 
 			break;
 		}
 
 		case AST_EXPRESSION_OPERATOR_POST: {
-			SPRINTF("(");
+			Precedence precedence_here  = get_precedence(expr);
+			Precedence precedence_inner = get_precedence(expr->expr_op_pre.expr);
 
+			bool needs_parentheses = precedence_inner > precedence_here;
+
+			if (needs_parentheses) SPRINTF("(");
 			print_expression(expr->expr_op_post.expr, string, string_offset, string_size);
-			
+			if (needs_parentheses) SPRINTF(")");
+
 			char token_string[128];
 			token_to_string(&expr->expr_op_post.token, token_string, sizeof(token_string));
 			VSPRINTF("%s", token_string);
-			SPRINTF(")");
 
 			break;
 		}
@@ -355,6 +372,8 @@ static void print_expression(AST_Expression const * expr, char * string, int * s
 
 			for (int i = 0; i < expr->expr_call.arg_count; i++) {
 				print_expression(expr->expr_call.args[i].expr, string, string_offset, string_size);
+
+				if (i != expr->expr_call.arg_count - 1) SPRINTF(", ");
 			}
 
 			SPRINTF(")");
@@ -637,4 +656,49 @@ void ast_free_statement(AST_Statement * stat) {
 	}
 
 	free(stat);
+}
+
+Precedence get_precedence(AST_Expression const * expr) {
+	switch (expr->type) {
+		case AST_EXPRESSION_ARRAY_ACCESS: return PRECEDENCE_ARRAY_ACCESS;
+
+		case AST_EXPRESSION_OPERATOR_POST: return PRECEDENCE_UNARY_POST;
+		case AST_EXPRESSION_OPERATOR_PRE:  return PRECEDENCE_UNARY_PRE;
+
+		case AST_EXPRESSION_CAST: 
+		case AST_EXPRESSION_SIZEOF: return PRECEDENCE_CAST_SIZEOF;
+
+		case AST_EXPRESSION_OPERATOR_BIN: {
+			switch (expr->expr_op_bin.token.type) {
+				case TOKEN_OPERATOR_MULTIPLY:
+				case TOKEN_OPERATOR_DIVIDE:
+				case TOKEN_OPERATOR_MODULO: return PRECEDENCE_MULTIPLICATIVE;
+
+				case TOKEN_OPERATOR_PLUS:
+				case TOKEN_OPERATOR_MINUS: return PRECEDENCE_ADDITIVE;
+					
+				case TOKEN_OPERATOR_SHIFT_LEFT:
+				case TOKEN_OPERATOR_SHIFT_RIGHT: return PRECEDENCE_SHIFT;
+					
+				case TOKEN_OPERATOR_LT:
+				case TOKEN_OPERATOR_GT:
+				case TOKEN_OPERATOR_LT_EQ:
+				case TOKEN_OPERATOR_GT_EQ: return PRECEDENCE_RELATIONAL;
+
+				case TOKEN_OPERATOR_EQ:
+				case TOKEN_OPERATOR_NE: return PRECEDENCE_EQUALITY;
+
+				case TOKEN_OPERATOR_BITWISE_AND: return PRECEDENCE_BITWISE_AND;
+				case TOKEN_OPERATOR_BITWISE_OR:  return PRECEDENCE_BITWISE_OR;
+				case TOKEN_OPERATOR_LOGICAL_AND: return PRECEDENCE_LOGICAL_AND;
+				case TOKEN_OPERATOR_LOGICAL_OR:  return PRECEDENCE_LOGICAL_OR;
+
+				defaut: abort();
+			}
+		}
+
+		case AST_EXPRESSION_ASSIGN: return PRECEDENCE_ASSIGNMENT;
+	}
+
+	return PRECEDENCE_NONE;
 }

@@ -1,0 +1,23 @@
+extern GetStdHandle(std_handle: int) -> void *;
+extern WriteFile(handle: void *, buffer: void *, bytes_to_write: int, bytes_written: int *, overlapped: int) -> bool;
+extern strlen(str: char *) -> int;
+
+let STD_OUTPUT_HANDLE: int = -11;
+
+func main(arg_count: int, args: char **) -> int {
+	let std_handle: void * = GetStdHandle(STD_OUTPUT_HANDLE);
+	
+	let bytes_written: int;
+
+	let i: int = 0;
+	while (i < arg_count) {
+		let length: int = strlen(args[i]);
+
+		WriteFile(std_handle, args[i], length, &bytes_written, 0);		
+		WriteFile(std_handle, "\n",    1,      &bytes_written, 0);
+	
+		i++;
+	}
+	
+	return arg_count;
+}

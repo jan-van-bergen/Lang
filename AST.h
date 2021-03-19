@@ -216,3 +216,23 @@ void ast_print_statement (AST_Statement  const * stat, char * string, int string
 
 
 void ast_free_statement(AST_Statement * stat);
+
+typedef enum Precedence {
+    PRECEDENCE_NONE,           // Lowest precedence
+    PRECEDENCE_ARRAY_ACCESS,
+    PRECEDENCE_UNARY_POST,
+    PRECEDENCE_UNARY_PRE,
+    PRECEDENCE_CAST_SIZEOF,
+    PRECEDENCE_MULTIPLICATIVE,
+    PRECEDENCE_ADDITIVE,
+    PRECEDENCE_SHIFT,
+    PRECEDENCE_RELATIONAL,
+    PRECEDENCE_EQUALITY,
+    PRECEDENCE_BITWISE_AND,
+    PRECEDENCE_BITWISE_OR,
+    PRECEDENCE_LOGICAL_AND,
+    PRECEDENCE_LOGICAL_OR,
+    PRECEDENCE_ASSIGNMENT      // Highest precedence
+} Precedence;
+
+int get_precedence(AST_Expression const * expr);

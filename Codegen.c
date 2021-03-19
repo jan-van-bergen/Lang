@@ -34,6 +34,8 @@ typedef enum Context_Flags {
 } Context_Flags;
 
 typedef struct Context {
+	bool emit_debug_lines;
+
 	int reg_mask_scratch; // Scratch registers currently in use
 	int reg_mask_call;    // Call    registers currently in use
 
@@ -60,6 +62,8 @@ typedef struct Context {
 } Context;
 
 static void context_init(Context * ctx) {
+	ctx->emit_debug_lines = true;
+
 	ctx->reg_mask_scratch = 0;
 	ctx->reg_mask_call    = 0;
 
@@ -1550,12 +1554,24 @@ static void codegen_statement_statements(Context * ctx, AST_Statement const * st
 static void codegen_statement_expression(Context * ctx, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_EXPR);
 
+	if (ctx->emit_debug_lines) {
+		char str[1024];
+		ast_print_expression(stat->stat_expr.expr, str, sizeof(str));
+		context_emit_code(ctx, "; %s\n", str);
+	}
+
 	Result result = codegen_expression(ctx, stat->stat_expr.expr);
 	context_reg_free(ctx, result.reg);
 }
 
 static void codegen_statement_def_var(Context * ctx, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_DEF_VAR);
+	
+	if (ctx->emit_debug_lines) {
+		char str[1024];
+		ast_print_statement(stat, str, sizeof(str));
+		context_emit_code(ctx, "; %s", str);
+	}
 
 	char const * var_name = stat->stat_def_var.name;
 	
@@ -1659,6 +1675,8 @@ static void codegen_statement_def_func(Context * ctx, AST_Statement const * stat
 		context_emit_code(ctx, "sub rsp, %i ; reserve stack space for %i locals\n", stack_frame_size_aligned, stack_frame->vars_len);
 	}
 
+	context_emit_code(ctx, "\n");
+
 	// Function body
 	codegen_statement(ctx, stat->stat_def_func.body);
 
@@ -1684,6 +1702,12 @@ static void codegen_statement_extern(Context * ctx, AST_Statement const * stat) 
 static void codegen_statement_if(Context * ctx, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_IF);
 
+	if (ctx->emit_debug_lines) {
+		char str[1024];
+		ast_print_expression(stat->stat_if.condition, str, sizeof(str));
+		context_emit_code(ctx, "; if (%s)\n", str);
+	}
+
 	Result result = codegen_expression(ctx, stat->stat_if.condition);
 	context_reg_free(ctx, result.reg);
 
@@ -1697,6 +1721,10 @@ static void codegen_statement_if(Context * ctx, AST_Statement const * stat) {
 		codegen_statement(ctx, stat->stat_if.case_true);
 		ctx->indent--;
 	} else {
+		if (ctx->emit_debug_lines) {
+			context_emit_code(ctx, "; else\n");
+		}
+
 		context_emit_code(ctx, "je L_else%i\n", label);
 
 		ctx->indent++;
@@ -1716,6 +1744,12 @@ static void codegen_statement_if(Context * ctx, AST_Statement const * stat) {
 
 static void codegen_statement_while(Context * ctx, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_WHILE);
+	
+	if (ctx->emit_debug_lines) {
+		char str[1024];
+		ast_print_expression(stat->stat_while.condition, str, sizeof(str));
+		context_emit_code(ctx, "; while (%s)\n", str);
+	}
 
 	int label = context_new_label(ctx);
 	context_emit_code(ctx, "L_loop%i:\n", label);
@@ -1746,6 +1780,10 @@ static void codegen_statement_break(Context * ctx, AST_Statement const * stat) {
 		abort();
 	}
 
+	if (ctx->emit_debug_lines) {
+		context_emit_code(ctx, "; break\n");
+	}
+
 	context_emit_code(ctx, "jmp L_exit%i\n", ctx->current_loop_label);
 }
 
@@ -1757,15 +1795,25 @@ static void codegen_statement_continue(Context * ctx, AST_Statement const * stat
 		abort();
 	}
 	
+	if (ctx->emit_debug_lines) {
+		context_emit_code(ctx, "; continue\n");
+	}
+
 	context_emit_code(ctx, "jmp L_loop%i\n", ctx->current_loop_label);
 }
 
 static void codegen_statement_return(Context * ctx, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_RETURN);
-
+	
 	Function_Def * func_def = scope_get_function_def(ctx->current_scope, ctx->current_function_name);
 
 	if (stat->stat_return.expr) {
+		if (ctx->emit_debug_lines) {
+			char str[1024];
+			ast_print_expression(stat->stat_return.expr, str, sizeof(str));
+			context_emit_code(ctx, "; return %s\n", str);
+		}
+
 		Result result = codegen_expression(ctx, stat->stat_return.expr);
 
 		if (type_is_struct(result.type)) {
@@ -1788,7 +1836,11 @@ static void codegen_statement_return(Context * ctx, AST_Statement const * stat) 
 		}
 
 		context_reg_free(ctx, result.reg);
-	} else {
+	} else {		
+		if (ctx->emit_debug_lines) {
+			context_emit_code(ctx, "; return\n");
+		}
+
 		if (!type_is_void(func_def->return_type)) {
 			char str_ret_type[128];
 			type_to_string(func_def->return_type, str_ret_type, sizeof(str_ret_type));
@@ -1822,6 +1874,7 @@ static void codegen_statement_program(Context * ctx, AST_Statement const * stat)
 	for (int i = 0; i < ctx->current_scope->function_defs_len; i++) {
 		if (strcmp(ctx->current_scope->function_defs[i]->name, "main") == 0) {
 			has_main = true;
+			break;
 		}
 	}
 
@@ -1829,6 +1882,54 @@ static void codegen_statement_program(Context * ctx, AST_Statement const * stat)
 		printf("ERROR: A function called 'main' should be defined as the entry point of the program!");
 		abort();
 	}
+
+	context_emit_code(ctx, "_start:\n");
+	ctx->indent++;
+
+	context_emit_code(ctx, "call GetCommandLineA\n");
+	context_emit_code(ctx, "mov r10, rax\n");
+	context_emit_code(ctx, "xor rcx, rcx\n");
+	context_emit_code(ctx, "sub rsp, 8 * 64 ; Max 64 command line args\n");
+	context_emit_code(ctx, "mov rdx, rsp\n");
+
+	context_emit_code(ctx, "arg_loop_top:\n");
+	context_emit_code(ctx, "mov bl, BYTE [rax]\n");
+	context_emit_code(ctx, "test bl, bl\n");
+	context_emit_code(ctx, "jz arg_loop_exit\n");
+	context_emit_code(ctx, "cmp bl, ' '\n");
+	context_emit_code(ctx, "jne arg_loop_next\n");
+	context_emit_code(ctx, "cmp r10, rax\n");
+	context_emit_code(ctx, "je skip\n");
+
+	context_emit_code(ctx, "mov BYTE [rax], 0\n");
+	context_emit_code(ctx, "mov QWORD [rdx], r10\n");
+	context_emit_code(ctx, "add rdx, 8\n");
+	context_emit_code(ctx, "inc rcx\n");
+
+	context_emit_code(ctx, "skip:\n");
+	context_emit_code(ctx, "mov r10, rax\n");
+	context_emit_code(ctx, "inc r10\n");
+	
+	context_emit_code(ctx, "arg_loop_next:\n");
+	context_emit_code(ctx, "inc rax\n");
+	context_emit_code(ctx, "jmp arg_loop_top\n");
+
+	context_emit_code(ctx, "arg_loop_exit:\n");
+	context_emit_code(ctx, "mov al, BYTE [r10]\n");
+	context_emit_code(ctx, "cmp al, ' '\n");
+	context_emit_code(ctx, "je args_done\n");
+	context_emit_code(ctx, "cmp al, 0\n");
+	context_emit_code(ctx, "je args_done\n");
+	context_emit_code(ctx, "mov QWORD [rdx], r10\n");
+	context_emit_code(ctx, "inc rcx\n");
+
+	context_emit_code(ctx, "args_done:\n");
+	context_emit_code(ctx, "mov rdx, rsp\n");
+	context_emit_code(ctx, "sub rsp, 32\n");
+	context_emit_code(ctx, "call main\n");
+	context_emit_code(ctx, "mov ecx, eax\n");
+	context_emit_code(ctx, "call ExitProcess\n\n");
+	ctx->indent--;
 
 	codegen_statement(ctx, stat->stat_program.stat);
 }
@@ -1873,7 +1974,12 @@ char const * codegen_program(AST_Statement const * program) {
 
 	char const asm_init[] =
 		"; Generated by Lang compiler\n\n"
-		"GLOBAL main\n\n"
+		
+		"GLOBAL _start\n\n"
+		
+		"extern GetCommandLineA\n"
+		"extern ExitProcess\n\n"
+		
 		"SECTION .code\n";
 
 	context_emit_code(&ctx, asm_init);
