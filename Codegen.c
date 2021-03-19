@@ -593,10 +593,12 @@ static Result codegen_expression_array_access(Context * ctx, AST_Expression * ex
 		result_array = codegen_expression(ctx, expr_array);
 		context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
 
+		context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
 		result_index = codegen_expression(ctx, expr_index);
 	} else {
+		context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
 		result_index = codegen_expression(ctx, expr_index);
-
+		
 		// Evaluate lhs by address
 		context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS);
 		result_array = codegen_expression(ctx, expr_array);
@@ -1189,12 +1191,12 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 	}
 
 	bool by_address = false;
-
+	
 	if (operator == TOKEN_OPERATOR_INC || operator == TOKEN_OPERATOR_DEC) {
 		by_address = ctx->flags & CTX_FLAG_VAR_BY_ADDRESS;
 		context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS);
 	}
-
+	
 	result = codegen_expression(ctx, operand);
 
 	if (!by_address) context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);

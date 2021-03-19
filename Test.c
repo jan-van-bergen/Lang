@@ -81,7 +81,7 @@ void run_tests() {
 	run_test("Examples\\float2.lang",             "",          3, "");
 	run_test("Examples\\ptrarray.lang",           "",          0, "Hello\n\tworld\nOla\n\tmundo\nBye\n");
 	run_test("Examples\\matrix.lang",             "",        249, "2 0 0 2 \n0 3 0 0 \n0 0 4 1 \n0 0 0 1 \n");
-	run_test("Examples\\list.lang",               "",          0, "3 1 4 1 5 9 2 6 5 3 5 ");
+	run_test("Examples\\list.lang",               "",         16, "3 1 4 1 5 9 2 6 5 3 5 ");
 
 	assert(num_tests_failed + num_tests_success == num_tests_total);
 

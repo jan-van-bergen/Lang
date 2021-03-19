@@ -227,8 +227,8 @@ print_num:
         mov BYTE [rbx], r10b
         
         ; num_str[idx - i - 1] = tmp
-        lea rbx, QWORD [rbp + -24] ; get address of 'idx'
-        lea r10, QWORD [rbp + -16] ; get address of 'i'
+        movsx rbx, DWORD [rbp + -24]
+        movsx r10, DWORD [rbp + -16]
         sub rbx, r10
         mov r10, 1
         sub rbx, r10

@@ -722,6 +722,13 @@ main:
     jmp L_loop7
     L_exit7:
     
+    ; return list.capacity
+    lea rbx, QWORD [rbp + -32] ; get address of 'list'
+    add rbx, 8 ; member offset 'capacity'
+    mov rbx, QWORD [rbx]
+    mov rax, rbx ; return via rax
+    jmp L_function_main_exit
+    
     xor rax, rax ; Default return value 0
     L_function_main_exit:
     mov rsp, rbp
