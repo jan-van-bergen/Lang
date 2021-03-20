@@ -665,12 +665,10 @@ static AST_Statement * parser_parse_statement_def_struct(Parser * parser) {
 
 	char const * name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
 
-	Struct_Def * struct_def = scope_add_struct_def(parser->current_scope);
-	struct_def->name = name;
-	struct_def->members = make_variable_buffer(name);
-	struct_def->member_scope = make_scope(struct_def->members);
-	struct_def->member_scope->prev = parser->current_scope;
-	
+	Variable_Buffer * members = make_variable_buffer(name);
+	Scope           * member_scope = make_scope(members);
+	member_scope->prev = parser->current_scope;
+
 	parser_match_and_advance(parser, TOKEN_BRACES_OPEN);
 
 	while (parser_match(parser, TOKEN_IDENTIFIER)) {
@@ -680,8 +678,13 @@ static AST_Statement * parser_parse_statement_def_struct(Parser * parser) {
 		Type const * member_type = parser_parse_type(parser);
 		parser_match_and_advance(parser, TOKEN_SEMICOLON);
 
-		scope_add_var(struct_def->member_scope, member_name, member_type);
+		scope_add_var(member_scope, member_name, member_type);
 	}
+	
+	Struct_Def * struct_def  = scope_add_struct_def(parser->current_scope);
+	struct_def->name         = name;
+	struct_def->members      = members;
+	struct_def->member_scope = member_scope;
 	
 	align(&struct_def->members->size, struct_def->members->align);
 

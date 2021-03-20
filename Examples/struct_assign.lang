@@ -1,0 +1,15 @@
+struct Struct {
+	fst: int;
+	snd: int;
+}
+
+func main() -> int {
+	let var := 5678;
+	
+	let a: Struct;
+	a.fst = 1234;
+	a.snd = var;
+	
+	let b := a;
+	return b.snd;
+}

@@ -1,0 +1,7 @@
+struct S {
+	s: S; // invalid
+}
+
+func main() -> int {
+	return sizeof(S);
+}

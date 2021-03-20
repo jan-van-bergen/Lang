@@ -546,7 +546,7 @@ static Result codegen_expression_var(Context * ctx, AST_Expression const * expr)
 		type_is_pointer(var->type) &&
 		type_is_u8(var->type->base);
 
-	if (by_address || is_global_char_ptr || type_is_array(var->type)) {
+	if (by_address || is_global_char_ptr || type_is_array(var->type) || type_is_struct(var->type)) {
 		context_emit_code(ctx, "lea %s, QWORD [%s] ; get address of '%s'\n", get_reg_name_scratch(result.reg, 8), var_address, var_name);
 	} else {
 		result.reg = codegen_deref_address(ctx, result.reg, result.type, var_address);

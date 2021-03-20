@@ -58,11 +58,14 @@ test_cases = [
 	("Examples\\logic.lang",              0,             "",                        0, ""),
 	("Examples\\heap.lang",               0,             "",                 67305985, "BruhTest"),
 	("Examples\\scope.lang",              0,             "",                        3, ""),
+	("Examples\\scope2.lang",             0,             "",                       32, ""),
 	("Examples\\cast.lang",               0,             "",               0x0a0b0c0d, ""),
 	("Examples\\struct.lang",             0,             "",                        4, ""),
 	("Examples\\struct2.lang",            0,             "",                       10, ""),
+	("Examples\\struct_assign.lang",      0,             "",                     5678, ""),
 	("Examples\\struct_nested.lang",      0,             "",                        4, ""),
 	("Examples\\struct_global.lang",      0,             "",                       15, ""),
+	("Examples\\struct_invalid.lang",     err.SCOPE,     "",                        0, ""),
 	("Examples\\nested_loops.lang",       0,             "",                      541, "2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293, 307, 311, 313, 317, 331, 337, 347, 349, 353, 359, 367, 373, 379, 383, 389, 397, 401, 409, 419, 421, 431, 433, 439, 443, 449, 457, 461, 463, 467, 479, 487, 491, 499, 503, 509, 521, 523, 541, "),
 	("Examples\\bits.lang",               0,             "",                     0xff, ""),
 	("Examples\\incdec.lang",             0,             "",                        2, ""),
@@ -100,8 +103,8 @@ for (file, expected_compiler_status, program_args, expected_program_status, expe
 
     if (compiler_status != expected_compiler_status):
         print("{}TEST FAILED{}: {} - Unexpected compiler status code".format(col.FAIL, col.ENDC, file))
-        print("Expected: 0x{:x} ({})".format(expected_compiler_status, err_name(expected_compiler_status)))
-        print("Observed: 0x{:x} ({})".format(compiler_status,          err_name(compiler_status)))
+        print("Expected: {} (0x{:x}) ({})".format(expected_compiler_status, expected_compiler_status, err_name(expected_compiler_status)))
+        print("Observed: {} (0x{:x}) ({})".format(compiler_status,          compiler_status,          err_name(compiler_status)))
 
         print("Compiler Output:")
         print(open("compiler_out.txt", "r").read())
@@ -118,8 +121,8 @@ for (file, expected_compiler_status, program_args, expected_program_status, expe
 
         if (program_status != expected_program_status):
             print("{}TEST FAILED{}: {} - Unexpected program status code".format(col.FAIL, col.ENDC, file))
-            print("Expected: 0x{:x}".format(expected_program_status))
-            print("Observed: 0x{:x}".format(program_status))
+            print("Expected: {} (0x{:x})".format(expected_program_status, expected_program_status))
+            print("Observed: {} (0x{:x})".format(program_status,          program_status))
 
             fail_names.append(file)
 

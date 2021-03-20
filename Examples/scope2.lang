@@ -1,0 +1,16 @@
+struct StructName {
+	mem0: int;
+	mem1: i16;
+	mem2: i8;
+}
+
+func main() -> int {
+	struct StructName {
+		a: u64;
+		b: u64;
+		c: u64;
+		d: u64;
+	}
+	
+	return sizeof(StructName);
+}
