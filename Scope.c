@@ -72,8 +72,26 @@ bool scope_is_global(Scope const * scope) {
 	return scope->prev == NULL;
 }
 
+static Variable * scope_lookup(Scope const * scope, char const * name) {
+	for (int i = 0; i < scope->indices_len; i++) {
+		int index = scope->indices[i];
+
+		if (strcmp(scope->variable_buffer->vars[index].name, name) == 0) {
+			return scope->variable_buffer->vars + index;
+		}
+	}
+
+	return NULL; // Not found
+}
+
 void scope_add_arg(Scope * scope, char const * name, Type const * type) {
 	assert(!scope_is_global(scope));
+	
+	// Check if a variable with this name already exists
+	if (scope_lookup(scope, name)) {
+		printf("ERROR: Argument with name '%s' already exists at this scope!\n", name);
+		abort();
+	}
 
 	int index = variable_buffer_add_variable(scope->variable_buffer, name, type, false);
 	
@@ -105,6 +123,12 @@ void scope_add_arg(Scope * scope, char const * name, Type const * type) {
 }
 
 void scope_add_var(Scope * scope, char const * name, Type const * type) {
+	// Check if a variable with this name already exists
+	if (scope_lookup(scope, name)) {
+		printf("ERROR: Variable with name '%s' already exists at this scope!\n", name);
+		abort();
+	}
+
 	int index = variable_buffer_add_variable(scope->variable_buffer, name, type, scope_is_global(scope));
 
 	if (scope->indices_len == scope->indices_cap) {
@@ -155,15 +179,8 @@ Function_Def * scope_add_function_def(Scope * scope) {
 
 Variable * scope_get_variable(Scope const * scope, char const * name) {
 	while (true) {
-		Variable_Buffer const * buf = scope->variable_buffer;
-
-		for (int i = 0; i < scope->indices_len; i++) {
-			int index = scope->indices[i];
-
-			if (strcmp(buf->vars[index].name, name) == 0) {
-				return buf->vars + index;
-			}
-		}
+		Variable * var = scope_lookup(scope, name);
+		if (var) return var;
 
 		scope = scope->prev;
 

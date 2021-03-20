@@ -123,7 +123,7 @@ main:
     lea r10, QWORD [rbp + -12] ; get address of 'b'
     mov DWORD [r10], ebx
     
-    ; c = (a ^ b) | c
+    ; c = a ^ b | c
     mov ebx, DWORD [rbp + -16]
     mov r10d, DWORD [rbp + -12]
     xor rbx, r10
