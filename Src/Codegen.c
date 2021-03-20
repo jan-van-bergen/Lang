@@ -1850,18 +1850,29 @@ static void codegen_statement_program(Context * ctx, AST_Statement const * stat)
 
 	ctx->current_scope = stat->stat_program.global_scope;
 
-	bool has_main = false;
+	Function_Def * main_def = scope_get_function_def(ctx->current_scope, "main");
+	
+	bool main_valid = false;
 
-	for (int i = 0; i < ctx->current_scope->function_defs_len; i++) {
-		if (strcmp(ctx->current_scope->function_defs[i]->name, "main") == 0) {
-			has_main = true;
-			break;
-		}
+	if (main_def->arg_count == 0) {
+		main_valid = true;
+	} else if (main_def->arg_count == 2) {
+		bool arg_0_valid = 
+			type_is_i32(main_def->args[0].type) ||
+			type_is_i64(main_def->args[0].type) ||
+			type_is_u32(main_def->args[0].type) ||
+			type_is_u64(main_def->args[0].type); // Arg 0 should be integral type of at least 4 bytes
+
+		bool arg_1_valid = 
+			type_is_pointer(main_def->args[1].type) &&
+			type_is_pointer(main_def->args[1].type->base) &&
+			type_is_u8     (main_def->args[1].type->base->base); // Arg 1 should be pointer to strings
+
+		main_valid = arg_0_valid && arg_1_valid;
 	}
 
-	if (!has_main) {
-		printf("ERROR: A function called 'main' should be defined as the entry point of the program!");
-		error(ERROR_CODEGEN);
+	if (!main_valid) {
+		type_error(ctx, "Entry point 'main' has invalid arguments!\nShould have either 0 arguments or 2 (int, char **)\n");
 	}
 
 	context_emit_code(ctx, "_start:\n");

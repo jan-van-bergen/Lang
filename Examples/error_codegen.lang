@@ -1,5 +1,0 @@
-func not_main() -> int {
-	return 0;
-}
-
-// main not defined
