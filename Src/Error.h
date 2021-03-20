@@ -1,7 +1,7 @@
 #pragma once
 
 typedef enum Error {
-	ERROR_SUCCESS  = 0,
+	ERROR_SUCCESS = 0,
 	ERROR_LEXER,
 	ERROR_PARSER,
 	ERROR_SCOPE,
