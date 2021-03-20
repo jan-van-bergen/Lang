@@ -9,6 +9,7 @@
 #include "Scope.h"
 
 #include "Util.h"
+#include "Error.h"
 
 // Types are allocated in Blocks that form a linked list
 // This allows for stable pointers to types
@@ -151,13 +152,16 @@ void type_to_string(Type const * type, char * string, int string_size) {
 
 		case TYPE_STRUCT: sprintf_s(string, string_size, "%s", type->struct_name); break;
 
-		default: abort();
+		default: exit(ERROR_TYPECHECK);
 	}
 }
 
 int type_get_size(Type const * type, Scope * scope) {
 	switch (type->type) {
-		case TYPE_VOID: abort(); // Invalid!
+		case TYPE_VOID: {
+			printf("ERROR: Cannot get size of void type!\n");
+			exit(ERROR_TYPECHECK); // Invalid!
+		}
 
 		case TYPE_I8:  return 1;
 		case TYPE_I16: return 2;
@@ -180,14 +184,16 @@ int type_get_size(Type const * type, Scope * scope) {
 
 		case TYPE_STRUCT: return scope_get_struct_def(scope, type->struct_name)->members->size;
 
-		default: abort();
+		default: exit(ERROR_UNKNOWN);
 	}
 }
 
 int type_get_align(Type const * type, Scope * scope) {
 	switch (type->type) {
-		case TYPE_VOID: abort(); // Invalid!
-
+		case TYPE_VOID: {
+			printf("ERROR: Cannot get alignment of void type!\n");
+			exit(ERROR_TYPECHECK); // Invalid!
+		}
 		case TYPE_I8:  return 1;
 		case TYPE_I16: return 2;
 		case TYPE_I32: return 4;
@@ -209,7 +215,7 @@ int type_get_align(Type const * type, Scope * scope) {
 
 		case TYPE_STRUCT: return scope_get_struct_def(scope, type->struct_name)->members->align;
 
-		default: abort();
+		default: exit(ERROR_UNKNOWN);
 	}
 }
 
@@ -340,5 +346,5 @@ Type const * types_unify(Type const * a, Type const * b, Scope * scope) {
 	type_to_string(b, str_type_b, sizeof(str_type_b));
 
 	printf("TYPE ERROR: Unable to unify types '%s' and '%s'!", str_type_a, str_type_b);
-	abort();
+	exit(ERROR_TYPECHECK);
 }

@@ -1,0 +1,5 @@
+func main() {
+	let a: int = 1;
+	let b: int = 2;
+	let a: int = 3; // Invalid
+}

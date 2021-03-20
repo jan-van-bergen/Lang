@@ -5,13 +5,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "Error.h"
+
 char const * read_file(char const * filename) {
 	FILE * f;
 	fopen_s(&f, filename, "rb");
 
 	if (f == NULL) {
 		printf("ERROR: Unable to open file %s!\n", filename);
-		abort();
+		exit(ERROR_UNKNOWN);
 	}
 
 	fseek(f, 0, SEEK_END);

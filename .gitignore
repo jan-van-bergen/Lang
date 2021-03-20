@@ -344,6 +344,7 @@ Examples/*.obj
 Examples/*.exe
 
 # Test Output
+compiler_out.txt
 test_out.txt
 TEST.TXT
 

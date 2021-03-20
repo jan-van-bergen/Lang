@@ -7,6 +7,8 @@
 #include <ctype.h>
 #include <stdlib.h>
 
+#include "Error.h"
+
 void lexer_init(Lexer * lexer, char const * source) {
 	lexer->source_len = strlen(source);
 	lexer->source     = source;
@@ -125,7 +127,8 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 			} else if (isdigit(curr)) {
 				hex += curr - '0';
 			} else {
-				abort(); // Invalid hex literal
+				printf("ERROR: Invalid character '%c' in hex literal!\n", curr);
+				exit(ERROR_LEXER);
 			}
 
 			curr = lexer_next(lexer);

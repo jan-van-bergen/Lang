@@ -2,20 +2,21 @@
 #include <stdlib.h>
 
 #include "Compiler.h"
-#include "Test.h"
 
 #include "Util.h"
+#include "Error.h"
 
-#define RUN_TESTS 1
+#define RUN_PROGRAM 0 // For debugging only
 
 int main(int arg_count, char const * args[]) {
-	char const * filename = "Examples\\args.lang";
+	char const * filename = "Examples\\factorial.lang";
 	if (arg_count > 1) {
 		filename = args[1];
 	}
 
 	compile_file(filename, true);
 
+#if RUN_PROGRAM
 	char const * file_exe = replace_file_extension(filename, "exe");
 
 	int ret = system(file_exe);
@@ -23,12 +24,8 @@ int main(int arg_count, char const * args[]) {
 	
 	free(file_exe);
 
-#if RUN_TESTS
-	run_tests();
+	__debugbreak();
 #endif
 
-	puts("Press any key to continue...");
-	getchar();
-
-	return EXIT_SUCCESS;
+	return ERROR_SUCCESS;
 }

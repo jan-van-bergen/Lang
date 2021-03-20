@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#include "Error.h"
+
 static int variable_buffer_add_variable(Variable_Buffer * buf, char const * name, Type const * type, bool is_global) {
 	if (buf->vars_len == buf->vars_cap) {
 		buf->vars_cap *= 2;
@@ -90,7 +92,7 @@ void scope_add_arg(Scope * scope, char const * name, Type const * type) {
 	// Check if a variable with this name already exists
 	if (scope_lookup(scope, name)) {
 		printf("ERROR: Argument with name '%s' already exists at this scope!\n", name);
-		abort();
+		exit(ERROR_SCOPE);
 	}
 
 	int index = variable_buffer_add_variable(scope->variable_buffer, name, type, false);
@@ -126,7 +128,7 @@ void scope_add_var(Scope * scope, char const * name, Type const * type) {
 	// Check if a variable with this name already exists
 	if (scope_lookup(scope, name)) {
 		printf("ERROR: Variable with name '%s' already exists at this scope!\n", name);
-		abort();
+		exit(ERROR_SCOPE);
 	}
 
 	int index = variable_buffer_add_variable(scope->variable_buffer, name, type, scope_is_global(scope));
@@ -186,7 +188,7 @@ Variable * scope_get_variable(Scope const * scope, char const * name) {
 
 		if (scope == NULL) {
 			printf("Error: Variable '%s' not defined or is not in scope!", name);
-			abort();
+			exit(ERROR_SCOPE);
 		}
 	}
 }
@@ -203,7 +205,7 @@ Struct_Def * scope_get_struct_def(Scope const * scope, char const * name) {
 
 		if (scope == NULL) {
 			printf("ERROR: Struct '%s' not defined or is not in scope!", name);
-			abort();
+			exit(ERROR_SCOPE);
 		}
 	}
 }
@@ -220,7 +222,7 @@ Function_Def * scope_get_function_def(Scope const * scope, char const * name) {
 
 		if (scope == NULL) {
 			printf("ERROR: Function '%s' is not defined or not in scope!", name);
-			abort();
+			exit(ERROR_SCOPE);
 		}
 	}
 }

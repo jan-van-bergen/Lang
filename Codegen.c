@@ -10,6 +10,7 @@
 #include <stdbool.h>
 
 #include "Util.h"
+#include "Error.h"
 
 typedef struct Trace_Element {
 	enum Trace_Element_Type {
@@ -98,7 +99,7 @@ static int context_reg_request(Context * ctx) {
 	}
 
 	printf("ERROR: Out of registers!");
-	abort();
+	exit(ERROR_CODEGEN);
 }
 
 static int context_reg_request_float(Context * ctx) {
@@ -111,7 +112,7 @@ static int context_reg_request_float(Context * ctx) {
 	}
 
 	printf("ERROR: Out of XMM registers!");
-	abort();
+	exit(ERROR_CODEGEN);
 }
 
 static void context_reg_free(Context * ctx, int reg) {
@@ -195,7 +196,7 @@ static void context_add_data_seg(Context * ctx, char const * data) {
 }
 
 static void context_trace_push_expr(Context * ctx, AST_Expression * expr) {
-	if (ctx->trace_stack_size == MAX_TRACE) abort();
+	if (ctx->trace_stack_size == MAX_TRACE) exit(ERROR_CODEGEN);
 
 	Trace_Element * trace_elem = ctx->trace_stack + ctx->trace_stack_size++;
 	trace_elem->type = TRACE_EXPRESSION;
@@ -203,7 +204,7 @@ static void context_trace_push_expr(Context * ctx, AST_Expression * expr) {
 }
 
 static void context_trace_push_stat(Context * ctx, AST_Statement * stat) {
-	if (ctx->trace_stack_size == MAX_TRACE) abort();
+	if (ctx->trace_stack_size == MAX_TRACE) exit(ERROR_CODEGEN);
 
 	Trace_Element * trace_elem = ctx->trace_stack + ctx->trace_stack_size++;
 	trace_elem->type = TRACE_STATEMENT;
@@ -246,7 +247,7 @@ static void type_error(Context * ctx, char const * msg, ...) {
 
 	va_end(args);
 	
-	abort();
+	exit(ERROR_TYPECHECK);
 }
 
 static char const * get_reg_name_scratch(int reg_index, int size) {
@@ -264,7 +265,7 @@ static char const * get_reg_name_scratch(int reg_index, int size) {
 			case 4: return reg_names_32bit[reg_index];
 			case 8: return reg_names_64bit[reg_index];
 
-			default: abort();
+			default: exit(ERROR_CODEGEN);
 		}
 	} else {
 		return reg_names_float[reg_index - SCRATCH_REG_COUNT];
@@ -288,7 +289,7 @@ static char const * get_reg_name_call(int reg_index, int type_size, bool is_floa
 			case 4: return reg_names_32bit[reg_index];
 			case 8: return reg_names_64bit[reg_index];
 
-			default: abort();
+			default: exit(ERROR_CODEGEN);
 		}
 	}
 }
@@ -366,7 +367,9 @@ static void codegen_add_string_literal(Context * ctx, char const * str_name, cha
 	char const * curr = str_lit;
 	while (*curr) {
 		if (*curr == '\\') {
-			switch (*(curr + 1)) {
+			char escaped = *(curr + 1);
+
+			switch (escaped) {
 				case '0':  strcpy_s(str_lit_cpy + idx, str_lit_cpy_size - idx, "\", 0, \"");   idx += 7; break;
 				case 'r':  strcpy_s(str_lit_cpy + idx, str_lit_cpy_size - idx, "\", 0Dh, \""); idx += 9; break;
 				case 'n':  strcpy_s(str_lit_cpy + idx, str_lit_cpy_size - idx, "\", 0Ah, \""); idx += 9; break;
@@ -374,7 +377,10 @@ static void codegen_add_string_literal(Context * ctx, char const * str_name, cha
 
 				case '\\': str_lit_cpy[idx++] = '\\'; break;
 
-				default: abort(); // Invalid escape char
+				default: {
+					printf("ERROR: Invalid escape char '%c'!\n", escaped);
+					exit(ERROR_CODEGEN);
+				}
 			}
 
 			curr += 2;
@@ -502,7 +508,7 @@ static Result codegen_expression_const(Context * ctx, AST_Expression const * exp
 			break;
 		}
 
-		default: abort();
+		default: exit(ERROR_UNKNOWN);
 	}
 
 	return result;
@@ -1129,7 +1135,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			break;
 		}
 
-		default: abort();
+		default: exit(ERROR_UNKNOWN);
 	}
 
 	context_reg_free(ctx, result_right.reg);
@@ -1299,7 +1305,7 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 			break;
 		}
 
-		default: abort();
+		default: exit(ERROR_UNKNOWN);
 	}
 
 	return result;
@@ -1370,7 +1376,7 @@ static Result codegen_expression_op_post(Context * ctx, AST_Expression const * e
 			break;
 		}
 
-		default: abort();
+		default: exit(ERROR_CODEGEN);
 	}
 
 	return result;
@@ -1538,7 +1544,7 @@ static Result codegen_expression(Context * ctx, AST_Expression const * expr) {
 
 		case AST_EXPRESSION_CALL_FUNC: result = codegen_expression_call_func(ctx, expr); break;
 
-		default: abort();
+		default: exit(ERROR_CODEGEN);
 	}
 	
 	context_trace_pop(ctx);
@@ -1586,7 +1592,7 @@ static void codegen_statement_def_var(Context * ctx, AST_Statement const * stat)
 			
 			if (literal->type != AST_EXPRESSION_CONST) {
 				printf("ERROR: Globals can only be initialized to constant values! Variable name: '%s'", var_name); 
-				abort();
+				exit(ERROR_CODEGEN);
 			}
 
 			switch (literal_type) {
@@ -1603,7 +1609,7 @@ static void codegen_statement_def_var(Context * ctx, AST_Statement const * stat)
 					break;
 				}
 
-				default: abort();
+				default: exit(ERROR_CODEGEN);
 			}
 		} else {
 			codegen_add_global(ctx, var, false, 0);
@@ -1779,7 +1785,7 @@ static void codegen_statement_break(Context * ctx, AST_Statement const * stat) {
 
 	if (ctx->current_loop_label == -1) {
 		printf("ERROR: Cannot use 'break' outside of loop!");
-		abort();
+		exit(ERROR_CODEGEN);
 	}
 
 	if (ctx->emit_debug_lines) {
@@ -1794,7 +1800,7 @@ static void codegen_statement_continue(Context * ctx, AST_Statement const * stat
 	
 	if (ctx->current_loop_label == -1) {
 		printf("ERROR: Cannot use 'continue' outside of loop!");
-		abort();
+		exit(ERROR_CODEGEN);
 	}
 	
 	if (ctx->emit_debug_lines) {
@@ -1882,7 +1888,7 @@ static void codegen_statement_program(Context * ctx, AST_Statement const * stat)
 
 	if (!has_main) {
 		printf("ERROR: A function called 'main' should be defined as the entry point of the program!");
-		abort();
+		exit(ERROR_CODEGEN);
 	}
 
 	context_emit_code(ctx, "_start:\n");
@@ -1958,7 +1964,7 @@ static void codegen_statement(Context * ctx, AST_Statement const * stat) {
 		case AST_STATEMENT_CONTINUE: codegen_statement_continue(ctx, stat); break;
 		case AST_STATEMENT_RETURN:   codegen_statement_return  (ctx, stat); break;
 
-		default: abort();
+		default: exit(ERROR_CODEGEN);
 	}
 
 	// No regs should be active after a statement is complete

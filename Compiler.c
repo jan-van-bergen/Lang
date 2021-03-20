@@ -11,6 +11,7 @@
 #include "Codegen.h"
 
 #include "Util.h"
+#include "Error.h"
 
 void compile_file(char const * filename, bool show_output) {
 	char const * source = read_file(filename);
@@ -51,7 +52,10 @@ void compile_file(char const * filename, bool show_output) {
 	FILE * file;
 	fopen_s(&file, file_asm, "wb");
 
-	if (file == NULL) abort();
+	if (file == NULL) {
+		printf("ERROR: Unable to open asm file '%s' for writing!\n", file_asm);
+		exit(ERROR_ASSEMBLER);
+	}
 
 	fwrite(code, 1, strlen(code), file);
 	fclose(file);
@@ -64,7 +68,7 @@ void compile_file(char const * filename, bool show_output) {
 
 	// Assemble
 	sprintf_s(cmd, sizeof(cmd), "nasm -f win64 \"%s\" -o \"%s\" %s", file_asm, file_obj, show_output ? "" : "> nul");
-	if (system(cmd) != EXIT_SUCCESS) abort();
+	if (system(cmd) != EXIT_SUCCESS) exit(ERROR_ASSEMBLER);
 
 	// Link
 	sprintf_s(cmd, sizeof(cmd), "link \"%s\" /out:\"%s\" /subsystem:CONSOLE /defaultlib:\"%s\" /defaultlib:\"%s\" /defaultlib:\"%s\" /entry:_start %s /DEBUG",
@@ -75,7 +79,7 @@ void compile_file(char const * filename, bool show_output) {
 		dir_liburcrt,
 		show_output ? "" : "> nul"
 	);
-	if (system(cmd) != EXIT_SUCCESS) abort();
+	if (system(cmd) != EXIT_SUCCESS) exit(ERROR_LINKER);
 
 	free(file_asm);
 	free(file_obj);

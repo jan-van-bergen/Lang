@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "Error.h"
+
 void parser_init(Parser * parser, int token_count, Token const * tokens) {
 	parser->token_count = token_count;
 	parser->tokens      = tokens;
@@ -23,7 +25,7 @@ static void parser_error(Parser * parser) {
 	token_to_string(token, token_string, sizeof(token_string));
 
 	printf("ERROR: Invalid Token '%s' at line %i!\n", token_string, token->line);
-	abort();
+	exit(ERROR_PARSER);
 }
 
 static void parser_error_expected(Parser * parser, Token_Type expected) {
@@ -39,7 +41,7 @@ static void parser_error_expected(Parser * parser, Token_Type expected) {
 	token_to_string(&expected_token, expected_token_string, sizeof(expected_token_string));
 
 	printf("ERROR: Unexpected Token '%s' at line %i! Expected: '%s'\n", token_string, token->line, expected_token_string);
-	abort();
+	exit(ERROR_PARSER);
 }
 
 static bool parser_match(Parser const * parser, Token_Type token_type) {

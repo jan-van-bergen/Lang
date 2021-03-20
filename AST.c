@@ -5,6 +5,7 @@
 #include <stdarg.h>
 
 #include "Util.h"
+#include "Error.h"
 
 AST_Expression * ast_make_expr_const(Token const * token) {
 	AST_Expression * expr = malloc(sizeof(AST_Expression));
@@ -652,7 +653,7 @@ void ast_free_statement(AST_Statement * stat) {
 			break;
 		}
 
-		default: abort();
+		default: exit(ERROR_UNKNOWN);
 	}
 
 	free(stat);
@@ -695,7 +696,7 @@ Precedence get_precedence(AST_Expression const * expr) {
 				case TOKEN_OPERATOR_LOGICAL_AND: return PRECEDENCE_LOGICAL_AND;
 				case TOKEN_OPERATOR_LOGICAL_OR:  return PRECEDENCE_LOGICAL_OR;
 
-				defaut: abort();
+				defaut: exit(ERROR_UNKNOWN);
 			}
 		}
 

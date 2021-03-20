@@ -1,0 +1,5 @@
+extern DoesNotExist(arg: int) -> void;
+
+func main() {
+	DoesNotExist(0xbeef);
+}
