@@ -11,3 +11,5 @@ typedef enum Error {
 	ERROR_LINKER,
 	ERROR_UNKNOWN   
 } Error;
+
+__declspec(noreturn) void error(Error error);

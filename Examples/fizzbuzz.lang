@@ -2,7 +2,7 @@ extern GetStdHandle(std_handle: int) -> void *;
 extern WriteFile(handle: void *, buffer: void *, bytes_to_write: int, bytes_written: int *, overlapped: u64) -> bool;
 extern strlen(str: char *) -> int;
 
-let STD_OUTPUT_HANDLE: int = -11;
+let STD_OUTPUT_HANDLE := -11;
 
 func print(str: char *, str_len: int) -> void {
 	let std_handle: int * = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -18,7 +18,7 @@ func print_num(num: int) -> void {
 	while (num > 0) {
 		let digit: char = cast(char) (num % 10);
 		
-		*(num_str + idx) = digit + 48;
+		*(num_str + idx) = digit + '0';
 		
 		num = num / 10;
 		idx = idx + 1;
@@ -34,7 +34,7 @@ func print_num(num: int) -> void {
 		i++;
 	}
 	
-	*(num_str + idx) = 32; // space
+	*(num_str + idx) = ' ';
 	
 	print(num_str, idx + 1);
 }

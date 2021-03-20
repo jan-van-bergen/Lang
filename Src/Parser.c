@@ -25,7 +25,7 @@ static void parser_error(Parser * parser) {
 	token_to_string(token, token_string, sizeof(token_string));
 
 	printf("ERROR: Invalid Token '%s' at line %i!\n", token_string, token->line);
-	exit(ERROR_PARSER);
+	error(ERROR_PARSER);
 }
 
 static void parser_error_expected(Parser * parser, Token_Type expected) {
@@ -41,7 +41,7 @@ static void parser_error_expected(Parser * parser, Token_Type expected) {
 	token_to_string(&expected_token, expected_token_string, sizeof(expected_token_string));
 
 	printf("ERROR: Unexpected Token '%s' at line %i! Expected: '%s'\n", token_string, token->line, expected_token_string);
-	exit(ERROR_PARSER);
+	error(ERROR_PARSER);
 }
 
 static bool parser_match(Parser const * parser, Token_Type token_type) {
@@ -83,6 +83,7 @@ static bool parser_match_expression(Parser const * parser) {
 		parser_match(parser, TOKEN_LITERAL_F32)    ||
 		parser_match(parser, TOKEN_LITERAL_F64)    ||
 		parser_match(parser, TOKEN_LITERAL_BOOL)   ||
+		parser_match(parser, TOKEN_LITERAL_CHAR)   ||
 		parser_match(parser, TOKEN_LITERAL_STRING) ||
 		parser_match(parser, TOKEN_PARENTESES_OPEN); // Subexpression
 }
@@ -259,6 +260,7 @@ static AST_Expression * parser_parse_expression_elementary(Parser * parser) {
 		parser_match(parser, TOKEN_LITERAL_F32)  ||
 		parser_match(parser, TOKEN_LITERAL_F64)  ||
 		parser_match(parser, TOKEN_LITERAL_BOOL) ||
+		parser_match(parser, TOKEN_LITERAL_CHAR) ||
 		parser_match(parser, TOKEN_LITERAL_STRING)
 	) {
 		return ast_make_expr_const(parser_advance(parser));
@@ -545,7 +547,11 @@ static AST_Statement * parser_parse_statement_def_var(Parser * parser) {
 	char const * var_name =  parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
 	parser_match_and_advance(parser, TOKEN_COLON);
 
-	Type const * type = parser_parse_type(parser);
+	Type const * type = NULL;
+	
+	if (parser_match(parser, TOKEN_IDENTIFIER)) {
+		type = parser_parse_type(parser);
+	}
 
 	AST_Expression * expr_assign = NULL;
 
@@ -561,6 +567,15 @@ static AST_Statement * parser_parse_statement_def_var(Parser * parser) {
 	}
 
 	parser_match_and_advance(parser, TOKEN_SEMICOLON);
+
+	if (type == NULL) {
+		if (expr_assign == NULL) {
+			printf("ERROR: Variable definition missing both type and expression!\n");
+			error(ERROR_PARSER);
+		}
+
+		type = type_infer(expr_assign->expr_op_bin.expr_right, parser->current_scope);
+	}
 
 	scope_add_var(parser->current_scope, var_name, type);
 

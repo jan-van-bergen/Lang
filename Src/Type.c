@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "AST.h"
 #include "Scope.h"
 
 #include "Util.h"
@@ -152,7 +153,7 @@ void type_to_string(Type const * type, char * string, int string_size) {
 
 		case TYPE_STRUCT: sprintf_s(string, string_size, "%s", type->struct_name); break;
 
-		default: exit(ERROR_TYPECHECK);
+		default: error(ERROR_TYPECHECK);
 	}
 }
 
@@ -160,7 +161,7 @@ int type_get_size(Type const * type, Scope * scope) {
 	switch (type->type) {
 		case TYPE_VOID: {
 			printf("ERROR: Cannot get size of void type!\n");
-			exit(ERROR_TYPECHECK); // Invalid!
+			error(ERROR_TYPECHECK); // Invalid!
 		}
 
 		case TYPE_I8:  return 1;
@@ -184,7 +185,7 @@ int type_get_size(Type const * type, Scope * scope) {
 
 		case TYPE_STRUCT: return scope_get_struct_def(scope, type->struct_name)->members->size;
 
-		default: exit(ERROR_UNKNOWN);
+		default: error(ERROR_UNKNOWN);
 	}
 }
 
@@ -192,7 +193,7 @@ int type_get_align(Type const * type, Scope * scope) {
 	switch (type->type) {
 		case TYPE_VOID: {
 			printf("ERROR: Cannot get alignment of void type!\n");
-			exit(ERROR_TYPECHECK); // Invalid!
+			error(ERROR_TYPECHECK); // Invalid!
 		}
 		case TYPE_I8:  return 1;
 		case TYPE_I16: return 2;
@@ -215,7 +216,7 @@ int type_get_align(Type const * type, Scope * scope) {
 
 		case TYPE_STRUCT: return scope_get_struct_def(scope, type->struct_name)->members->align;
 
-		default: exit(ERROR_UNKNOWN);
+		default: error(ERROR_UNKNOWN);
 	}
 }
 
@@ -346,5 +347,105 @@ Type const * types_unify(Type const * a, Type const * b, Scope * scope) {
 	type_to_string(b, str_type_b, sizeof(str_type_b));
 
 	printf("TYPE ERROR: Unable to unify types '%s' and '%s'!", str_type_a, str_type_b);
-	exit(ERROR_TYPECHECK);
+	error(ERROR_TYPECHECK);
+}
+
+Type * type_infer(AST_Expression const * expr, Scope const * scope) {
+	switch (expr->type) {
+		case AST_EXPRESSION_CONST: {
+			Token_Type literal_type = expr->expr_const.token.type;
+
+			switch (literal_type) {
+				case TOKEN_LITERAL_INT: {
+					if (expr->expr_const.token.sign) {
+						long long value = expr->expr_const.token.value_int;
+
+						if (value >= INT_MIN && value <= INT_MAX) {
+							return make_type_i32();
+						} else {
+							return make_type_i64();
+						}
+					} else {
+						unsigned long long value = expr->expr_const.token.value_int;
+
+						if (value <= UINT_MAX) {
+							return make_type_u32();
+						} else {
+							return make_type_u64();
+						}
+					}
+				}
+
+				case TOKEN_LITERAL_F32: return make_type_f32();
+				case TOKEN_LITERAL_F64: return make_type_f64();
+
+				case TOKEN_LITERAL_BOOL: return make_type_bool();
+				case TOKEN_LITERAL_CHAR: return make_type_u8();
+
+				case TOKEN_LITERAL_STRING: return make_type_pointer(make_type_u8());
+
+				default: error(ERROR_UNKNOWN);
+			}
+		}
+
+		case AST_EXPRESSION_VAR: return scope_get_variable(scope, expr->expr_var.name)->type;
+
+		case AST_EXPRESSION_OPERATOR_BIN: {
+			Type const * type_left  = type_infer(expr->expr_op_bin.expr_left,  scope);
+			Type const * type_right = type_infer(expr->expr_op_bin.expr_right, scope);
+
+			if (!types_unifiable(type_left, type_right)) break;
+
+			return types_unify(type_left, type_right, scope);
+		}
+
+		case AST_EXPRESSION_OPERATOR_PRE:  {
+			Type const * type_inner = type_infer(expr->expr_op_pre.expr, scope);
+
+			switch (expr->expr_op_pre.token.type) {
+				case TOKEN_OPERATOR_BITWISE_AND: return make_type_pointer(type_inner); // Address of
+				case TOKEN_OPERATOR_MULTIPLY: {
+					if (!type_is_pointer(type_inner)) {
+						char str_type[128];
+						type_to_string(type_inner, str_type, sizeof(str_type));
+
+						printf("ERROR: Attempt to dereference non-pointer type '%s'!\n", str_type);
+						error(ERROR_TYPECHECK);
+					}
+
+					return type_inner->base;
+				}
+
+				case TOKEN_OPERATOR_INC:
+				case TOKEN_OPERATOR_DEC:
+				case TOKEN_OPERATOR_PLUS: return type_inner;
+
+				case TOKEN_OPERATOR_MINUS: {
+					if (type_is_integral_unsigned(type_inner)) { // Turn unsigned integral type into its signed counterpart
+						switch (type_inner->type) {
+							case TYPE_U8:  return make_type_i8();
+							case TYPE_U16: return make_type_i16();
+							case TYPE_U32: return make_type_i32();
+							case TYPE_U64: return make_type_i64();
+
+							default: error(ERROR_UNKNOWN);
+						}
+					}
+					return type_inner;
+				}
+			}
+		}
+
+		case AST_EXPRESSION_OPERATOR_POST: return type_infer(expr->expr_op_post.expr, scope);
+
+		case AST_EXPRESSION_CAST: return expr->expr_cast.new_type;
+
+		case AST_EXPRESSION_CALL_FUNC: return scope_get_function_def(scope, expr->expr_call.function_name)->return_type;
+	}
+
+	char str_expr[1024];
+	ast_print_expression(expr, str_expr, sizeof(str_expr));
+
+	printf("ERROR: Unable to infer type of exprssion '%s'!\n", str_expr);
+	error(ERROR_TYPECHECK);
 }

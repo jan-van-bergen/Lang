@@ -10,7 +10,7 @@ func main() -> int {
 	}
 
 	let test: Test;
-	test.a   = 3;
+	test.a   = cast(char) 3;
 	test.n.b = 4;
 	test.n.c = 5;
 	

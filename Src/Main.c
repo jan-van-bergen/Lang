@@ -9,7 +9,7 @@
 #define RUN_PROGRAM 0 // For debugging only
 
 int main(int arg_count, char const * args[]) {
-	char const * filename = "Examples\\factorial.lang";
+	char const * filename = "Examples\\fizzbuzz.lang";
 	if (arg_count > 1) {
 		filename = args[1];
 	}
@@ -25,6 +25,8 @@ int main(int arg_count, char const * args[]) {
 	free(file_exe);
 
 	__debugbreak();
+
+	return ERROR_UNKNOWN;
 #endif
 
 	return ERROR_SUCCESS;

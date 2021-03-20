@@ -13,7 +13,7 @@ char const * read_file(char const * filename) {
 
 	if (f == NULL) {
 		printf("ERROR: Unable to open file %s!\n", filename);
-		exit(ERROR_UNKNOWN);
+		error(ERROR_UNKNOWN);
 	}
 
 	fseek(f, 0, SEEK_END);

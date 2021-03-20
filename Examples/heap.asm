@@ -290,63 +290,63 @@ main:
     lea r10, QWORD [rbp + -32] ; get address of 'mem'
     mov QWORD [r10], rbx
     
-    ; *(mem + 0) = 66
+    ; *(mem + 0) = 'B'
     mov rbx, QWORD [rbp + -32]
     mov r10, 0
     add rbx, r10
     mov r10, 66
     mov BYTE [rbx], r10b
     
-    ; *(mem + 1) = 114
+    ; *(mem + 1) = 'r'
     mov rbx, QWORD [rbp + -32]
     mov r10, 1
     add rbx, r10
     mov r10, 114
     mov BYTE [rbx], r10b
     
-    ; *(mem + 2) = 117
+    ; *(mem + 2) = 'u'
     mov rbx, QWORD [rbp + -32]
     mov r10, 2
     add rbx, r10
     mov r10, 117
     mov BYTE [rbx], r10b
     
-    ; *(mem + 3) = 104
+    ; *(mem + 3) = 'h'
     mov rbx, QWORD [rbp + -32]
     mov r10, 3
     add rbx, r10
     mov r10, 104
     mov BYTE [rbx], r10b
     
-    ; *(mem + 4) = 84
+    ; *(mem + 4) = 'T'
     mov rbx, QWORD [rbp + -32]
     mov r10, 4
     add rbx, r10
     mov r10, 84
     mov BYTE [rbx], r10b
     
-    ; *(mem + 5) = 101
+    ; *(mem + 5) = 'e'
     mov rbx, QWORD [rbp + -32]
     mov r10, 5
     add rbx, r10
     mov r10, 101
     mov BYTE [rbx], r10b
     
-    ; *(mem + 6) = 115
+    ; *(mem + 6) = 's'
     mov rbx, QWORD [rbp + -32]
     mov r10, 6
     add rbx, r10
     mov r10, 115
     mov BYTE [rbx], r10b
     
-    ; *(mem + 7) = 116
+    ; *(mem + 7) = 't'
     mov rbx, QWORD [rbp + -32]
     mov r10, 7
     add rbx, r10
     mov r10, 116
     mov BYTE [rbx], r10b
     
-    ; *(mem + 8) = 0
+    ; *(mem + 8) = '
     mov rbx, QWORD [rbp + -32]
     mov r10, 8
     add rbx, r10
@@ -391,56 +391,56 @@ main:
     lea r10, QWORD [rbp + -16] ; get address of 'mem2'
     mov QWORD [r10], rbx
     
-    ; *(mem2 + 0) = 1
+    ; *(mem2 + 0) = cast(u8) 1
     mov rbx, QWORD [rbp + -16]
     mov r10, 0
     add rbx, r10
     mov r10, 1
     mov BYTE [rbx], r10b
     
-    ; *(mem2 + 1) = 2
+    ; *(mem2 + 1) = cast(u8) 2
     mov rbx, QWORD [rbp + -16]
     mov r10, 1
     add rbx, r10
     mov r10, 2
     mov BYTE [rbx], r10b
     
-    ; *(mem2 + 2) = 3
+    ; *(mem2 + 2) = cast(u8) 3
     mov rbx, QWORD [rbp + -16]
     mov r10, 2
     add rbx, r10
     mov r10, 3
     mov BYTE [rbx], r10b
     
-    ; *(mem2 + 3) = 4
+    ; *(mem2 + 3) = cast(u8) 4
     mov rbx, QWORD [rbp + -16]
     mov r10, 3
     add rbx, r10
     mov r10, 4
     mov BYTE [rbx], r10b
     
-    ; *(mem2 + 4) = 0
+    ; *(mem2 + 4) = cast(u8) 0
     mov rbx, QWORD [rbp + -16]
     mov r10, 4
     add rbx, r10
     mov r10, 0
     mov BYTE [rbx], r10b
     
-    ; *(mem2 + 5) = 0
+    ; *(mem2 + 5) = cast(u8) 0
     mov rbx, QWORD [rbp + -16]
     mov r10, 5
     add rbx, r10
     mov r10, 0
     mov BYTE [rbx], r10b
     
-    ; *(mem2 + 6) = 0
+    ; *(mem2 + 6) = cast(u8) 0
     mov rbx, QWORD [rbp + -16]
     mov r10, 6
     add rbx, r10
     mov r10, 0
     mov BYTE [rbx], r10b
     
-    ; *(mem2 + 7) = 0
+    ; *(mem2 + 7) = cast(u8) 0
     mov rbx, QWORD [rbp + -16]
     mov r10, 7
     add rbx, r10

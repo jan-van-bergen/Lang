@@ -113,3 +113,5 @@ bool types_equal(Type const * a, Type const * b);
 
 bool         types_unifiable(Type const * a, Type const * b);
 Type const * types_unify    (Type const * a, Type const * b, struct Scope * scope);
+
+Type * type_infer(struct AST_Expression const * expr, struct Scope const * scope);

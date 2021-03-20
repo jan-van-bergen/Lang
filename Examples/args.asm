@@ -73,14 +73,14 @@ main:
     ; let bytes_written: i32;
     mov DWORD [rbp + -24], 0 ; zero initialize 'bytes_written'
     
-    ; let i: i32; i = 0;
+    ; let i: u32; i = 0;
     lea rbx, QWORD [rbp + -20] ; get address of 'i'
     mov r10, 0
     mov DWORD [rbx], r10d
     
     ; while (i < arg_count)
     L_loop0:
-    movsx rbx, DWORD [rbp + -20]
+    mov ebx, DWORD [rbp + -20]
     movsx r10, DWORD [rbp + 16]
     cmp rbx, r10
     setl bl
@@ -91,7 +91,7 @@ main:
         ; let length: i32; length = strlen(args[i]);
         sub rsp, 32 ; reserve shadow space and 1 arguments
         lea rbx, QWORD [rbp + 24] ; get address of 'args'
-        movsx r10, DWORD [rbp + -20]
+        mov r10d, DWORD [rbp + -20]
         mov rbx, QWORD [rbx]
         imul r10, 8
         add rbx, r10
@@ -108,7 +108,7 @@ main:
         mov rbx, QWORD [rbp + -32]
         mov rcx, rbx ; arg 1
         lea rbx, QWORD [rbp + 24] ; get address of 'args'
-        movsx r10, DWORD [rbp + -20]
+        mov r10d, DWORD [rbp + -20]
         mov rbx, QWORD [rbx]
         imul r10, 8
         add rbx, r10
@@ -143,7 +143,7 @@ main:
         ; i++
         lea rbx, QWORD [rbp + -20] ; get address of 'i'
         mov r10, rbx
-        movsx rbx, DWORD [rbx]
+        mov ebx, DWORD [rbx]
         mov r11, rbx
         inc r11
         mov DWORD [r10], r11d

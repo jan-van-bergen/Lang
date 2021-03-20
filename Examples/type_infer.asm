@@ -45,42 +45,25 @@ _start:
     mov ecx, eax
     call ExitProcess
 
-; let globla: Bla;
-
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
+    sub rsp, 16 ; reserve stack space for 2 locals
     
-    ; globla.b = 3
-    lea rbx, QWORD [REL globla] ; get address of 'globla'
-    add rbx, 0 ; member offset 'b'
-    mov r10, 3
-    mov DWORD [rbx], r10d
+    ; let a: u32; a = 2 + 270;
+    mov rbx, 2
+    mov r10, 270
+    add rbx, r10
+    lea r10, QWORD [rbp + -16] ; get address of 'a'
+    mov DWORD [r10], ebx
     
-    ; globla.l = 5
-    lea rbx, QWORD [REL globla] ; get address of 'globla'
-    add rbx, 8 ; member offset 'l'
-    mov r10, 5
+    ; let str: u8*; str = "test";
+    lea rbx, QWORD [rbp + -8] ; get address of 'str'
+    lea r10, [REL lit_str_0]
     mov QWORD [rbx], r10
     
-    ; globla.a = cast(i8) 7
-    lea rbx, QWORD [REL globla] ; get address of 'globla'
-    add rbx, 16 ; member offset 'a'
-    mov r10, 7
-    mov BYTE [rbx], r10b
-    
-    ; return globla.b + globla.l + globla.a
-    lea rbx, QWORD [REL globla] ; get address of 'globla'
-    add rbx, 0 ; member offset 'b'
-    movsx rbx, DWORD [rbx]
-    lea r10, QWORD [REL globla] ; get address of 'globla'
-    add r10, 8 ; member offset 'l'
-    mov r10, QWORD [r10]
-    add rbx, r10
-    lea r10, QWORD [REL globla] ; get address of 'globla'
-    add r10, 16 ; member offset 'a'
-    movsx r10, BYTE [r10]
-    add rbx, r10
+    ; return a
+    mov ebx, DWORD [rbp + -16]
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
     
@@ -93,4 +76,4 @@ main:
 
 
 SECTION .data
-globla dq 0, 0, 0
+lit_str_0 db "test", 0

@@ -1,7 +1,7 @@
 func main() -> int {
-	let a: int = 48;
-	let b: int = 3;
-	let c: int = a / b;
+	let a := 48;
+	let b := 3;
+	let c := a / b;
 
 	if (c != 16) return 0;
 	

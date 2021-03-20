@@ -54,7 +54,7 @@ void compile_file(char const * filename, bool show_output) {
 
 	if (file == NULL) {
 		printf("ERROR: Unable to open asm file '%s' for writing!\n", file_asm);
-		exit(ERROR_ASSEMBLER);
+		error(ERROR_ASSEMBLER);
 	}
 
 	fwrite(code, 1, strlen(code), file);
@@ -68,7 +68,7 @@ void compile_file(char const * filename, bool show_output) {
 
 	// Assemble
 	sprintf_s(cmd, sizeof(cmd), "nasm -f win64 \"%s\" -o \"%s\" %s", file_asm, file_obj, show_output ? "" : "> nul");
-	if (system(cmd) != EXIT_SUCCESS) exit(ERROR_ASSEMBLER);
+	if (system(cmd) != EXIT_SUCCESS) error(ERROR_ASSEMBLER);
 
 	// Link
 	sprintf_s(cmd, sizeof(cmd), "link \"%s\" /out:\"%s\" /subsystem:CONSOLE /defaultlib:\"%s\" /defaultlib:\"%s\" /defaultlib:\"%s\" /entry:_start %s /DEBUG",
@@ -79,7 +79,7 @@ void compile_file(char const * filename, bool show_output) {
 		dir_liburcrt,
 		show_output ? "" : "> nul"
 	);
-	if (system(cmd) != EXIT_SUCCESS) exit(ERROR_LINKER);
+	if (system(cmd) != EXIT_SUCCESS) error(ERROR_LINKER);
 
 	free(file_asm);
 	free(file_obj);

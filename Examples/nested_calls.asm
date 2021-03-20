@@ -68,7 +68,7 @@ ayy:
     mov DWORD [rbp + 16], ecx ; push arg 0 
     mov BYTE [rbp + 24], dl ; push arg 1 
     
-    ; if (c == 97)
+    ; if (c == 'a')
     movzx rbx, BYTE [rbp + 24]
     mov r10, 97
     cmp rbx, r10
@@ -110,7 +110,7 @@ fun:
     mov BYTE [rbp + 24], dl ; push arg 1 
     mov QWORD [rbp + 32], r8 ; push arg 2 
     
-    ; return ayy(2, identity(98) - b) - a * c
+    ; return ayy(2, identity('b') - b) - a * c
     sub rsp, 32 ; reserve shadow space and 2 arguments
     mov rbx, 2
     mov rcx, rbx ; arg 1

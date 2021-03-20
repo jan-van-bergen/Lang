@@ -60,7 +60,7 @@ func main() -> int {
 	*(mem + 5) = 'e';
 	*(mem + 6) = 's';
 	*(mem + 7) = 't';
-	*(mem + 8) = 0;
+	*(mem + 8) = '\0';
 
 	let str_len: int = strlen(mem);
 
@@ -69,14 +69,14 @@ func main() -> int {
 
 	let mem2: char * = malloc(16);
 
-	*(mem2 + 0) = 1;
-	*(mem2 + 1) = 2;
-	*(mem2 + 2) = 3;
-	*(mem2 + 3) = 4;
-	*(mem2 + 4) = 0;
-	*(mem2 + 5) = 0;
-	*(mem2 + 6) = 0;
-	*(mem2 + 7) = 0;
+	*(mem2 + 0) = cast(u8) 1;
+	*(mem2 + 1) = cast(u8) 2;
+	*(mem2 + 2) = cast(u8) 3;
+	*(mem2 + 3) = cast(u8) 4;
+	*(mem2 + 4) = cast(u8) 0;
+	*(mem2 + 5) = cast(u8) 0;
+	*(mem2 + 6) = cast(u8) 0;
+	*(mem2 + 7) = cast(u8) 0;
 
 	return *(cast(int *) mem2); // 0x04030201 (little endian) = 67305985
 }

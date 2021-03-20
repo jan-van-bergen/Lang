@@ -132,7 +132,7 @@ print_num:
         lea r10, QWORD [rbp + -20] ; get address of 'digit'
         mov BYTE [r10], bl
         
-        ; *(num_str + idx) = digit + 48
+        ; *(num_str + idx) = digit + '0'
         mov rbx, QWORD [rbp + -32]
         movsx r10, DWORD [rbp + -24]
         add rbx, r10
@@ -225,7 +225,7 @@ print_num:
     jmp L_loop1
     L_exit1:
     
-    ; *(num_str + idx) = 32
+    ; *(num_str + idx) = ' '
     mov rbx, QWORD [rbp + -32]
     movsx r10, DWORD [rbp + -24]
     add rbx, r10

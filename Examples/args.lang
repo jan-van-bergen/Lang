@@ -5,11 +5,11 @@ extern strlen(str: char *) -> int;
 let STD_OUTPUT_HANDLE: int = -11;
 
 func main(arg_count: int, args: char **) -> int {
-	let std_handle: void * = GetStdHandle(STD_OUTPUT_HANDLE);
+	let std_handle := GetStdHandle(STD_OUTPUT_HANDLE);
 	
 	let bytes_written: int;
 
-	let i: int = 0;
+	let i := 0;
 	while (i < arg_count) {
 		let length: int = strlen(args[i]);
 

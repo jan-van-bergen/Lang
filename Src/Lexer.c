@@ -35,6 +35,16 @@ static char lexer_next(Lexer * lexer) {
 	return lexer->source[++lexer->index];
 }
 
+static void lexer_advance(Lexer * lexer, char target) {
+	char c = lexer_next(lexer);
+	if (c != target) {
+		printf("ERROR: Lexer encountered unexpeced char!\n");
+		printf("Expected: '%c'\n", target);
+		printf("Observed: '%c'\n", c);
+		error(ERROR_LEXER);
+	}
+}
+
 static int lexer_match(Lexer const * lexer, char const * target) {
 	int index = 0;
 
@@ -128,7 +138,7 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 				hex += curr - '0';
 			} else {
 				printf("ERROR: Invalid character '%c' in hex literal!\n", curr);
-				exit(ERROR_LEXER);
+				error(ERROR_LEXER);
 			}
 
 			curr = lexer_next(lexer);
@@ -216,9 +226,22 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 	} else if (curr == '\'') {
 		char c = lexer_next(lexer);
 
-		lexer_next(lexer); // Consume '
+		if (c == '\\') {
+			c = lexer_next(lexer);
 
-		token->type      = TOKEN_LITERAL_INT; // Treat as int literal
+			switch (c) {
+				case '0': c = '\0'; break;
+				case 'r': c = '\r'; break;
+				case 'n': c = '\n'; break;
+				case 't': c = '\t'; break;
+
+				default: error(ERROR_LEXER);
+			}
+		}
+
+		lexer_advance(lexer, '\'');
+
+		token->type      = TOKEN_LITERAL_CHAR;
 		token->sign      = false;
 		token->value_int = c;
 

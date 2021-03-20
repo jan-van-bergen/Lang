@@ -1,0 +1,6 @@
+func main () -> int {
+	let a := 2 + 270;
+	let str := "test";
+	
+	return a;
+}

@@ -653,7 +653,7 @@ void ast_free_statement(AST_Statement * stat) {
 			break;
 		}
 
-		default: exit(ERROR_UNKNOWN);
+		default: error(ERROR_UNKNOWN);
 	}
 
 	free(stat);
@@ -696,7 +696,7 @@ Precedence get_precedence(AST_Expression const * expr) {
 				case TOKEN_OPERATOR_LOGICAL_AND: return PRECEDENCE_LOGICAL_AND;
 				case TOKEN_OPERATOR_LOGICAL_OR:  return PRECEDENCE_LOGICAL_OR;
 
-				defaut: exit(ERROR_UNKNOWN);
+				defaut: error(ERROR_UNKNOWN);
 			}
 		}
 

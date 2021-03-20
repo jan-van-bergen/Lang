@@ -30,6 +30,7 @@ class col:
     UNDERLINE = '\033[4m'
 
 test_cases = [                       
+	("Examples\\type_infer.lang",                   0, "",                      272, ""),
 	("Examples\\args.lang",                         0, "TEST o  t    l",          5, "Examples\\args.exe\nTEST\no\nt\nl\n"),
 	("Examples\\calling_convention.lang",           0, "",                       11, ""),
 	("Examples\\code.lang",                         0, "",                   0xc0de, ""),

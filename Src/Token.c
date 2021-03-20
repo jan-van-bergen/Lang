@@ -22,8 +22,10 @@ void token_to_string(Token const * token, char * string, int string_size) {
 		case TOKEN_LITERAL_F32: sprintf_s(string, string_size, "%ff", token->value_float);  break;
 		case TOKEN_LITERAL_F64: sprintf_s(string, string_size, "%f",  token->value_double); break;
 
-		case TOKEN_LITERAL_BOOL:   sprintf_s(string, string_size, "%s",     token->value_int ? "true" : "false"); return;
-		case TOKEN_LITERAL_STRING: sprintf_s(string, string_size, "\"%s\"", token->value_str);                    return;
+		case TOKEN_LITERAL_BOOL: sprintf_s(string, string_size, "%s", token->value_int ? "true" : "false"); return;
+
+		case TOKEN_LITERAL_CHAR:   sprintf_s(string, string_size, "'%c'",   token->value_int); return;
+		case TOKEN_LITERAL_STRING: sprintf_s(string, string_size, "\"%s\"", token->value_str); return;
 
 		case TOKEN_KEYWORD_LET:      strcpy_s(string, string_size, "let");      return;
 		case TOKEN_KEYWORD_CAST:     strcpy_s(string, string_size, "cast");     return;

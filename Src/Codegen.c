@@ -99,7 +99,7 @@ static int context_reg_request(Context * ctx) {
 	}
 
 	printf("ERROR: Out of registers!");
-	exit(ERROR_CODEGEN);
+	error(ERROR_CODEGEN);
 }
 
 static int context_reg_request_float(Context * ctx) {
@@ -112,7 +112,7 @@ static int context_reg_request_float(Context * ctx) {
 	}
 
 	printf("ERROR: Out of XMM registers!");
-	exit(ERROR_CODEGEN);
+	error(ERROR_CODEGEN);
 }
 
 static void context_reg_free(Context * ctx, int reg) {
@@ -196,7 +196,7 @@ static void context_add_data_seg(Context * ctx, char const * data) {
 }
 
 static void context_trace_push_expr(Context * ctx, AST_Expression * expr) {
-	if (ctx->trace_stack_size == MAX_TRACE) exit(ERROR_CODEGEN);
+	if (ctx->trace_stack_size == MAX_TRACE) error(ERROR_CODEGEN);
 
 	Trace_Element * trace_elem = ctx->trace_stack + ctx->trace_stack_size++;
 	trace_elem->type = TRACE_EXPRESSION;
@@ -204,7 +204,7 @@ static void context_trace_push_expr(Context * ctx, AST_Expression * expr) {
 }
 
 static void context_trace_push_stat(Context * ctx, AST_Statement * stat) {
-	if (ctx->trace_stack_size == MAX_TRACE) exit(ERROR_CODEGEN);
+	if (ctx->trace_stack_size == MAX_TRACE) error(ERROR_CODEGEN);
 
 	Trace_Element * trace_elem = ctx->trace_stack + ctx->trace_stack_size++;
 	trace_elem->type = TRACE_STATEMENT;
@@ -247,7 +247,7 @@ static void type_error(Context * ctx, char const * msg, ...) {
 
 	va_end(args);
 	
-	exit(ERROR_TYPECHECK);
+	error(ERROR_TYPECHECK);
 }
 
 static char const * get_reg_name_scratch(int reg_index, int size) {
@@ -265,7 +265,7 @@ static char const * get_reg_name_scratch(int reg_index, int size) {
 			case 4: return reg_names_32bit[reg_index];
 			case 8: return reg_names_64bit[reg_index];
 
-			default: exit(ERROR_CODEGEN);
+			default: error(ERROR_CODEGEN);
 		}
 	} else {
 		return reg_names_float[reg_index - SCRATCH_REG_COUNT];
@@ -289,7 +289,7 @@ static char const * get_reg_name_call(int reg_index, int type_size, bool is_floa
 			case 4: return reg_names_32bit[reg_index];
 			case 8: return reg_names_64bit[reg_index];
 
-			default: exit(ERROR_CODEGEN);
+			default: error(ERROR_CODEGEN);
 		}
 	}
 }
@@ -379,7 +379,7 @@ static void codegen_add_string_literal(Context * ctx, char const * str_name, cha
 
 				default: {
 					printf("ERROR: Invalid escape char '%c'!\n", escaped);
-					exit(ERROR_CODEGEN);
+					error(ERROR_CODEGEN);
 				}
 			}
 
@@ -412,14 +412,12 @@ static Result codegen_expression_const(Context * ctx, AST_Expression const * exp
 	assert(expr->type == AST_EXPRESSION_CONST);
 
 	Result result;
-	result.reg = context_reg_request(ctx);
-	
-	Token_Type literal_type = expr->expr_const.token.type;
+	result.reg  = context_reg_request(ctx);
+	result.type = type_infer(expr, ctx->current_scope);
 
+	Token_Type literal_type = expr->expr_const.token.type;
 	switch (literal_type) {
 		case TOKEN_LITERAL_STRING: {
-			result.type = make_type_pointer(make_type_u8());
-
 			char str_lit_name[128];
 			sprintf_s(str_lit_name, sizeof(str_lit_name), "lit_str_%i", ctx->data_seg_len);
 
@@ -429,33 +427,13 @@ static Result codegen_expression_const(Context * ctx, AST_Expression const * exp
 			break;
 		}
 
-		case TOKEN_LITERAL_INT: {
+		case TOKEN_LITERAL_INT:
+		case TOKEN_LITERAL_CHAR: {
 			unsigned long long value = expr->expr_const.token.value_int;
 
-			// Find smallest possible type that can contain the value
 			if (expr->expr_const.token.sign) {
-				if (value >= CHAR_MIN && value <= CHAR_MAX) {
-					result.type = make_type_i8();
-				} else if (value >= SHRT_MIN && value <= SHRT_MAX) {
-					result.type = make_type_i16();
-				} else if (value >= INT_MIN && value <= INT_MAX) {
-					result.type = make_type_i32();
-				} else {
-					result.type = make_type_i64();
-				}
-
 				context_emit_code(ctx, "mov %s, %lld\n", get_reg_name_scratch(result.reg, 8), value);
 			} else {
-				if (value <= UCHAR_MAX) {
-					result.type = make_type_u8();
-				} else if (value <= USHRT_MAX) {
-					result.type = make_type_u16();
-				} else if (value <= UINT_MAX) {
-					result.type = make_type_u32();
-				} else {
-					result.type = make_type_u64();
-				}
-				
 				context_emit_code(ctx, "mov %s, %llu\n", get_reg_name_scratch(result.reg, 8), value);
 			}
 
@@ -465,7 +443,6 @@ static Result codegen_expression_const(Context * ctx, AST_Expression const * exp
 		case TOKEN_LITERAL_F32: {
 			context_reg_free(ctx, result.reg);
 			result.reg = context_reg_request_float(ctx);
-			result.type = make_type_f32();
 			
 			char str_lit_name[128];
 			sprintf_s(str_lit_name, sizeof(str_lit_name), "lit_flt_%i", ctx->data_seg_len);
@@ -484,7 +461,6 @@ static Result codegen_expression_const(Context * ctx, AST_Expression const * exp
 		case TOKEN_LITERAL_F64: {
 			context_reg_free(ctx, result.reg);
 			result.reg = context_reg_request_float(ctx);
-			result.type = make_type_f64();
 			
 			char str_lit_name[128];
 			sprintf_s(str_lit_name, sizeof(str_lit_name), "lit_flt_%i", ctx->data_seg_len);
@@ -501,14 +477,11 @@ static Result codegen_expression_const(Context * ctx, AST_Expression const * exp
 		}
 
 		case TOKEN_LITERAL_BOOL: {
-			result.type = make_type_bool();
-
 			context_emit_code(ctx, "mov %s, %i\n", get_reg_name_scratch(result.reg, 8), expr->expr_const.token.value_int);
-
 			break;
 		}
 
-		default: exit(ERROR_UNKNOWN);
+		default: error(ERROR_UNKNOWN);
 	}
 
 	return result;
@@ -1135,7 +1108,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			break;
 		}
 
-		default: exit(ERROR_UNKNOWN);
+		default: error(ERROR_UNKNOWN);
 	}
 
 	context_reg_free(ctx, result_right.reg);
@@ -1305,7 +1278,7 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 			break;
 		}
 
-		default: exit(ERROR_UNKNOWN);
+		default: error(ERROR_UNKNOWN);
 	}
 
 	return result;
@@ -1376,7 +1349,7 @@ static Result codegen_expression_op_post(Context * ctx, AST_Expression const * e
 			break;
 		}
 
-		default: exit(ERROR_CODEGEN);
+		default: error(ERROR_CODEGEN);
 	}
 
 	return result;
@@ -1544,7 +1517,7 @@ static Result codegen_expression(Context * ctx, AST_Expression const * expr) {
 
 		case AST_EXPRESSION_CALL_FUNC: result = codegen_expression_call_func(ctx, expr); break;
 
-		default: exit(ERROR_CODEGEN);
+		default: error(ERROR_CODEGEN);
 	}
 	
 	context_trace_pop(ctx);
@@ -1592,7 +1565,7 @@ static void codegen_statement_def_var(Context * ctx, AST_Statement const * stat)
 			
 			if (literal->type != AST_EXPRESSION_CONST) {
 				printf("ERROR: Globals can only be initialized to constant values! Variable name: '%s'", var_name); 
-				exit(ERROR_CODEGEN);
+				error(ERROR_CODEGEN);
 			}
 
 			switch (literal_type) {
@@ -1609,7 +1582,7 @@ static void codegen_statement_def_var(Context * ctx, AST_Statement const * stat)
 					break;
 				}
 
-				default: exit(ERROR_CODEGEN);
+				default: error(ERROR_CODEGEN);
 			}
 		} else {
 			codegen_add_global(ctx, var, false, 0);
@@ -1785,7 +1758,7 @@ static void codegen_statement_break(Context * ctx, AST_Statement const * stat) {
 
 	if (ctx->current_loop_label == -1) {
 		printf("ERROR: Cannot use 'break' outside of loop!");
-		exit(ERROR_CODEGEN);
+		error(ERROR_CODEGEN);
 	}
 
 	if (ctx->emit_debug_lines) {
@@ -1800,7 +1773,7 @@ static void codegen_statement_continue(Context * ctx, AST_Statement const * stat
 	
 	if (ctx->current_loop_label == -1) {
 		printf("ERROR: Cannot use 'continue' outside of loop!");
-		exit(ERROR_CODEGEN);
+		error(ERROR_CODEGEN);
 	}
 	
 	if (ctx->emit_debug_lines) {
@@ -1888,7 +1861,7 @@ static void codegen_statement_program(Context * ctx, AST_Statement const * stat)
 
 	if (!has_main) {
 		printf("ERROR: A function called 'main' should be defined as the entry point of the program!");
-		exit(ERROR_CODEGEN);
+		error(ERROR_CODEGEN);
 	}
 
 	context_emit_code(ctx, "_start:\n");
@@ -1964,7 +1937,7 @@ static void codegen_statement(Context * ctx, AST_Statement const * stat) {
 		case AST_STATEMENT_CONTINUE: codegen_statement_continue(ctx, stat); break;
 		case AST_STATEMENT_RETURN:   codegen_statement_return  (ctx, stat); break;
 
-		default: exit(ERROR_CODEGEN);
+		default: error(ERROR_CODEGEN);
 	}
 
 	// No regs should be active after a statement is complete

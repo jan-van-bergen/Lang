@@ -50,7 +50,7 @@ main:
     mov rbp, rsp ; stack frame
     sub rsp, 16 ; reserve stack space for 2 locals
     
-    ; let a: i32; a = 1;
+    ; let a: u32; a = 1;
     lea rbx, QWORD [rbp + -16] ; get address of 'a'
     mov r10, 1
     mov DWORD [rbx], r10d
@@ -59,7 +59,7 @@ main:
     mov DWORD [rbp + -12], 0 ; zero initialize 'b'
     
     ; if (a > 0)
-    movsx rbx, DWORD [rbp + -16]
+    mov ebx, DWORD [rbp + -16]
     mov r10, 0
     cmp rbx, r10
     setg bl

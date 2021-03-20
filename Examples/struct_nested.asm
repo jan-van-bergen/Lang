@@ -56,7 +56,7 @@ main:
     mov ecx, 24
     rep stosb
     
-    ; test.a = 3
+    ; test.a = cast(u8) 3
     lea rbx, QWORD [rbp + -48] ; get address of 'test'
     add rbx, 0 ; member offset 'a'
     mov r10, 3

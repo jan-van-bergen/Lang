@@ -50,19 +50,19 @@ main:
     mov rbp, rsp ; stack frame
     sub rsp, 16 ; reserve stack space for 3 locals
     
-    ; let a: i32; a = 48;
+    ; let a: u32; a = 48;
     lea rbx, QWORD [rbp + -16] ; get address of 'a'
     mov r10, 48
     mov DWORD [rbx], r10d
     
-    ; let b: i32; b = 3;
+    ; let b: u32; b = 3;
     lea rbx, QWORD [rbp + -12] ; get address of 'b'
     mov r10, 3
     mov DWORD [rbx], r10d
     
-    ; let c: i32; c = a / b;
-    movsx rbx, DWORD [rbp + -16]
-    movsx r10, DWORD [rbp + -12]
+    ; let c: u32; c = a / b;
+    mov ebx, DWORD [rbp + -16]
+    mov r10d, DWORD [rbp + -12]
     mov rax, rbx
     cqo
     idiv r10
@@ -71,7 +71,7 @@ main:
     mov DWORD [r10], ebx
     
     ; if (c != 16)
-    movsx rbx, DWORD [rbp + -8]
+    mov ebx, DWORD [rbp + -8]
     mov r10, 16
     cmp rbx, r10
     setne bl
@@ -92,8 +92,8 @@ main:
     mov DWORD [rbx], r10d
     
     ; c = c / b
-    movsx rbx, DWORD [rbp + -8]
-    movsx r10, DWORD [rbp + -12]
+    mov ebx, DWORD [rbp + -8]
+    mov r10d, DWORD [rbp + -12]
     mov rax, rbx
     cqo
     idiv r10
@@ -102,7 +102,7 @@ main:
     mov DWORD [r10], ebx
     
     ; if (c != 4)
-    movsx rbx, DWORD [rbp + -8]
+    mov ebx, DWORD [rbp + -8]
     mov r10, 4
     cmp rbx, r10
     setne bl
@@ -118,8 +118,8 @@ main:
     L_exit1:
     
     ; c = c / c
-    movsx rbx, DWORD [rbp + -8]
-    movsx r10, DWORD [rbp + -8]
+    mov ebx, DWORD [rbp + -8]
+    mov r10d, DWORD [rbp + -8]
     mov rax, rbx
     cqo
     idiv r10
@@ -128,7 +128,7 @@ main:
     mov DWORD [r10], ebx
     
     ; return c
-    movsx rbx, DWORD [rbp + -8]
+    mov ebx, DWORD [rbp + -8]
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
     

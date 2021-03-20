@@ -65,28 +65,28 @@ main:
     lea r10, QWORD [rbp + -16] ; get address of 'ptr_char'
     mov QWORD [r10], rbx
     
-    ; *(ptr_char + 0) = 13
+    ; *(ptr_char + 0) = cast(u8) 13
     mov rbx, QWORD [rbp + -16]
     mov r10, 0
     add rbx, r10
     mov r10, 13
     mov BYTE [rbx], r10b
     
-    ; *(ptr_char + 1) = 12
+    ; *(ptr_char + 1) = cast(u8) 12
     mov rbx, QWORD [rbp + -16]
     mov r10, 1
     add rbx, r10
     mov r10, 12
     mov BYTE [rbx], r10b
     
-    ; *(ptr_char + 2) = 11
+    ; *(ptr_char + 2) = cast(u8) 11
     mov rbx, QWORD [rbp + -16]
     mov r10, 2
     add rbx, r10
     mov r10, 11
     mov BYTE [rbx], r10b
     
-    ; *(ptr_char + 3) = 10
+    ; *(ptr_char + 3) = cast(u8) 10
     mov rbx, QWORD [rbp + -16]
     mov r10, 3
     add rbx, r10
