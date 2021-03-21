@@ -339,9 +339,11 @@ ASALocalRun/
 # BeatPulse healthcheck temp database
 healthchecksdb
 
-# Compiled binaries
+# Compiler Output
 Examples/*.obj
 Examples/*.exe
+Examples/*.lib
+Examples/*.asm
 
 # Test Output
 compiler_out.txt
@@ -366,3 +368,4 @@ _deps
 *.vcxproj
 *.vcxproj.filters
 *.vcxproj.user
+
