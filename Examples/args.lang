@@ -4,19 +4,31 @@ extern strlen(str: char *) -> int;
 
 let STD_OUTPUT_HANDLE: int = -11;
 
-func main(arg_count: int, args: char **) -> int {
+func main(arg: char *) -> int {
 	let std_handle := GetStdHandle(STD_OUTPUT_HANDLE);
-	
-	let bytes_written: int;
 
-	let i := 0;
-	while (i < arg_count) {
-		let length: int = strlen(args[i]);
-
-		WriteFile(std_handle, args[i], length, &bytes_written, 0);		
-		WriteFile(std_handle, "\n",    1,      &bytes_written, 0);
+	let arg_count := 0;
+	let start     := arg;
 	
-		i++;
+	while (true) {
+		if (*arg == '\0') break;
+		
+		if (*arg == ' ') {
+			let length : u64 = arg - start;
+
+			if (length > 0) {
+				let bytes_written: int;
+			
+				WriteFile(std_handle, start, length, &bytes_written, 0);		
+				WriteFile(std_handle, "\n",  1,      &bytes_written, 0);
+				
+				arg_count++;
+			}
+			
+			start = arg + 1;
+		}
+
+		arg++;
 	}
 	
 	return arg_count;

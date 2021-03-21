@@ -8,11 +8,15 @@ global malloc
 
 global free
 
+global exit
+
 global assert
 
 global strlen
 
 global puts
+
+global print_num
 
 extern GetProcessHeap
 
@@ -125,6 +129,26 @@ free:
     ret
     
 
+exit:
+    push rbp ; save RBP
+    mov rbp, rsp ; stack frame
+    mov DWORD [rbp + 16], ecx ; push arg 0 
+    
+    ; ExitProcess(status)
+    sub rsp, 32 ; reserve shadow space and 1 arguments
+    movsx rbx, DWORD [rbp + 16]
+    mov rcx, rbx ; arg 1
+    call ExitProcess
+    add rsp, 32 ; pop arguments
+    mov rbx, rax ; get return value
+    
+    xor rax, rax ; Default return value 0
+    L_function_exit_exit:
+    mov rsp, rbp
+    pop rbp
+    ret
+    
+
 assert:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
@@ -136,11 +160,11 @@ assert:
     and rbx, 1
     cmp rbx, 0
     je L_exit2
-        ; ExitProcess(1)
+        ; exit(1)
         sub rsp, 32 ; reserve shadow space and 1 arguments
         mov rbx, 1
         mov rcx, rbx ; arg 1
-        call ExitProcess
+        call exit
         add rsp, 32 ; pop arguments
         mov rbx, rax ; get return value
         
@@ -249,6 +273,150 @@ puts:
     
     xor rax, rax ; Default return value 0
     L_function_puts_exit:
+    mov rsp, rbp
+    pop rbp
+    ret
+    
+
+print_num:
+    push rbp ; save RBP
+    mov rbp, rsp ; stack frame
+    mov DWORD [rbp + 16], ecx ; push arg 0 
+    sub rsp, 48 ; reserve stack space for 4 locals
+    
+    ; let num_str: u8[32];
+    mov QWORD [rbp + -48], 0 ; zero initialize 'num_str'
+    
+    ; let idx: i32; idx = 0;
+    lea rbx, QWORD [rbp + -16] ; get address of 'idx'
+    mov r10, 0
+    mov DWORD [rbx], r10d
+    
+    ; let n: i32; n = num;
+    lea rbx, QWORD [rbp + -12] ; get address of 'n'
+    movsx r10, DWORD [rbp + 16]
+    mov DWORD [rbx], r10d
+    
+    ; while (true)
+    L_loop4:
+    mov rbx, 1
+    cmp rbx, 0
+    je L_exit4
+        ; n = n / 10
+        movsx rbx, DWORD [rbp + -12]
+        mov r10, 10
+        mov rax, rbx
+        cqo
+        idiv r10
+        mov rbx, rax
+        lea r10, QWORD [rbp + -12] ; get address of 'n'
+        mov DWORD [r10], ebx
+        
+        ; idx++
+        lea rbx, QWORD [rbp + -16] ; get address of 'idx'
+        mov r10, rbx
+        movsx rbx, DWORD [rbx]
+        mov r11, rbx
+        inc r11
+        mov DWORD [r10], r11d
+        
+        ; if (n == 0)
+        movsx rbx, DWORD [rbp + -12]
+        mov r10, 0
+        cmp rbx, r10
+        sete bl
+        and bl, 1
+        movzx rbx, bl
+        cmp rbx, 0
+        je L_exit5
+            ; break
+            jmp L_exit4
+            
+        L_exit5:
+        
+    jmp L_loop4
+    L_exit4:
+    
+    ; num_str[idx--] = '
+    lea rbx, QWORD [rbp + -16] ; get address of 'idx'
+    mov r10, rbx
+    movsx rbx, DWORD [rbx]
+    mov r11, rbx
+    dec r11
+    mov DWORD [r10], r11d
+    lea r10, QWORD [rbp + -48] ; get address of 'num_str'
+    imul rbx, 1
+    add r10, rbx
+    mov rbx, 0
+    mov BYTE [r10], bl
+    
+    ; while (true)
+    L_loop6:
+    mov rbx, 1
+    cmp rbx, 0
+    je L_exit6
+        ; let digit: u8; digit = cast(u8) num % 10;
+        movsx rbx, DWORD [rbp + 16]
+        mov r10, 10
+        mov rax, rbx
+        cqo
+        idiv r10
+        mov rbx, rdx
+        lea r10, QWORD [rbp + -8] ; get address of 'digit'
+        mov BYTE [r10], bl
+        
+        ; num_str[idx--] = digit + '0'
+        lea rbx, QWORD [rbp + -16] ; get address of 'idx'
+        mov r10, rbx
+        movsx rbx, DWORD [rbx]
+        mov r11, rbx
+        dec r11
+        mov DWORD [r10], r11d
+        lea r10, QWORD [rbp + -48] ; get address of 'num_str'
+        imul rbx, 1
+        add r10, rbx
+        movzx rbx, BYTE [rbp + -8]
+        mov r11, 48
+        add rbx, r11
+        mov BYTE [r10], bl
+        
+        ; num = num / 10
+        movsx rbx, DWORD [rbp + 16]
+        mov r10, 10
+        mov rax, rbx
+        cqo
+        idiv r10
+        mov rbx, rax
+        lea r10, QWORD [rbp + 16] ; get address of 'num'
+        mov DWORD [r10], ebx
+        
+        ; if (num == 0)
+        movsx rbx, DWORD [rbp + 16]
+        mov r10, 0
+        cmp rbx, r10
+        sete bl
+        and bl, 1
+        movzx rbx, bl
+        cmp rbx, 0
+        je L_exit7
+            ; break
+            jmp L_exit6
+            
+        L_exit7:
+        
+    jmp L_loop6
+    L_exit6:
+    
+    ; puts(num_str)
+    sub rsp, 32 ; reserve shadow space and 1 arguments
+    lea rbx, QWORD [rbp + -48] ; get address of 'num_str'
+    mov rcx, rbx ; arg 1
+    call puts
+    add rsp, 32 ; pop arguments
+    mov rbx, rax ; get return value
+    
+    xor rax, rax ; Default return value 0
+    L_function_print_num_exit:
     mov rsp, rbp
     pop rbp
     ret

@@ -7,39 +7,7 @@ section .code
 global _start
 _start:
     call GetCommandLineA
-    mov r10, rax
-    xor rcx, rcx
-    sub rsp, 8 * 64 ; Max 64 command line args
-    mov rdx, rsp
-    arg_loop_top:
-    mov bl, BYTE [rax]
-    test bl, bl
-    jz arg_loop_exit
-    cmp bl, ' '
-    jne arg_loop_next
-    cmp r10, rax
-    je skip
-    mov BYTE [rax], 0
-    mov QWORD [rdx], r10
-    add rdx, 8
-    inc rcx
-    skip:
-    mov r10, rax
-    inc r10
-    arg_loop_next:
-    inc rax
-    jmp arg_loop_top
-    arg_loop_exit:
-    mov al, BYTE [r10]
-    cmp al, ' '
-    je args_done
-    cmp al, 0
-    je args_done
-    mov QWORD [rdx], r10
-    inc rcx
-    args_done:
-    mov rdx, rsp
-    sub rsp, 32
+    mov rcx, rax
     call main
     mov ecx, eax
     call ExitProcess
@@ -55,9 +23,8 @@ extern strlen
 main:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
-    mov DWORD [rbp + 16], ecx ; push arg 0 
-    mov QWORD [rbp + 24], rdx ; push arg 1 
-    sub rsp, 32 ; reserve stack space for 4 locals
+    mov QWORD [rbp + 16], rcx ; push arg 0 
+    sub rsp, 48 ; reserve stack space for 5 locals
     
     ; let std_handle: void*; std_handle = GetStdHandle(STD_OUTPUT_HANDLE);
     sub rsp, 32 ; reserve shadow space and 1 arguments
@@ -66,92 +33,132 @@ main:
     call GetStdHandle
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    lea r10, QWORD [rbp + -32] ; get address of 'std_handle'
+    lea r10, QWORD [rbp + -48] ; get address of 'std_handle'
     mov QWORD [r10], rbx
     
-    ; let bytes_written: i32;
-    mov DWORD [rbp + -24], 0 ; zero initialize 'bytes_written'
-    
-    ; let i: u32; i = 0;
-    lea rbx, QWORD [rbp + -20] ; get address of 'i'
+    ; let arg_count: u32; arg_count = 0;
+    lea rbx, QWORD [rbp + -40] ; get address of 'arg_count'
     mov r10, 0
     mov DWORD [rbx], r10d
     
-    ; while (i < arg_count)
+    ; let start: u8*; start = arg;
+    lea rbx, QWORD [rbp + -32] ; get address of 'start'
+    mov r10, QWORD [rbp + 16]
+    mov QWORD [rbx], r10
+    
+    ; while (true)
     L_loop0:
-    mov ebx, DWORD [rbp + -20]
-    movsx r10, DWORD [rbp + 16]
-    cmp rbx, r10
-    setl bl
-    and bl, 1
-    movzx rbx, bl
+    mov rbx, 1
     cmp rbx, 0
     je L_exit0
-        ; let length: i32; length = strlen(args[i]);
-        sub rsp, 32 ; reserve shadow space and 1 arguments
-        lea rbx, QWORD [rbp + 24] ; get address of 'args'
-        mov r10d, DWORD [rbp + -20]
-        mov rbx, QWORD [rbx]
-        imul r10, 8
-        add rbx, r10
-        mov rbx, QWORD [rbx]
-        mov rcx, rbx ; arg 1
-        call strlen
-        add rsp, 32 ; pop arguments
-        mov rbx, rax ; get return value
-        lea r10, QWORD [rbp + -16] ; get address of 'length'
-        mov DWORD [r10], ebx
+        ; if (*arg == ')
+        mov rbx, QWORD [rbp + 16]
+        movzx rbx, BYTE [rbx]
+        mov r10, 0
+        cmp rbx, r10
+        sete bl
+        and bl, 1
+        movzx rbx, bl
+        cmp rbx, 0
+        je L_exit1
+            ; break
+            jmp L_exit0
+            
+        L_exit1:
         
-        ; WriteFile(std_handle, args[i], length, &bytes_written, 0)
-        sub rsp, 48 ; reserve shadow space and 5 arguments
-        mov rbx, QWORD [rbp + -32]
-        mov rcx, rbx ; arg 1
-        lea rbx, QWORD [rbp + 24] ; get address of 'args'
-        mov r10d, DWORD [rbp + -20]
-        mov rbx, QWORD [rbx]
-        imul r10, 8
-        add rbx, r10
-        mov rbx, QWORD [rbx]
-        mov rdx, rbx ; arg 2
-        movsx rbx, DWORD [rbp + -16]
-        mov r8, rbx ; arg 3
-        lea rbx, QWORD [rbp + -24] ; get address of 'bytes_written'
-        mov r9, rbx ; arg 4
-        mov rbx, 0
-        mov DWORD [rsp + 32], ebx ; arg 5
-        call WriteFile
-        add rsp, 48 ; pop arguments
-        mov rbx, rax ; get return value
+        ; if (*arg == ' ')
+        mov rbx, QWORD [rbp + 16]
+        movzx rbx, BYTE [rbx]
+        mov r10, 32
+        cmp rbx, r10
+        sete bl
+        and bl, 1
+        movzx rbx, bl
+        cmp rbx, 0
+        je L_exit2
+            ; let length: u64; length = arg - start;
+            mov rbx, QWORD [rbp + 16]
+            mov r10, QWORD [rbp + -32]
+            sub rbx, r10
+            lea r10, QWORD [rbp + -24] ; get address of 'length'
+            mov QWORD [r10], rbx
+            
+            ; if (length > 0)
+            mov rbx, QWORD [rbp + -24]
+            mov r10, 0
+            cmp rbx, r10
+            setg bl
+            and bl, 1
+            movzx rbx, bl
+            cmp rbx, 0
+            je L_exit3
+                ; let bytes_written: i32;
+                mov DWORD [rbp + -16], 0 ; zero initialize 'bytes_written'
+                
+                ; WriteFile(std_handle, start, length, &bytes_written, 0)
+                sub rsp, 48 ; reserve shadow space and 5 arguments
+                mov rbx, QWORD [rbp + -48]
+                mov rcx, rbx ; arg 1
+                mov rbx, QWORD [rbp + -32]
+                mov rdx, rbx ; arg 2
+                mov rbx, QWORD [rbp + -24]
+                mov r8, rbx ; arg 3
+                lea rbx, QWORD [rbp + -16] ; get address of 'bytes_written'
+                mov r9, rbx ; arg 4
+                mov rbx, 0
+                mov DWORD [rsp + 32], ebx ; arg 5
+                call WriteFile
+                add rsp, 48 ; pop arguments
+                mov rbx, rax ; get return value
+                
+                ; WriteFile(std_handle, "\n", 1, &bytes_written, 0)
+                sub rsp, 48 ; reserve shadow space and 5 arguments
+                mov rbx, QWORD [rbp + -48]
+                mov rcx, rbx ; arg 1
+                lea rbx, [REL lit_str_1]
+                mov rdx, rbx ; arg 2
+                mov rbx, 1
+                mov r8, rbx ; arg 3
+                lea rbx, QWORD [rbp + -16] ; get address of 'bytes_written'
+                mov r9, rbx ; arg 4
+                mov rbx, 0
+                mov DWORD [rsp + 32], ebx ; arg 5
+                call WriteFile
+                add rsp, 48 ; pop arguments
+                mov rbx, rax ; get return value
+                
+                ; arg_count++
+                lea rbx, QWORD [rbp + -40] ; get address of 'arg_count'
+                mov r10, rbx
+                mov ebx, DWORD [rbx]
+                mov r11, rbx
+                inc r11
+                mov DWORD [r10], r11d
+                
+            L_exit3:
+            
+            ; start = arg + 1
+            mov rbx, QWORD [rbp + 16]
+            mov r10, 1
+            add rbx, r10
+            lea r10, QWORD [rbp + -32] ; get address of 'start'
+            mov QWORD [r10], rbx
+            
+        L_exit2:
         
-        ; WriteFile(std_handle, "\n", 1, &bytes_written, 0)
-        sub rsp, 48 ; reserve shadow space and 5 arguments
-        mov rbx, QWORD [rbp + -32]
-        mov rcx, rbx ; arg 1
-        lea rbx, [REL lit_str_1]
-        mov rdx, rbx ; arg 2
-        mov rbx, 1
-        mov r8, rbx ; arg 3
-        lea rbx, QWORD [rbp + -24] ; get address of 'bytes_written'
-        mov r9, rbx ; arg 4
-        mov rbx, 0
-        mov DWORD [rsp + 32], ebx ; arg 5
-        call WriteFile
-        add rsp, 48 ; pop arguments
-        mov rbx, rax ; get return value
-        
-        ; i++
-        lea rbx, QWORD [rbp + -20] ; get address of 'i'
+        ; arg++
+        lea rbx, QWORD [rbp + 16] ; get address of 'arg'
         mov r10, rbx
-        mov ebx, DWORD [rbx]
+        mov rbx, QWORD [rbx]
         mov r11, rbx
         inc r11
-        mov DWORD [r10], r11d
+        mov QWORD [r10], r11
         
     jmp L_loop0
     L_exit0:
     
     ; return arg_count
-    movsx rbx, DWORD [rbp + 16]
+    mov ebx, DWORD [rbp + -40]
     mov rax, rbx ; return via rax
     jmp L_function_main_exit
     

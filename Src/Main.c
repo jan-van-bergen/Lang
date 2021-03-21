@@ -20,12 +20,13 @@ bool match_arg(char const ** arg, char const * target) {
 }
 
 int main(int arg_count, char const * args[]) {
-	char const * filename = "Examples\\type_infer.lang";
+	char const * filename = "Examples\\eval.lang";
 
 	Compiler_Config config;
 	config.output = COMPILER_OUTPUT_EXE;
 	config.lib_count = 0;
 
+	// Parse args
 	if (arg_count > 1) {
 		filename = args[1];
 

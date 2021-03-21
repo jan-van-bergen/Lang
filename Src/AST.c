@@ -411,7 +411,7 @@ static void print_statement(AST_Statement const * stat, char * string, int * str
 		}
 
 		case AST_STATEMENT_BLOCK: {
-			print_statement(stat->stat_block.stat, string, string_offset, string_size, indent);
+			if (stat->stat_block.stat) print_statement(stat->stat_block.stat, string, string_offset, string_size, indent);
 
 			break;
 		}

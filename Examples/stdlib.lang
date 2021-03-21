@@ -1,10 +1,12 @@
 export malloc;
 export free;
 
+export exit;
 export assert;
 
 export strlen;
 export puts;
+export print_num;
 
 extern GetProcessHeap() -> void *;
 extern HeapAlloc(heap: void *, flags: int, size: int)   -> void *;
@@ -34,9 +36,13 @@ func free(ptr: void *) -> void {
 	HeapFree(heap, 0, ptr);
 }
 
+func exit(status: int) -> void {
+	ExitProcess(status);
+}
+
 func assert(expression: bool) -> void {
 	if (!expression) {
-		ExitProcess(1);
+		exit(1);
 	}
 }
 
@@ -57,4 +63,31 @@ func puts(str: char *) -> void {
 
 	let bytes_written: int;
 	WriteFile(std_handle, str, len, &bytes_written, 0);
+}
+
+func print_num(num: int) -> void {
+	let num_str: char[32];
+	let idx: int = 0;
+
+	 // Calculate required string length
+	let n := num;
+	while (true) {
+		n = n / 10;
+		idx++;
+
+		if (n == 0) break;
+	}
+	
+	// Print number in reverse
+	num_str[idx--] = '\0';
+	
+	while (true) {
+		let digit: char = cast(char) (num % 10);		
+		num_str[idx--] = digit + '0';
+		
+		num = num / 10;
+		if (num == 0) break;
+	}
+	
+	puts(num_str);
 }

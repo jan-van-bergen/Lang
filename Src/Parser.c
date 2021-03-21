@@ -321,8 +321,7 @@ static AST_Expression * parser_parse_expression_dot_or_array_access(Parser * par
 			lhs = ast_make_expr_array_access(lhs, expr_index);
 		} else {
 			break;
-		}
-			
+		}		
 	}
 
 	return lhs;
@@ -547,17 +546,15 @@ static AST_Statement * parser_parse_statement_expr(Parser * parser) {
 static AST_Statement * parser_parse_statement_def_var(Parser * parser) {
 	parser_match_and_advance(parser, TOKEN_KEYWORD_LET);
 
-	char const * var_name =  parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
+	char const * var_name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
 	parser_match_and_advance(parser, TOKEN_COLON);
 
 	Type const * type = NULL;
-	
 	if (parser_match(parser, TOKEN_IDENTIFIER)) {
 		type = parser_parse_type(parser);
 	}
 
 	AST_Expression * expr_assign = NULL;
-
 	if (parser_match(parser, TOKEN_ASSIGN)) {
 		parser_advance(parser);
 
@@ -576,7 +573,6 @@ static AST_Statement * parser_parse_statement_def_var(Parser * parser) {
 			printf("ERROR: Variable definition missing both type and expression!\n");
 			error(ERROR_PARSER);
 		}
-
 		type = type_infer(expr_assign->expr_op_bin.expr_right, parser->current_scope);
 	}
 

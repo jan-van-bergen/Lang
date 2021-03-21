@@ -447,13 +447,13 @@ Type const * type_infer(AST_Expression const * expr, Scope const * scope) {
 		case AST_EXPRESSION_CALL_FUNC: return scope_get_function_def(scope, expr->expr_call.function_name)->return_type;
 
 		case AST_EXPRESSION_ARRAY_ACCESS: {
-			Type const * array_type = type_infer(expr->expr_array_access.expr_array, scope);
+			Type const * type = type_infer(expr->expr_array_access.expr_array, scope);
 
-			if (array_type->type != TYPE_ARRAY) {
+			if (!type_is_array(type) && !type_is_pointer(type)) {
 				error(ERROR_TYPECHECK);
 			}
 
-			return array_type->base;
+			return type->base;
 		}
 
 		case AST_EXPRESSION_STRUCT_MEMBER: {

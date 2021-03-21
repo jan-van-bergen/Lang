@@ -1,0 +1,85 @@
+extern exit(status: int);
+extern puts(str: char *);
+
+func skip_space(cur: char **) {
+	while (**cur == ' ') (*cur)++;
+}
+
+func is_digit(c: char) -> bool {
+	return c >= '0' && c <= '9';
+}
+
+func parse_expr_base(cur: char **) -> int {
+	skip_space(cur);
+
+	let c := **cur;
+
+	if (is_digit(c)) {
+		let num := 0;
+		
+		while (is_digit(c)) {
+			num = num * 10 + (c - '0');
+					
+			(*cur)++;
+			c = **cur;
+		}
+		
+		return num;
+	} else if (c == '(') {
+		(*cur)++;
+		
+		let expr: int = parse_expr(cur);
+		
+		skip_space(cur);	
+		(*cur)++; // Parse closing parens
+		
+		return expr;
+	} else {
+		puts("ERROR");
+		exit(0);
+	}
+}
+
+func parse_expr_mul(cur: char **) -> int {
+	let lhs := parse_expr_base(cur);
+	skip_space(cur);
+
+	while (**cur == '*') {
+		(*cur)++;
+		
+		let rhs := parse_expr_base(cur);
+		skip_space(cur);
+		
+		lhs = lhs * rhs;
+	}
+	
+	return lhs;
+}
+
+func parse_expr_add(cur: char **) -> int {
+	let lhs := parse_expr_mul(cur);
+	skip_space(cur);
+
+	while (**cur == '+') {
+		(*cur)++;
+		
+		let rhs := parse_expr_mul(cur);
+		skip_space(cur);
+		
+		lhs = lhs + rhs;
+	}
+	
+	return lhs;
+}
+
+func parse_expr(cur: char **) -> int {
+	return parse_expr_add(cur);
+}
+
+func main(arg: char *) -> int {
+	let cur := arg;
+	while (*(cur++) != ' ') { }
+
+	let result := parse_expr(&cur);
+	return result;
+}

@@ -1879,23 +1879,14 @@ static void codegen_statement_program(Context * ctx, AST_Statement const * stat)
 
 			if (main_def->arg_count == 0) {
 				main_valid = true;
-			} else if (main_def->arg_count == 2) {
-				bool arg_0_valid = 
-					type_is_i32(main_def->args[0].type) ||
-					type_is_i64(main_def->args[0].type) ||
-					type_is_u32(main_def->args[0].type) ||
-					type_is_u64(main_def->args[0].type); // Arg 0 should be integral type of at least 4 bytes
-
-				bool arg_1_valid = 
-					type_is_pointer(main_def->args[1].type) &&
-					type_is_pointer(main_def->args[1].type->base) &&
-					type_is_u8     (main_def->args[1].type->base->base); // Arg 1 should be pointer to strings
-
-				main_valid = arg_0_valid && arg_1_valid;
+			} else if (main_def->arg_count == 1) {
+				main_valid = 
+					type_is_pointer(main_def->args[0].type) &&
+					type_is_u8     (main_def->args[0].type->base); // Arg should be pointer to char
 			}
 
 			if (!main_valid) {
-				type_error(ctx, "Entry point 'main' has invalid arguments!\nShould have either 0 arguments or 2 (int, char **)\n");
+				type_error(ctx, "Entry point 'main' has invalid arguments!\nShould have either 0 arguments or 1 (char *)\n");
 			}
 
 			context_emit_code(ctx, "global _start\n");
@@ -1903,45 +1894,7 @@ static void codegen_statement_program(Context * ctx, AST_Statement const * stat)
 			ctx->indent++;
 
 			context_emit_code(ctx, "call GetCommandLineA\n");
-			context_emit_code(ctx, "mov r10, rax\n");
-			context_emit_code(ctx, "xor rcx, rcx\n");
-			context_emit_code(ctx, "sub rsp, 8 * 64 ; Max 64 command line args\n");
-			context_emit_code(ctx, "mov rdx, rsp\n");
-
-			context_emit_code(ctx, "arg_loop_top:\n");
-			context_emit_code(ctx, "mov bl, BYTE [rax]\n");
-			context_emit_code(ctx, "test bl, bl\n");
-			context_emit_code(ctx, "jz arg_loop_exit\n");
-			context_emit_code(ctx, "cmp bl, ' '\n");
-			context_emit_code(ctx, "jne arg_loop_next\n");
-			context_emit_code(ctx, "cmp r10, rax\n");
-			context_emit_code(ctx, "je skip\n");
-
-			context_emit_code(ctx, "mov BYTE [rax], 0\n");
-			context_emit_code(ctx, "mov QWORD [rdx], r10\n");
-			context_emit_code(ctx, "add rdx, 8\n");
-			context_emit_code(ctx, "inc rcx\n");
-
-			context_emit_code(ctx, "skip:\n");
-			context_emit_code(ctx, "mov r10, rax\n");
-			context_emit_code(ctx, "inc r10\n");
-	
-			context_emit_code(ctx, "arg_loop_next:\n");
-			context_emit_code(ctx, "inc rax\n");
-			context_emit_code(ctx, "jmp arg_loop_top\n");
-
-			context_emit_code(ctx, "arg_loop_exit:\n");
-			context_emit_code(ctx, "mov al, BYTE [r10]\n");
-			context_emit_code(ctx, "cmp al, ' '\n");
-			context_emit_code(ctx, "je args_done\n");
-			context_emit_code(ctx, "cmp al, 0\n");
-			context_emit_code(ctx, "je args_done\n");
-			context_emit_code(ctx, "mov QWORD [rdx], r10\n");
-			context_emit_code(ctx, "inc rcx\n");
-
-			context_emit_code(ctx, "args_done:\n");
-			context_emit_code(ctx, "mov rdx, rsp\n");
-			context_emit_code(ctx, "sub rsp, 32\n");
+			context_emit_code(ctx, "mov rcx, rax\n");
 			context_emit_code(ctx, "call main\n");
 			context_emit_code(ctx, "mov ecx, eax\n");
 			context_emit_code(ctx, "call ExitProcess\n\n");

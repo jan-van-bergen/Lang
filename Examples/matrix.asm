@@ -7,272 +7,14 @@ section .code
 global _start
 _start:
     call GetCommandLineA
-    mov r10, rax
-    xor rcx, rcx
-    sub rsp, 8 * 64 ; Max 64 command line args
-    mov rdx, rsp
-    arg_loop_top:
-    mov bl, BYTE [rax]
-    test bl, bl
-    jz arg_loop_exit
-    cmp bl, ' '
-    jne arg_loop_next
-    cmp r10, rax
-    je skip
-    mov BYTE [rax], 0
-    mov QWORD [rdx], r10
-    add rdx, 8
-    inc rcx
-    skip:
-    mov r10, rax
-    inc r10
-    arg_loop_next:
-    inc rax
-    jmp arg_loop_top
-    arg_loop_exit:
-    mov al, BYTE [r10]
-    cmp al, ' '
-    je args_done
-    cmp al, 0
-    je args_done
-    mov QWORD [rdx], r10
-    inc rcx
-    args_done:
-    mov rdx, rsp
-    sub rsp, 32
+    mov rcx, rax
     call main
     mov ecx, eax
     call ExitProcess
 
-extern GetStdHandle
+extern puts
 
-extern WriteFile
-
-print:
-    push rbp ; save RBP
-    mov rbp, rsp ; stack frame
-    mov QWORD [rbp + 16], rcx ; push arg 0 
-    mov DWORD [rbp + 24], edx ; push arg 1 
-    sub rsp, 16 ; reserve stack space for 2 locals
-    
-    ; let std_handle: void*; std_handle = GetStdHandle(-11);
-    sub rsp, 32 ; reserve shadow space and 1 arguments
-    mov rbx, -11
-    mov rcx, rbx ; arg 1
-    call GetStdHandle
-    add rsp, 32 ; pop arguments
-    mov rbx, rax ; get return value
-    lea r10, QWORD [rbp + -16] ; get address of 'std_handle'
-    mov QWORD [r10], rbx
-    
-    ; let bytes_written: i32;
-    mov DWORD [rbp + -8], 0 ; zero initialize 'bytes_written'
-    
-    ; WriteFile(std_handle, str, str_len, &bytes_written, 0)
-    sub rsp, 48 ; reserve shadow space and 5 arguments
-    mov rbx, QWORD [rbp + -16]
-    mov rcx, rbx ; arg 1
-    mov rbx, QWORD [rbp + 16]
-    mov rdx, rbx ; arg 2
-    movsx rbx, DWORD [rbp + 24]
-    mov r8, rbx ; arg 3
-    lea rbx, QWORD [rbp + -8] ; get address of 'bytes_written'
-    mov r9, rbx ; arg 4
-    mov rbx, 0
-    mov DWORD [rsp + 32], ebx ; arg 5
-    call WriteFile
-    add rsp, 48 ; pop arguments
-    mov rbx, rax ; get return value
-    
-    xor rax, rax ; Default return value 0
-    L_function_print_exit:
-    mov rsp, rbp
-    pop rbp
-    ret
-    
-
-print_num:
-    push rbp ; save RBP
-    mov rbp, rsp ; stack frame
-    mov DWORD [rbp + 16], ecx ; push arg 0 
-    sub rsp, 32 ; reserve stack space for 5 locals
-    
-    ; let num_str: u8[8];
-    mov QWORD [rbp + -32], 0 ; zero initialize 'num_str'
-    
-    ; let idx: i32; idx = 0;
-    lea rbx, QWORD [rbp + -24] ; get address of 'idx'
-    mov r10, 0
-    mov DWORD [rbx], r10d
-    
-    ; if (num == 0)
-    movsx rbx, DWORD [rbp + 16]
-    mov r10, 0
-    cmp rbx, r10
-    sete bl
-    and bl, 1
-    movzx rbx, bl
-    cmp rbx, 0
-    je L_exit0
-        ; print("0 ", 2)
-        sub rsp, 32 ; reserve shadow space and 2 arguments
-        lea rbx, [REL lit_str_0]
-        mov rcx, rbx ; arg 1
-        mov rbx, 2
-        mov rdx, rbx ; arg 2
-        call print
-        add rsp, 32 ; pop arguments
-        mov rbx, rax ; get return value
-        
-        ; return
-        mov rax, 0
-        jmp L_function_print_num_exit
-        
-    L_exit0:
-    
-    ; while (num > 0)
-    L_loop1:
-    movsx rbx, DWORD [rbp + 16]
-    mov r10, 0
-    cmp rbx, r10
-    setg bl
-    and bl, 1
-    movzx rbx, bl
-    cmp rbx, 0
-    je L_exit1
-        ; let digit: u8; digit = cast(u8) num % 10;
-        movsx rbx, DWORD [rbp + 16]
-        mov r10, 10
-        mov rax, rbx
-        cqo
-        idiv r10
-        mov rbx, rdx
-        lea r10, QWORD [rbp + -20] ; get address of 'digit'
-        mov BYTE [r10], bl
-        
-        ; num_str[idx] = digit + '0'
-        lea rbx, QWORD [rbp + -32] ; get address of 'num_str'
-        movsx r10, DWORD [rbp + -24]
-        imul r10, 1
-        add rbx, r10
-        movzx r10, BYTE [rbp + -20]
-        mov r11, 48
-        add r10, r11
-        mov BYTE [rbx], r10b
-        
-        ; num = num / 10
-        movsx rbx, DWORD [rbp + 16]
-        mov r10, 10
-        mov rax, rbx
-        cqo
-        idiv r10
-        mov rbx, rax
-        lea r10, QWORD [rbp + 16] ; get address of 'num'
-        mov DWORD [r10], ebx
-        
-        ; idx = idx + 1
-        movsx rbx, DWORD [rbp + -24]
-        mov r10, 1
-        add rbx, r10
-        lea r10, QWORD [rbp + -24] ; get address of 'idx'
-        mov DWORD [r10], ebx
-        
-    jmp L_loop1
-    L_exit1:
-    
-    ; let i: i32; i = 0;
-    lea rbx, QWORD [rbp + -16] ; get address of 'i'
-    mov r10, 0
-    mov DWORD [rbx], r10d
-    
-    ; while (i < idx / 2)
-    L_loop2:
-    movsx rbx, DWORD [rbp + -24]
-    mov r10, 2
-    mov rax, rbx
-    cqo
-    idiv r10
-    mov rbx, rax
-    movsx r10, DWORD [rbp + -16]
-    cmp r10, rbx
-    setl r10b
-    and r10b, 1
-    movzx r10, r10b
-    cmp r10, 0
-    je L_exit2
-        ; let tmp: u8; tmp = num_str[i];
-        lea rbx, QWORD [rbp + -32] ; get address of 'num_str'
-        movsx r10, DWORD [rbp + -16]
-        imul r10, 1
-        add rbx, r10
-        movzx rbx, BYTE [rbx]
-        lea r10, QWORD [rbp + -12] ; get address of 'tmp'
-        mov BYTE [r10], bl
-        
-        ; num_str[i] = num_str[idx - i - 1]
-        movsx rbx, DWORD [rbp + -24]
-        movsx r10, DWORD [rbp + -16]
-        sub rbx, r10
-        mov r10, 1
-        sub rbx, r10
-        lea r10, QWORD [rbp + -32] ; get address of 'num_str'
-        imul rbx, 1
-        add r10, rbx
-        movzx r10, BYTE [r10]
-        lea rbx, QWORD [rbp + -32] ; get address of 'num_str'
-        movsx r11, DWORD [rbp + -16]
-        imul r11, 1
-        add rbx, r11
-        mov BYTE [rbx], r10b
-        
-        ; num_str[idx - i - 1] = tmp
-        movsx rbx, DWORD [rbp + -24]
-        movsx r10, DWORD [rbp + -16]
-        sub rbx, r10
-        mov r10, 1
-        sub rbx, r10
-        lea r10, QWORD [rbp + -32] ; get address of 'num_str'
-        imul rbx, 1
-        add r10, rbx
-        movzx rbx, BYTE [rbp + -12]
-        mov BYTE [r10], bl
-        
-        ; i++
-        lea rbx, QWORD [rbp + -16] ; get address of 'i'
-        mov r10, rbx
-        movsx rbx, DWORD [rbx]
-        mov r11, rbx
-        inc r11
-        mov DWORD [r10], r11d
-        
-    jmp L_loop2
-    L_exit2:
-    
-    ; *(num_str + idx) = ' '
-    lea rbx, QWORD [rbp + -32] ; get address of 'num_str'
-    movsx r10, DWORD [rbp + -24]
-    add rbx, r10
-    mov r10, 32
-    mov BYTE [rbx], r10b
-    
-    ; print(num_str, idx + 1)
-    sub rsp, 32 ; reserve shadow space and 2 arguments
-    lea rbx, QWORD [rbp + -32] ; get address of 'num_str'
-    mov rcx, rbx ; arg 1
-    movsx rbx, DWORD [rbp + -24]
-    mov r10, 1
-    add rbx, r10
-    mov rdx, rbx ; arg 2
-    call print
-    add rsp, 32 ; pop arguments
-    mov rbx, rax ; get return value
-    
-    xor rax, rax ; Default return value 0
-    L_function_print_num_exit:
-    mov rsp, rbp
-    pop rbp
-    ret
-    
+extern print_num
 
 vector_init:
     push rbp ; save RBP
@@ -363,7 +105,7 @@ matrix_identity:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_1]
+    movss xmm4, DWORD [REL lit_flt_0]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 0, 1) = 0.000000f
@@ -377,7 +119,7 @@ matrix_identity:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_2]
+    movss xmm4, DWORD [REL lit_flt_1]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 0, 2) = 0.000000f
@@ -391,7 +133,7 @@ matrix_identity:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_3]
+    movss xmm4, DWORD [REL lit_flt_2]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 0, 3) = 0.000000f
@@ -405,7 +147,7 @@ matrix_identity:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_4]
+    movss xmm4, DWORD [REL lit_flt_3]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 1, 0) = 0.000000f
@@ -419,7 +161,7 @@ matrix_identity:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_5]
+    movss xmm4, DWORD [REL lit_flt_4]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 1, 1) = 1.000000f
@@ -433,7 +175,7 @@ matrix_identity:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_6]
+    movss xmm4, DWORD [REL lit_flt_5]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 1, 2) = 0.000000f
@@ -447,7 +189,7 @@ matrix_identity:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_7]
+    movss xmm4, DWORD [REL lit_flt_6]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 1, 3) = 0.000000f
@@ -461,7 +203,7 @@ matrix_identity:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_8]
+    movss xmm4, DWORD [REL lit_flt_7]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 2, 0) = 0.000000f
@@ -475,7 +217,7 @@ matrix_identity:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_9]
+    movss xmm4, DWORD [REL lit_flt_8]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 2, 1) = 0.000000f
@@ -489,7 +231,7 @@ matrix_identity:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_10]
+    movss xmm4, DWORD [REL lit_flt_9]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 2, 2) = 1.000000f
@@ -503,7 +245,7 @@ matrix_identity:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_11]
+    movss xmm4, DWORD [REL lit_flt_10]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 2, 3) = 0.000000f
@@ -517,7 +259,7 @@ matrix_identity:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_12]
+    movss xmm4, DWORD [REL lit_flt_11]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 3, 0) = 0.000000f
@@ -531,7 +273,7 @@ matrix_identity:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_13]
+    movss xmm4, DWORD [REL lit_flt_12]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 3, 1) = 0.000000f
@@ -545,7 +287,7 @@ matrix_identity:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_14]
+    movss xmm4, DWORD [REL lit_flt_13]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 3, 2) = 0.000000f
@@ -559,7 +301,7 @@ matrix_identity:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_15]
+    movss xmm4, DWORD [REL lit_flt_14]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 3, 3) = 1.000000f
@@ -573,7 +315,7 @@ matrix_identity:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_16]
+    movss xmm4, DWORD [REL lit_flt_15]
     movss DWORD [rbx], xmm4
     
     xor rax, rax ; Default return value 0
@@ -602,7 +344,7 @@ matrix_translate:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_17]
+    movss xmm4, DWORD [REL lit_flt_16]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 0, 1) = 0.000000f
@@ -616,7 +358,7 @@ matrix_translate:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_18]
+    movss xmm4, DWORD [REL lit_flt_17]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 0, 2) = 0.000000f
@@ -630,7 +372,7 @@ matrix_translate:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_19]
+    movss xmm4, DWORD [REL lit_flt_18]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 0, 3) = x
@@ -658,7 +400,7 @@ matrix_translate:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_20]
+    movss xmm4, DWORD [REL lit_flt_19]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 1, 1) = 1.000000f
@@ -672,7 +414,7 @@ matrix_translate:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_21]
+    movss xmm4, DWORD [REL lit_flt_20]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 1, 2) = 0.000000f
@@ -686,7 +428,7 @@ matrix_translate:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_22]
+    movss xmm4, DWORD [REL lit_flt_21]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 1, 3) = y
@@ -714,7 +456,7 @@ matrix_translate:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_23]
+    movss xmm4, DWORD [REL lit_flt_22]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 2, 1) = 0.000000f
@@ -728,7 +470,7 @@ matrix_translate:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_24]
+    movss xmm4, DWORD [REL lit_flt_23]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 2, 2) = 1.000000f
@@ -742,7 +484,7 @@ matrix_translate:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_25]
+    movss xmm4, DWORD [REL lit_flt_24]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 2, 3) = z
@@ -770,7 +512,7 @@ matrix_translate:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_26]
+    movss xmm4, DWORD [REL lit_flt_25]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 3, 1) = 0.000000f
@@ -784,7 +526,7 @@ matrix_translate:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_27]
+    movss xmm4, DWORD [REL lit_flt_26]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 3, 2) = 0.000000f
@@ -798,7 +540,7 @@ matrix_translate:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_28]
+    movss xmm4, DWORD [REL lit_flt_27]
     movss DWORD [rbx], xmm4
     
     ; *matrix_index(matrix, 3, 3) = 1.000000f
@@ -812,7 +554,7 @@ matrix_translate:
     call matrix_index
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
-    movss xmm4, DWORD [REL lit_flt_29]
+    movss xmm4, DWORD [REL lit_flt_28]
     movss DWORD [rbx], xmm4
     
     xor rax, rax ; Default return value 0
@@ -830,8 +572,9 @@ matrix_scale:
     movss DWORD [rbp + 32], xmm2 ; push arg 2 
     movss DWORD [rbp + 40], xmm3 ; push arg 3 
     
-    ; *matrix.cells[0] = x
-    mov rbx, QWORD [rbp + 16]
+    ; matrix.cells[0] = x
+    lea rbx, QWORD [rbp + 16] ; get address of 'matrix'
+    mov rbx, QWORD [rbx]
     add rbx, 0 ; member offset 'cells'
     mov r10, 0
     imul r10, 4
@@ -839,44 +582,49 @@ matrix_scale:
     movss xmm5, DWORD [rbp + 24]
     movss DWORD [rbx], xmm5
     
-    ; *matrix.cells[1] = 0.000000f
-    mov rbx, QWORD [rbp + 16]
+    ; matrix.cells[1] = 0.000000f
+    lea rbx, QWORD [rbp + 16] ; get address of 'matrix'
+    mov rbx, QWORD [rbx]
     add rbx, 0 ; member offset 'cells'
     mov r10, 1
+    imul r10, 4
+    add rbx, r10
+    movss xmm4, DWORD [REL lit_flt_29]
+    movss DWORD [rbx], xmm4
+    
+    ; matrix.cells[2] = 0.000000f
+    lea rbx, QWORD [rbp + 16] ; get address of 'matrix'
+    mov rbx, QWORD [rbx]
+    add rbx, 0 ; member offset 'cells'
+    mov r10, 2
     imul r10, 4
     add rbx, r10
     movss xmm4, DWORD [REL lit_flt_30]
     movss DWORD [rbx], xmm4
     
-    ; *matrix.cells[2] = 0.000000f
-    mov rbx, QWORD [rbp + 16]
+    ; matrix.cells[3] = 0.000000f
+    lea rbx, QWORD [rbp + 16] ; get address of 'matrix'
+    mov rbx, QWORD [rbx]
     add rbx, 0 ; member offset 'cells'
-    mov r10, 2
+    mov r10, 3
     imul r10, 4
     add rbx, r10
     movss xmm4, DWORD [REL lit_flt_31]
     movss DWORD [rbx], xmm4
     
-    ; *matrix.cells[3] = 0.000000f
-    mov rbx, QWORD [rbp + 16]
+    ; matrix.cells[4] = 0.000000f
+    lea rbx, QWORD [rbp + 16] ; get address of 'matrix'
+    mov rbx, QWORD [rbx]
     add rbx, 0 ; member offset 'cells'
-    mov r10, 3
+    mov r10, 4
     imul r10, 4
     add rbx, r10
     movss xmm4, DWORD [REL lit_flt_32]
     movss DWORD [rbx], xmm4
     
-    ; *matrix.cells[4] = 0.000000f
-    mov rbx, QWORD [rbp + 16]
-    add rbx, 0 ; member offset 'cells'
-    mov r10, 4
-    imul r10, 4
-    add rbx, r10
-    movss xmm4, DWORD [REL lit_flt_33]
-    movss DWORD [rbx], xmm4
-    
-    ; *matrix.cells[5] = y
-    mov rbx, QWORD [rbp + 16]
+    ; matrix.cells[5] = y
+    lea rbx, QWORD [rbp + 16] ; get address of 'matrix'
+    mov rbx, QWORD [rbx]
     add rbx, 0 ; member offset 'cells'
     mov r10, 5
     imul r10, 4
@@ -884,44 +632,49 @@ matrix_scale:
     movss xmm5, DWORD [rbp + 32]
     movss DWORD [rbx], xmm5
     
-    ; *matrix.cells[6] = 0.000000f
-    mov rbx, QWORD [rbp + 16]
+    ; matrix.cells[6] = 0.000000f
+    lea rbx, QWORD [rbp + 16] ; get address of 'matrix'
+    mov rbx, QWORD [rbx]
     add rbx, 0 ; member offset 'cells'
     mov r10, 6
+    imul r10, 4
+    add rbx, r10
+    movss xmm4, DWORD [REL lit_flt_33]
+    movss DWORD [rbx], xmm4
+    
+    ; matrix.cells[7] = 0.000000f
+    lea rbx, QWORD [rbp + 16] ; get address of 'matrix'
+    mov rbx, QWORD [rbx]
+    add rbx, 0 ; member offset 'cells'
+    mov r10, 7
     imul r10, 4
     add rbx, r10
     movss xmm4, DWORD [REL lit_flt_34]
     movss DWORD [rbx], xmm4
     
-    ; *matrix.cells[7] = 0.000000f
-    mov rbx, QWORD [rbp + 16]
+    ; matrix.cells[8] = 0.000000f
+    lea rbx, QWORD [rbp + 16] ; get address of 'matrix'
+    mov rbx, QWORD [rbx]
     add rbx, 0 ; member offset 'cells'
-    mov r10, 7
+    mov r10, 8
     imul r10, 4
     add rbx, r10
     movss xmm4, DWORD [REL lit_flt_35]
     movss DWORD [rbx], xmm4
     
-    ; *matrix.cells[8] = 0.000000f
-    mov rbx, QWORD [rbp + 16]
+    ; matrix.cells[9] = 0.000000f
+    lea rbx, QWORD [rbp + 16] ; get address of 'matrix'
+    mov rbx, QWORD [rbx]
     add rbx, 0 ; member offset 'cells'
-    mov r10, 8
+    mov r10, 9
     imul r10, 4
     add rbx, r10
     movss xmm4, DWORD [REL lit_flt_36]
     movss DWORD [rbx], xmm4
     
-    ; *matrix.cells[9] = 0.000000f
-    mov rbx, QWORD [rbp + 16]
-    add rbx, 0 ; member offset 'cells'
-    mov r10, 9
-    imul r10, 4
-    add rbx, r10
-    movss xmm4, DWORD [REL lit_flt_37]
-    movss DWORD [rbx], xmm4
-    
-    ; *matrix.cells[10] = z
-    mov rbx, QWORD [rbp + 16]
+    ; matrix.cells[10] = z
+    lea rbx, QWORD [rbp + 16] ; get address of 'matrix'
+    mov rbx, QWORD [rbx]
     add rbx, 0 ; member offset 'cells'
     mov r10, 10
     imul r10, 4
@@ -929,49 +682,54 @@ matrix_scale:
     movss xmm5, DWORD [rbp + 40]
     movss DWORD [rbx], xmm5
     
-    ; *matrix.cells[11] = 0.000000f
-    mov rbx, QWORD [rbp + 16]
+    ; matrix.cells[11] = 0.000000f
+    lea rbx, QWORD [rbp + 16] ; get address of 'matrix'
+    mov rbx, QWORD [rbx]
     add rbx, 0 ; member offset 'cells'
     mov r10, 11
+    imul r10, 4
+    add rbx, r10
+    movss xmm4, DWORD [REL lit_flt_37]
+    movss DWORD [rbx], xmm4
+    
+    ; matrix.cells[12] = 0.000000f
+    lea rbx, QWORD [rbp + 16] ; get address of 'matrix'
+    mov rbx, QWORD [rbx]
+    add rbx, 0 ; member offset 'cells'
+    mov r10, 12
     imul r10, 4
     add rbx, r10
     movss xmm4, DWORD [REL lit_flt_38]
     movss DWORD [rbx], xmm4
     
-    ; *matrix.cells[12] = 0.000000f
-    mov rbx, QWORD [rbp + 16]
+    ; matrix.cells[13] = 0.000000f
+    lea rbx, QWORD [rbp + 16] ; get address of 'matrix'
+    mov rbx, QWORD [rbx]
     add rbx, 0 ; member offset 'cells'
-    mov r10, 12
+    mov r10, 13
     imul r10, 4
     add rbx, r10
     movss xmm4, DWORD [REL lit_flt_39]
     movss DWORD [rbx], xmm4
     
-    ; *matrix.cells[13] = 0.000000f
-    mov rbx, QWORD [rbp + 16]
+    ; matrix.cells[14] = 0.000000f
+    lea rbx, QWORD [rbp + 16] ; get address of 'matrix'
+    mov rbx, QWORD [rbx]
     add rbx, 0 ; member offset 'cells'
-    mov r10, 13
+    mov r10, 14
     imul r10, 4
     add rbx, r10
     movss xmm4, DWORD [REL lit_flt_40]
     movss DWORD [rbx], xmm4
     
-    ; *matrix.cells[14] = 0.000000f
-    mov rbx, QWORD [rbp + 16]
-    add rbx, 0 ; member offset 'cells'
-    mov r10, 14
-    imul r10, 4
-    add rbx, r10
-    movss xmm4, DWORD [REL lit_flt_41]
-    movss DWORD [rbx], xmm4
-    
-    ; *matrix.cells[15] = 1.000000f
-    mov rbx, QWORD [rbp + 16]
+    ; matrix.cells[15] = 1.000000f
+    lea rbx, QWORD [rbp + 16] ; get address of 'matrix'
+    mov rbx, QWORD [rbx]
     add rbx, 0 ; member offset 'cells'
     mov r10, 15
     imul r10, 4
     add rbx, r10
-    movss xmm4, DWORD [REL lit_flt_42]
+    movss xmm4, DWORD [REL lit_flt_41]
     movss DWORD [rbx], xmm4
     
     xor rax, rax ; Default return value 0
@@ -988,17 +746,18 @@ matrix_index:
     mov DWORD [rbp + 24], edx ; push arg 1 
     mov DWORD [rbp + 32], r8d ; push arg 2 
     
-    ; return &*matrix.cells[i * 4 + j]
-    mov rbx, QWORD [rbp + 16]
-    add rbx, 0 ; member offset 'cells'
-    movsx r10, DWORD [rbp + 24]
-    mov r11, 4
-    imul r10, r11
-    movsx r11, DWORD [rbp + 32]
-    add r10, r11
-    imul r10, 4
+    ; return &matrix.cells[i * 4 + j]
+    movsx rbx, DWORD [rbp + 24]
+    mov r10, 4
+    imul rbx, r10
+    movsx r10, DWORD [rbp + 32]
     add rbx, r10
-    mov rax, rbx ; return via rax
+    lea r10, QWORD [rbp + 16] ; get address of 'matrix'
+    mov r10, QWORD [r10]
+    add r10, 0 ; member offset 'cells'
+    imul rbx, 4
+    add r10, rbx
+    mov rax, r10 ; return via rax
     jmp L_function_matrix_index_exit
     
     xor rax, rax ; Default return value 0
@@ -1023,7 +782,7 @@ matrix_multiply:
     mov DWORD [rbp + -12], 0 ; zero initialize 'j'
     
     ; while (i < 4)
-    L_loop3:
+    L_loop0:
     movsx rbx, DWORD [rbp + -16]
     mov r10, 4
     cmp rbx, r10
@@ -1031,14 +790,14 @@ matrix_multiply:
     and bl, 1
     movzx rbx, bl
     cmp rbx, 0
-    je L_exit3
+    je L_exit0
         ; j = 0
         lea rbx, QWORD [rbp + -12] ; get address of 'j'
         mov r10, 0
         mov DWORD [rbx], r10d
         
         ; while (j < 4)
-        L_loop4:
+        L_loop1:
         movsx rbx, DWORD [rbp + -12]
         mov r10, 4
         cmp rbx, r10
@@ -1046,7 +805,7 @@ matrix_multiply:
         and bl, 1
         movzx rbx, bl
         cmp rbx, 0
-        je L_exit4
+        je L_exit1
             ; *matrix_index(result, i, j) = *matrix_index(a, i, 0) * *matrix_index(b, 0, j) + *matrix_index(a, i, 1) * *matrix_index(b, 1, j) + *matrix_index(a, i, 2) * *matrix_index(b, 2, j) + *matrix_index(a, i, 3) * *matrix_index(b, 3, j)
             sub rsp, 32 ; reserve shadow space and 3 arguments
             mov rbx, QWORD [rbp + 16]
@@ -1163,8 +922,8 @@ matrix_multiply:
             inc r11
             mov DWORD [r10], r11d
             
-        jmp L_loop4
-        L_exit4:
+        jmp L_loop1
+        L_exit1:
         
         ; i++
         lea rbx, QWORD [rbp + -16] ; get address of 'i'
@@ -1174,8 +933,8 @@ matrix_multiply:
         inc r11
         mov DWORD [r10], r11d
         
-    jmp L_loop3
-    L_exit3:
+    jmp L_loop0
+    L_exit0:
     
     xor rax, rax ; Default return value 0
     L_function_matrix_multiply_exit:
@@ -1191,7 +950,7 @@ matrix_transform_position:
     mov QWORD [rbp + 24], rdx ; push arg 1 
     mov QWORD [rbp + 32], r8 ; push arg 2 
     
-    ; *result.x = *matrix_index(matrix, 0, 0) * *vector.x + *matrix_index(matrix, 0, 1) * *vector.y + *matrix_index(matrix, 0, 2) * *vector.z + *matrix_index(matrix, 0, 3)
+    ; result.x = *matrix_index(matrix, 0, 0) * vector.x + *matrix_index(matrix, 0, 1) * vector.y + *matrix_index(matrix, 0, 2) * vector.z + *matrix_index(matrix, 0, 3)
     sub rsp, 32 ; reserve shadow space and 3 arguments
     mov rbx, QWORD [rbp + 16]
     mov rcx, rbx ; arg 1
@@ -1203,7 +962,8 @@ matrix_transform_position:
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     movss xmm4, DWORD [rbx]
-    mov rbx, QWORD [rbp + 24]
+    lea rbx, QWORD [rbp + 24] ; get address of 'vector'
+    mov rbx, QWORD [rbx]
     add rbx, 0 ; member offset 'x'
     movss xmm5, DWORD [rbx]
     mulss xmm4, xmm5
@@ -1218,7 +978,8 @@ matrix_transform_position:
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     movss xmm5, DWORD [rbx]
-    mov rbx, QWORD [rbp + 24]
+    lea rbx, QWORD [rbp + 24] ; get address of 'vector'
+    mov rbx, QWORD [rbx]
     add rbx, 4 ; member offset 'y'
     movss xmm6, DWORD [rbx]
     mulss xmm5, xmm6
@@ -1234,7 +995,8 @@ matrix_transform_position:
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     movss xmm5, DWORD [rbx]
-    mov rbx, QWORD [rbp + 24]
+    lea rbx, QWORD [rbp + 24] ; get address of 'vector'
+    mov rbx, QWORD [rbx]
     add rbx, 8 ; member offset 'z'
     movss xmm6, DWORD [rbx]
     mulss xmm5, xmm6
@@ -1251,11 +1013,12 @@ matrix_transform_position:
     mov rbx, rax ; get return value
     movss xmm5, DWORD [rbx]
     addss xmm4, xmm5
-    mov rbx, QWORD [rbp + 32]
+    lea rbx, QWORD [rbp + 32] ; get address of 'result'
+    mov rbx, QWORD [rbx]
     add rbx, 0 ; member offset 'x'
     movss DWORD [rbx], xmm4
     
-    ; *result.y = *matrix_index(matrix, 1, 0) * *vector.x + *matrix_index(matrix, 1, 1) * *vector.y + *matrix_index(matrix, 1, 2) * *vector.z + *matrix_index(matrix, 1, 3)
+    ; result.y = *matrix_index(matrix, 1, 0) * vector.x + *matrix_index(matrix, 1, 1) * vector.y + *matrix_index(matrix, 1, 2) * vector.z + *matrix_index(matrix, 1, 3)
     sub rsp, 32 ; reserve shadow space and 3 arguments
     mov rbx, QWORD [rbp + 16]
     mov rcx, rbx ; arg 1
@@ -1267,7 +1030,8 @@ matrix_transform_position:
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     movss xmm4, DWORD [rbx]
-    mov rbx, QWORD [rbp + 24]
+    lea rbx, QWORD [rbp + 24] ; get address of 'vector'
+    mov rbx, QWORD [rbx]
     add rbx, 0 ; member offset 'x'
     movss xmm5, DWORD [rbx]
     mulss xmm4, xmm5
@@ -1282,7 +1046,8 @@ matrix_transform_position:
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     movss xmm5, DWORD [rbx]
-    mov rbx, QWORD [rbp + 24]
+    lea rbx, QWORD [rbp + 24] ; get address of 'vector'
+    mov rbx, QWORD [rbx]
     add rbx, 4 ; member offset 'y'
     movss xmm6, DWORD [rbx]
     mulss xmm5, xmm6
@@ -1298,7 +1063,8 @@ matrix_transform_position:
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     movss xmm5, DWORD [rbx]
-    mov rbx, QWORD [rbp + 24]
+    lea rbx, QWORD [rbp + 24] ; get address of 'vector'
+    mov rbx, QWORD [rbx]
     add rbx, 8 ; member offset 'z'
     movss xmm6, DWORD [rbx]
     mulss xmm5, xmm6
@@ -1315,11 +1081,12 @@ matrix_transform_position:
     mov rbx, rax ; get return value
     movss xmm5, DWORD [rbx]
     addss xmm4, xmm5
-    mov rbx, QWORD [rbp + 32]
+    lea rbx, QWORD [rbp + 32] ; get address of 'result'
+    mov rbx, QWORD [rbx]
     add rbx, 4 ; member offset 'y'
     movss DWORD [rbx], xmm4
     
-    ; *result.z = *matrix_index(matrix, 2, 0) * *vector.x + *matrix_index(matrix, 2, 1) * *vector.y + *matrix_index(matrix, 2, 2) * *vector.z + *matrix_index(matrix, 2, 3)
+    ; result.z = *matrix_index(matrix, 2, 0) * vector.x + *matrix_index(matrix, 2, 1) * vector.y + *matrix_index(matrix, 2, 2) * vector.z + *matrix_index(matrix, 2, 3)
     sub rsp, 32 ; reserve shadow space and 3 arguments
     mov rbx, QWORD [rbp + 16]
     mov rcx, rbx ; arg 1
@@ -1331,7 +1098,8 @@ matrix_transform_position:
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     movss xmm4, DWORD [rbx]
-    mov rbx, QWORD [rbp + 24]
+    lea rbx, QWORD [rbp + 24] ; get address of 'vector'
+    mov rbx, QWORD [rbx]
     add rbx, 0 ; member offset 'x'
     movss xmm5, DWORD [rbx]
     mulss xmm4, xmm5
@@ -1346,7 +1114,8 @@ matrix_transform_position:
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     movss xmm5, DWORD [rbx]
-    mov rbx, QWORD [rbp + 24]
+    lea rbx, QWORD [rbp + 24] ; get address of 'vector'
+    mov rbx, QWORD [rbx]
     add rbx, 4 ; member offset 'y'
     movss xmm6, DWORD [rbx]
     mulss xmm5, xmm6
@@ -1362,7 +1131,8 @@ matrix_transform_position:
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     movss xmm5, DWORD [rbx]
-    mov rbx, QWORD [rbp + 24]
+    lea rbx, QWORD [rbp + 24] ; get address of 'vector'
+    mov rbx, QWORD [rbx]
     add rbx, 8 ; member offset 'z'
     movss xmm6, DWORD [rbx]
     mulss xmm5, xmm6
@@ -1379,7 +1149,8 @@ matrix_transform_position:
     mov rbx, rax ; get return value
     movss xmm5, DWORD [rbx]
     addss xmm4, xmm5
-    mov rbx, QWORD [rbp + 32]
+    lea rbx, QWORD [rbp + 32] ; get address of 'result'
+    mov rbx, QWORD [rbx]
     add rbx, 8 ; member offset 'z'
     movss DWORD [rbx], xmm4
     
@@ -1397,7 +1168,7 @@ matrix_transform_direction:
     mov QWORD [rbp + 24], rdx ; push arg 1 
     mov QWORD [rbp + 32], r8 ; push arg 2 
     
-    ; *result.x = *matrix_index(matrix, 0, 0) * *vector.x + *matrix_index(matrix, 0, 1) * *vector.y + *matrix_index(matrix, 0, 2) * *vector.z
+    ; result.x = *matrix_index(matrix, 0, 0) * vector.x + *matrix_index(matrix, 0, 1) * vector.y + *matrix_index(matrix, 0, 2) * vector.z
     sub rsp, 32 ; reserve shadow space and 3 arguments
     mov rbx, QWORD [rbp + 16]
     mov rcx, rbx ; arg 1
@@ -1409,7 +1180,8 @@ matrix_transform_direction:
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     movss xmm4, DWORD [rbx]
-    mov rbx, QWORD [rbp + 24]
+    lea rbx, QWORD [rbp + 24] ; get address of 'vector'
+    mov rbx, QWORD [rbx]
     add rbx, 0 ; member offset 'x'
     movss xmm5, DWORD [rbx]
     mulss xmm4, xmm5
@@ -1424,7 +1196,8 @@ matrix_transform_direction:
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     movss xmm5, DWORD [rbx]
-    mov rbx, QWORD [rbp + 24]
+    lea rbx, QWORD [rbp + 24] ; get address of 'vector'
+    mov rbx, QWORD [rbx]
     add rbx, 4 ; member offset 'y'
     movss xmm6, DWORD [rbx]
     mulss xmm5, xmm6
@@ -1440,16 +1213,18 @@ matrix_transform_direction:
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     movss xmm5, DWORD [rbx]
-    mov rbx, QWORD [rbp + 24]
+    lea rbx, QWORD [rbp + 24] ; get address of 'vector'
+    mov rbx, QWORD [rbx]
     add rbx, 8 ; member offset 'z'
     movss xmm6, DWORD [rbx]
     mulss xmm5, xmm6
     addss xmm4, xmm5
-    mov rbx, QWORD [rbp + 32]
+    lea rbx, QWORD [rbp + 32] ; get address of 'result'
+    mov rbx, QWORD [rbx]
     add rbx, 0 ; member offset 'x'
     movss DWORD [rbx], xmm4
     
-    ; *result.y = *matrix_index(matrix, 1, 0) * *vector.x + *matrix_index(matrix, 1, 1) * *vector.y + *matrix_index(matrix, 1, 2) * *vector.z
+    ; result.y = *matrix_index(matrix, 1, 0) * vector.x + *matrix_index(matrix, 1, 1) * vector.y + *matrix_index(matrix, 1, 2) * vector.z
     sub rsp, 32 ; reserve shadow space and 3 arguments
     mov rbx, QWORD [rbp + 16]
     mov rcx, rbx ; arg 1
@@ -1461,7 +1236,8 @@ matrix_transform_direction:
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     movss xmm4, DWORD [rbx]
-    mov rbx, QWORD [rbp + 24]
+    lea rbx, QWORD [rbp + 24] ; get address of 'vector'
+    mov rbx, QWORD [rbx]
     add rbx, 0 ; member offset 'x'
     movss xmm5, DWORD [rbx]
     mulss xmm4, xmm5
@@ -1476,7 +1252,8 @@ matrix_transform_direction:
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     movss xmm5, DWORD [rbx]
-    mov rbx, QWORD [rbp + 24]
+    lea rbx, QWORD [rbp + 24] ; get address of 'vector'
+    mov rbx, QWORD [rbx]
     add rbx, 4 ; member offset 'y'
     movss xmm6, DWORD [rbx]
     mulss xmm5, xmm6
@@ -1492,16 +1269,18 @@ matrix_transform_direction:
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     movss xmm5, DWORD [rbx]
-    mov rbx, QWORD [rbp + 24]
+    lea rbx, QWORD [rbp + 24] ; get address of 'vector'
+    mov rbx, QWORD [rbx]
     add rbx, 8 ; member offset 'z'
     movss xmm6, DWORD [rbx]
     mulss xmm5, xmm6
     addss xmm4, xmm5
-    mov rbx, QWORD [rbp + 32]
+    lea rbx, QWORD [rbp + 32] ; get address of 'result'
+    mov rbx, QWORD [rbx]
     add rbx, 4 ; member offset 'y'
     movss DWORD [rbx], xmm4
     
-    ; *result.z = *matrix_index(matrix, 2, 0) * *vector.x + *matrix_index(matrix, 2, 1) * *vector.y + *matrix_index(matrix, 2, 2) * *vector.z
+    ; result.z = *matrix_index(matrix, 2, 0) * vector.x + *matrix_index(matrix, 2, 1) * vector.y + *matrix_index(matrix, 2, 2) * vector.z
     sub rsp, 32 ; reserve shadow space and 3 arguments
     mov rbx, QWORD [rbp + 16]
     mov rcx, rbx ; arg 1
@@ -1513,7 +1292,8 @@ matrix_transform_direction:
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     movss xmm4, DWORD [rbx]
-    mov rbx, QWORD [rbp + 24]
+    lea rbx, QWORD [rbp + 24] ; get address of 'vector'
+    mov rbx, QWORD [rbx]
     add rbx, 0 ; member offset 'x'
     movss xmm5, DWORD [rbx]
     mulss xmm4, xmm5
@@ -1528,7 +1308,8 @@ matrix_transform_direction:
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     movss xmm5, DWORD [rbx]
-    mov rbx, QWORD [rbp + 24]
+    lea rbx, QWORD [rbp + 24] ; get address of 'vector'
+    mov rbx, QWORD [rbx]
     add rbx, 4 ; member offset 'y'
     movss xmm6, DWORD [rbx]
     mulss xmm5, xmm6
@@ -1544,12 +1325,14 @@ matrix_transform_direction:
     add rsp, 32 ; pop arguments
     mov rbx, rax ; get return value
     movss xmm5, DWORD [rbx]
-    mov rbx, QWORD [rbp + 24]
+    lea rbx, QWORD [rbp + 24] ; get address of 'vector'
+    mov rbx, QWORD [rbx]
     add rbx, 8 ; member offset 'z'
     movss xmm6, DWORD [rbx]
     mulss xmm5, xmm6
     addss xmm4, xmm5
-    mov rbx, QWORD [rbp + 32]
+    lea rbx, QWORD [rbp + 32] ; get address of 'result'
+    mov rbx, QWORD [rbx]
     add rbx, 8 ; member offset 'z'
     movss DWORD [rbx], xmm4
     
@@ -1573,7 +1356,7 @@ matrix_trace:
     mov DWORD [rbp + -12], 0 ; zero initialize 'i'
     
     ; while (i < 4)
-    L_loop5:
+    L_loop2:
     movsx rbx, DWORD [rbp + -12]
     mov r10, 4
     cmp rbx, r10
@@ -1581,7 +1364,7 @@ matrix_trace:
     and bl, 1
     movzx rbx, bl
     cmp rbx, 0
-    je L_exit5
+    je L_exit2
         ; trace = trace + *matrix_index(matrix, i, i)
         sub rsp, 32 ; reserve shadow space and 3 arguments
         mov rbx, QWORD [rbp + 16]
@@ -1607,8 +1390,8 @@ matrix_trace:
         inc r11
         mov DWORD [r10], r11d
         
-    jmp L_loop5
-    L_exit5:
+    jmp L_loop2
+    L_exit2:
     
     ; return trace
     movss xmm5, DWORD [rbp + -16]
@@ -1626,94 +1409,95 @@ matrix_print:
     push rbp ; save RBP
     mov rbp, rsp ; stack frame
     mov QWORD [rbp + 16], rcx ; push arg 0 
-    sub rsp, 32 ; reserve stack space for 4 locals
+    sub rsp, 16 ; reserve stack space for 3 locals
     
     ; let i: i32;
-    mov DWORD [rbp + -32], 0 ; zero initialize 'i'
+    mov DWORD [rbp + -16], 0 ; zero initialize 'i'
     
     ; while (i < 4)
-    L_loop6:
-    movsx rbx, DWORD [rbp + -32]
+    L_loop3:
+    movsx rbx, DWORD [rbp + -16]
     mov r10, 4
     cmp rbx, r10
     setl bl
     and bl, 1
     movzx rbx, bl
     cmp rbx, 0
-    je L_exit6
+    je L_exit3
         ; let j: i32;
-        mov DWORD [rbp + -28], 0 ; zero initialize 'j'
+        mov DWORD [rbp + -12], 0 ; zero initialize 'j'
         
         ; while (j < 4)
-        L_loop7:
-        movsx rbx, DWORD [rbp + -28]
+        L_loop4:
+        movsx rbx, DWORD [rbp + -12]
         mov r10, 4
         cmp rbx, r10
         setl bl
         and bl, 1
         movzx rbx, bl
         cmp rbx, 0
-        je L_exit7
+        je L_exit4
             ; let num: i32; num = cast(i32) *matrix_index(matrix, i, j);
             sub rsp, 32 ; reserve shadow space and 3 arguments
             mov rbx, QWORD [rbp + 16]
             mov rcx, rbx ; arg 1
-            movsx rbx, DWORD [rbp + -32]
+            movsx rbx, DWORD [rbp + -16]
             mov rdx, rbx ; arg 2
-            movsx rbx, DWORD [rbp + -28]
+            movsx rbx, DWORD [rbp + -12]
             mov r8, rbx ; arg 3
             call matrix_index
             add rsp, 32 ; pop arguments
             mov rbx, rax ; get return value
             movss xmm4, DWORD [rbx]
             cvttss2si rbx, xmm4
-            lea r10, QWORD [rbp + -24] ; get address of 'num'
+            lea r10, QWORD [rbp + -8] ; get address of 'num'
             mov DWORD [r10], ebx
             
             ; print_num(num)
             sub rsp, 32 ; reserve shadow space and 1 arguments
-            movsx rbx, DWORD [rbp + -24]
+            movsx rbx, DWORD [rbp + -8]
             mov rcx, rbx ; arg 1
             call print_num
             add rsp, 32 ; pop arguments
             mov rbx, rax ; get return value
             
+            ; puts(" ")
+            sub rsp, 32 ; reserve shadow space and 1 arguments
+            lea rbx, [REL lit_str_42]
+            mov rcx, rbx ; arg 1
+            call puts
+            add rsp, 32 ; pop arguments
+            mov rbx, rax ; get return value
+            
             ; j++
-            lea rbx, QWORD [rbp + -28] ; get address of 'j'
+            lea rbx, QWORD [rbp + -12] ; get address of 'j'
             mov r10, rbx
             movsx rbx, DWORD [rbx]
             mov r11, rbx
             inc r11
             mov DWORD [r10], r11d
             
-        jmp L_loop7
-        L_exit7:
+        jmp L_loop4
+        L_exit4:
         
-        ; let newline: u8*; newline = "\n";
-        lea rbx, QWORD [rbp + -16] ; get address of 'newline'
-        lea r10, [REL lit_str_43]
-        mov QWORD [rbx], r10
-        
-        ; print(newline, 1)
-        sub rsp, 32 ; reserve shadow space and 2 arguments
-        mov rbx, QWORD [rbp + -16]
+        ; puts("\n")
+        sub rsp, 32 ; reserve shadow space and 1 arguments
+        lea rbx, [REL lit_str_43]
         mov rcx, rbx ; arg 1
-        mov rbx, 1
-        mov rdx, rbx ; arg 2
-        call print
+        call puts
         add rsp, 32 ; pop arguments
         mov rbx, rax ; get return value
         
         ; i++
-        lea rbx, QWORD [rbp + -32] ; get address of 'i'
+        lea rbx, QWORD [rbp + -16] ; get address of 'i'
         mov r10, rbx
         movsx rbx, DWORD [rbx]
         mov r11, rbx
         inc r11
         mov DWORD [r10], r11d
         
-    jmp L_loop6
-    L_exit6:
+    jmp L_loop3
+    L_exit3:
     
     xor rax, rax ; Default return value 0
     L_function_matrix_print_exit:
@@ -1853,36 +1637,36 @@ main:
 
 
 section .data
-lit_str_0 db "0 ", 0
-lit_flt_1 dq 3f800000h ; 1.000000f
+lit_flt_0 dq 3f800000h ; 1.000000f
+lit_flt_1 dq 0h ; 0.000000f
 lit_flt_2 dq 0h ; 0.000000f
 lit_flt_3 dq 0h ; 0.000000f
 lit_flt_4 dq 0h ; 0.000000f
-lit_flt_5 dq 0h ; 0.000000f
-lit_flt_6 dq 3f800000h ; 1.000000f
+lit_flt_5 dq 3f800000h ; 1.000000f
+lit_flt_6 dq 0h ; 0.000000f
 lit_flt_7 dq 0h ; 0.000000f
 lit_flt_8 dq 0h ; 0.000000f
 lit_flt_9 dq 0h ; 0.000000f
-lit_flt_10 dq 0h ; 0.000000f
-lit_flt_11 dq 3f800000h ; 1.000000f
+lit_flt_10 dq 3f800000h ; 1.000000f
+lit_flt_11 dq 0h ; 0.000000f
 lit_flt_12 dq 0h ; 0.000000f
 lit_flt_13 dq 0h ; 0.000000f
 lit_flt_14 dq 0h ; 0.000000f
-lit_flt_15 dq 0h ; 0.000000f
+lit_flt_15 dq 3f800000h ; 1.000000f
 lit_flt_16 dq 3f800000h ; 1.000000f
-lit_flt_17 dq 3f800000h ; 1.000000f
+lit_flt_17 dq 0h ; 0.000000f
 lit_flt_18 dq 0h ; 0.000000f
 lit_flt_19 dq 0h ; 0.000000f
-lit_flt_20 dq 0h ; 0.000000f
-lit_flt_21 dq 3f800000h ; 1.000000f
+lit_flt_20 dq 3f800000h ; 1.000000f
+lit_flt_21 dq 0h ; 0.000000f
 lit_flt_22 dq 0h ; 0.000000f
 lit_flt_23 dq 0h ; 0.000000f
-lit_flt_24 dq 0h ; 0.000000f
-lit_flt_25 dq 3f800000h ; 1.000000f
+lit_flt_24 dq 3f800000h ; 1.000000f
+lit_flt_25 dq 0h ; 0.000000f
 lit_flt_26 dq 0h ; 0.000000f
 lit_flt_27 dq 0h ; 0.000000f
-lit_flt_28 dq 0h ; 0.000000f
-lit_flt_29 dq 3f800000h ; 1.000000f
+lit_flt_28 dq 3f800000h ; 1.000000f
+lit_flt_29 dq 0h ; 0.000000f
 lit_flt_30 dq 0h ; 0.000000f
 lit_flt_31 dq 0h ; 0.000000f
 lit_flt_32 dq 0h ; 0.000000f
@@ -1894,8 +1678,8 @@ lit_flt_37 dq 0h ; 0.000000f
 lit_flt_38 dq 0h ; 0.000000f
 lit_flt_39 dq 0h ; 0.000000f
 lit_flt_40 dq 0h ; 0.000000f
-lit_flt_41 dq 0h ; 0.000000f
-lit_flt_42 dq 3f800000h ; 1.000000f
+lit_flt_41 dq 3f800000h ; 1.000000f
+lit_str_42 db " ", 0
 lit_str_43 db "", 0Ah, "", 0
 lit_flt_44 dq 40000000h ; 2.000000f
 lit_flt_45 dq 0h ; 0.000000f
