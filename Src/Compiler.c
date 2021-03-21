@@ -74,13 +74,13 @@ void compile_file(char const * filename, Compiler_Config const * config) {
 	switch (config->output) {
 		case COMPILER_OUTPUT_LIB: {
 			// Make .lib
-			sprintf_s(cmd, sizeof(cmd), "lib %s /out:\"%s\"", file_obj, file_lib);
+			sprintf_s(cmd, sizeof(cmd), "lib %s /out:\"%s\" /nologo", file_obj, file_lib);
 			break;
 		}
 
 		case COMPILER_OUTPUT_EXE: {
 			// Link
-			int cmd_offset = sprintf_s(cmd, sizeof(cmd), "link \"%s\" \"Examples\\stdlib.obj\" /out:\"%s\" /subsystem:console /entry:_start /debug /defaultlib:\"%s\" ",
+			int cmd_offset = sprintf_s(cmd, sizeof(cmd), "link \"%s\" \"Examples\\stdlib.obj\" /out:\"%s\" /subsystem:console /entry:_start /debug /nologo /defaultlib:\"%s\" ",
 				file_obj,
 				file_exe,
 				loc_kernel32
