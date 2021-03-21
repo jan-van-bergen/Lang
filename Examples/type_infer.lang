@@ -1,6 +1,14 @@
 func main () -> int {
-	let a := 2 + 270;
-	let str := "test";
+	let i := 2 + 270;
+	let s := "test";
+	let c := 'c';
 	
-	return a;
+	let xyz : float[3];	
+	let y := xyz[1];
+	
+	struct Test { member_0 : int; member_1 : float; }
+	let test : Test;
+	let mem_1 := test.member_1;
+	
+	return i;
 }

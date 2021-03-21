@@ -331,7 +331,9 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 	if (strcmp(str, "let")      == 0) { token->type = TOKEN_KEYWORD_LET;      return; }
 	if (strcmp(str, "cast")     == 0) { token->type = TOKEN_KEYWORD_CAST;     return; }
 	if (strcmp(str, "sizeof")   == 0) { token->type = TOKEN_KEYWORD_SIZEOF;   return; }
+	if (strcmp(str, "null")     == 0) { token->type = TOKEN_KEYWORD_NULL;     return; }
 	if (strcmp(str, "extern")   == 0) { token->type = TOKEN_KEYWORD_EXTERN;   return; }
+	if (strcmp(str, "export")   == 0) { token->type = TOKEN_KEYWORD_EXPORT;   return; }
 	if (strcmp(str, "if")       == 0) { token->type = TOKEN_KEYWORD_IF;       return; }
 	if (strcmp(str, "else")     == 0) { token->type = TOKEN_KEYWORD_ELSE;     return; }
 	if (strcmp(str, "while")    == 0) { token->type = TOKEN_KEYWORD_WHILE;    return; }

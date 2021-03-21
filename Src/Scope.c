@@ -74,23 +74,11 @@ bool scope_is_global(Scope const * scope) {
 	return scope->prev == NULL;
 }
 
-static Variable * scope_lookup(Scope const * scope, char const * name) {
-	for (int i = 0; i < scope->indices_len; i++) {
-		int index = scope->indices[i];
-
-		if (strcmp(scope->variable_buffer->vars[index].name, name) == 0) {
-			return scope->variable_buffer->vars + index;
-		}
-	}
-
-	return NULL; // Not found
-}
-
 void scope_add_arg(Scope * scope, char const * name, Type const * type) {
 	assert(!scope_is_global(scope));
 	
 	// Check if a variable with this name already exists
-	if (scope_lookup(scope, name)) {
+	if (scope_lookup_variable(scope, name)) {
 		printf("ERROR: Argument with name '%s' already exists at this scope!\n", name);
 		error(ERROR_SCOPE);
 	}
@@ -126,7 +114,7 @@ void scope_add_arg(Scope * scope, char const * name, Type const * type) {
 
 void scope_add_var(Scope * scope, char const * name, Type const * type) {
 	// Check if a variable with this name already exists
-	if (scope_lookup(scope, name)) {
+	if (scope_lookup_variable(scope, name)) {
 		printf("ERROR: Variable with name '%s' already exists at this scope!\n", name);
 		error(ERROR_SCOPE);
 	}
@@ -179,9 +167,41 @@ Function_Def * scope_add_function_def(Scope * scope) {
 	return * function_def;
 }
 
+Variable * scope_lookup_variable(Scope const * scope, char const * name) {
+	for (int i = 0; i < scope->indices_len; i++) {
+		int index = scope->indices[i];
+
+		if (strcmp(scope->variable_buffer->vars[index].name, name) == 0) {
+			return scope->variable_buffer->vars + index;
+		}
+	}
+
+	return NULL; // Not found
+}
+
+Struct_Def * scope_lookup_struct_def(Scope const * scope, char const * name) {
+	for (int i = 0; i < scope->struct_defs_len; i++) {
+		if (strcmp(scope->struct_defs[i]->name, name) == 0) {
+			return scope->struct_defs[i];
+		}
+	}
+	
+	return NULL; // Not found
+}
+
+Function_Def * scope_lookup_function_def(Scope const * scope, char const * name) {
+	for (int i = 0; i < scope->function_defs_len; i++) {
+		if (strcmp(scope->function_defs[i]->name, name) == 0) {
+			return scope->function_defs[i];
+		}
+	}
+	
+	return NULL; // Not found
+}
+
 Variable * scope_get_variable(Scope const * scope, char const * name) {
 	while (true) {
-		Variable * var = scope_lookup(scope, name);
+		Variable * var = scope_lookup_variable(scope, name);
 		if (var) return var;
 
 		scope = scope->prev;
@@ -195,11 +215,8 @@ Variable * scope_get_variable(Scope const * scope, char const * name) {
 
 Struct_Def * scope_get_struct_def(Scope const * scope, char const * name) {
 	while (true) {
-		for (int i = 0; i < scope->struct_defs_len; i++) {
-			if (strcmp(scope->struct_defs[i]->name, name) == 0) {
-				return scope->struct_defs[i];
-			}
-		}
+		Struct_Def * struct_def = scope_lookup_struct_def(scope, name);
+		if (struct_def) return struct_def;
 
 		scope = scope->prev;
 
@@ -212,11 +229,8 @@ Struct_Def * scope_get_struct_def(Scope const * scope, char const * name) {
 
 Function_Def * scope_get_function_def(Scope const * scope, char const * name) {
 	while (true) {
-		for (int i = 0; i < scope->function_defs_len; i++) {
-			if (strcmp(scope->function_defs[i]->name, name) == 0) {
-				return scope->function_defs[i];
-			}
-		}
+		Function_Def * function = scope_lookup_function_def(scope, name);
+		if (function) return function;
 	
 		scope = scope->prev;
 

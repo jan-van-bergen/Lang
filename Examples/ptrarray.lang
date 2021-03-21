@@ -18,20 +18,20 @@ func print(str: char *) -> void {
 	WriteFile(std_handle, str, str_len, &bytes_written, 0);
 }
 
-let str_0: char * = "Hello\n";
-let str_1: char * = "\tworld\n";
-let str_2: char * = "Ola\n";
-let str_3: char * = "\tmundo\n";
-let str_4: char * = "Bye\n";
+let str_0 := "Hello\n";
+let str_1 := "\tworld\n";
+let str_2 := "Ola\n";
+let str_3 := "\tmundo\n";
+let str_4 := "Bye\n";
 
 func main() -> int {
 	let strings: char *[5];
 	
-	*(strings + 0 * sizeof(char *)) = str_0;
-	*(strings + 1 * sizeof(char *)) = str_1;
-	*(strings + 2 * sizeof(char *)) = str_2;
-	*(strings + 3 * sizeof(char *)) = str_3;
-	*(strings + 4 * sizeof(char *)) = str_4;
+	strings[0] = str_0;
+	strings[1] = str_1;
+	strings[2] = str_2;
+	strings[3] = str_3;
+	strings[4] = str_4;
 	
 	let i: int = 0;
 	while (i < 5) {

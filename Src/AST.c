@@ -198,6 +198,15 @@ AST_Statement * ast_make_stat_extern(Function_Def * function_def) {
 	return stat;
 }
 
+AST_Statement * ast_make_stat_export(char const * name) {
+	AST_Statement * stat = malloc(sizeof(AST_Statement));
+	stat->type = AST_STATEMENT_EXPORT;
+
+	stat->stat_export.name = name;
+
+	return stat;
+}
+
 AST_Statement * ast_make_stat_if(AST_Expression * condition, AST_Statement * case_true, AST_Statement * case_false) {
 	AST_Statement * stat = malloc(sizeof(AST_Statement));
 	stat->type = AST_STATEMENT_IF;
@@ -623,6 +632,12 @@ void ast_free_statement(AST_Statement * stat) {
 
 		case AST_STATEMENT_EXTERN: {
 			free(stat->stat_extern.function_def->name);
+
+			break;
+		}
+
+		case AST_STATEMENT_EXPORT: {
+			free(stat->stat_export.name);
 
 			break;
 		}

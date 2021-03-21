@@ -85,6 +85,7 @@ static bool parser_match_expression(Parser const * parser) {
 		parser_match(parser, TOKEN_LITERAL_BOOL)   ||
 		parser_match(parser, TOKEN_LITERAL_CHAR)   ||
 		parser_match(parser, TOKEN_LITERAL_STRING) ||
+		parser_match(parser, TOKEN_KEYWORD_NULL)   ||
 		parser_match(parser, TOKEN_PARENTESES_OPEN); // Subexpression
 }
 
@@ -106,6 +107,10 @@ static bool parser_match_statement_def_struct(Parser const * parser) {
 
 static bool parser_match_statement_extern(Parser const * parser) {
 	return parser_match(parser, TOKEN_KEYWORD_EXTERN);
+}
+
+static bool parser_match_statement_export(Parser const * parser) {
+	return parser_match(parser, TOKEN_KEYWORD_EXPORT);
 }
 
 static bool parser_match_statement_if(Parser const * parser) {
@@ -139,6 +144,7 @@ static bool parser_match_statement(Parser const * parser) {
 		parser_match_statement_def_func  (parser) ||
 		parser_match_statement_def_struct(parser) ||
 		parser_match_statement_extern(parser) ||
+		parser_match_statement_export(parser) ||
 		parser_match_statement_if   (parser) ||
 		parser_match_statement_while(parser) ||
 		parser_match_statement_break   (parser) ||
@@ -256,12 +262,13 @@ static AST_Expression * parser_parse_expression_elementary(Parser * parser) {
 			return ast_make_expr_var(identifier->value_str);
 		}
 	} else if (
-		parser_match(parser, TOKEN_LITERAL_INT)  ||
-		parser_match(parser, TOKEN_LITERAL_F32)  ||
-		parser_match(parser, TOKEN_LITERAL_F64)  ||
-		parser_match(parser, TOKEN_LITERAL_BOOL) ||
-		parser_match(parser, TOKEN_LITERAL_CHAR) ||
-		parser_match(parser, TOKEN_LITERAL_STRING)
+		parser_match(parser, TOKEN_LITERAL_INT)    ||
+		parser_match(parser, TOKEN_LITERAL_F32)    ||
+		parser_match(parser, TOKEN_LITERAL_F64)    ||
+		parser_match(parser, TOKEN_LITERAL_BOOL)   ||
+		parser_match(parser, TOKEN_LITERAL_CHAR)   ||
+		parser_match(parser, TOKEN_LITERAL_STRING) ||
+		parser_match(parser, TOKEN_KEYWORD_NULL)
 	) {
 		return ast_make_expr_const(parser_advance(parser));
 	} else if (parser_match(parser, TOKEN_KEYWORD_CAST)) {
@@ -647,16 +654,16 @@ static AST_Statement * parser_parse_statement_def_func(Parser * parser) {
 
 	parser->current_variable_buffer = buffer_vars;
 
-	AST_Statement * body = parser_parse_statement_block(parser);
-
 	for (int i = 0; i < function_def->arg_count; i++) {
 		AST_Def_Arg * arg = &function_def->args[i];
 		scope_add_arg(scope_args, arg->name, arg->type);
 	}
+	
+	AST_Statement * body = parser_parse_statement_block(parser);
 
 	parser->current_variable_buffer = prev_variable_buffer; // Pop Variable Buffer
 	parser->current_scope = parser->current_scope->prev;
-
+	
 	return ast_make_stat_def_func(function_def, buffer_args, buffer_vars, scope_args, body);
 }
 
@@ -711,6 +718,16 @@ static AST_Statement * parser_parse_statement_extern(Parser * parser) {
 	parser_match_and_advance(parser, TOKEN_SEMICOLON);
 
 	return ast_make_stat_extern(function_def);
+}
+
+static AST_Statement * parser_parse_statement_export(Parser * parser) {
+	parser_match_and_advance(parser, TOKEN_KEYWORD_EXPORT);
+
+	char const * name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
+
+	parser_match_and_advance(parser, TOKEN_SEMICOLON);
+
+	return ast_make_stat_export(name);
 }
 
 static AST_Statement * parser_parse_statement_if(Parser * parser) {
@@ -807,6 +824,8 @@ static AST_Statement * parser_parse_statement(Parser * parser) {
 		return parser_parse_statement_def_struct(parser);
 	} else if (parser_match_statement_extern(parser)) {
 		return parser_parse_statement_extern(parser);
+	} else if (parser_match_statement_export(parser)) {
+		return parser_parse_statement_export(parser);
 	} else if (parser_match_statement_if(parser)) {
 		return parser_parse_statement_if(parser);
 	} else if (parser_match_statement_while(parser)) {

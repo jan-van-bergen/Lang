@@ -1,0 +1,84 @@
+extern malloc(size: int) -> void *;
+extern free(ptr: void *);
+
+struct Linked_List {
+	value : int;
+	next  : Linked_List *;
+}
+
+// Constructor
+func list_make_elem(value: int) -> Linked_List * {
+	let elem := cast(Linked_List *) malloc(sizeof(Linked_List));
+	(*elem).value = value;
+	(*elem).next  = null;
+	
+	return elem;
+}
+
+// Appends new element to the list
+func list_append(list: Linked_List *, value: int) -> Linked_List * {
+	let elem := list_make_elem(value);
+	
+	if (list != null) {
+		while ((*list).next != cast(Linked_List *) 0) {
+			list = (*list).next;
+		}
+		(*list).next = elem;
+	}
+	
+	return elem;
+} 
+
+// Deletes element with given value from the list
+func list_delete(list: Linked_List *, value: int) -> bool {
+	if (list == null) return false;
+	
+	let curr := list;
+	let next := (*curr).next;
+	
+	while (true) {
+		if (next == null) return false;
+		
+		if ((*next).value == value) break;
+		
+		curr = next;
+		next = (*next).next;
+	}
+	
+	(*curr).next = (*next).next;	
+	free(next);
+	
+	return true;
+}
+
+func list_length(list: Linked_List *) -> int {
+	if (list == null) return 0;
+	
+	let length := 1;
+	
+	while ((*list).next != null) {
+		list = (*list).next;
+		length++;
+	}
+	
+	return length;
+} 
+
+func main() -> int {
+	let head := list_make_elem(3);
+	
+	list_append(head, 2);
+	list_append(head, 1);
+	list_append(head, 0);
+	list_append(head, 9);
+	list_append(head, 8);
+	list_append(head, 7);
+	list_append(head, 6);
+	list_append(head, 5);
+	list_append(head, 4);
+	list_append(head, 3);
+	
+	list_delete(head, 8);
+	
+	return list_length(head);
+}

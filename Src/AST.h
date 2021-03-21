@@ -96,6 +96,7 @@ typedef enum AST_Statement_Type {
 	AST_STATEMENT_DEF_VAR,
 	AST_STATEMENT_DEF_FUNC,
 	AST_STATEMENT_EXTERN,
+	AST_STATEMENT_EXPORT,
 
 	AST_STATEMENT_IF,
 	AST_STATEMENT_WHILE,
@@ -157,6 +158,10 @@ typedef struct AST_Statement {
 		struct Extern {
 			Function_Def * function_def;
 		} stat_extern;
+		
+		struct Export {
+			char const * name;
+		} stat_export;
 
 		struct If {
 			struct AST_Expression * condition;
@@ -202,6 +207,7 @@ AST_Statement * ast_make_stat_expr(AST_Expression * expr);
 AST_Statement * ast_make_stat_def_var (char const * name, Type const * type, AST_Expression * assign);
 AST_Statement * ast_make_stat_def_func(Function_Def * function_def, Variable_Buffer * buffer_args, Variable_Buffer * buffer_vars, Scope * scope_args, AST_Statement * body);
 AST_Statement * ast_make_stat_extern  (Function_Def * function_def);
+AST_Statement * ast_make_stat_export  (char const * name);
 
 AST_Statement * ast_make_stat_if   (AST_Expression * condition, AST_Statement * case_true, AST_Statement * case_false);
 AST_Statement * ast_make_stat_while(AST_Expression * condition, AST_Statement * body);

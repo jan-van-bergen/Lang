@@ -35,6 +35,7 @@ typedef enum Context_Flags {
 } Context_Flags;
 
 typedef struct Context {
+	bool needs_main;
 	bool emit_debug_lines;
 
 	int reg_mask_scratch; // Scratch registers currently in use
@@ -63,6 +64,7 @@ typedef struct Context {
 } Context;
 
 static void context_init(Context * ctx) {
+	ctx->needs_main       = true;
 	ctx->emit_debug_lines = true;
 
 	ctx->reg_mask_scratch = 0;
@@ -478,6 +480,11 @@ static Result codegen_expression_const(Context * ctx, AST_Expression const * exp
 
 		case TOKEN_LITERAL_BOOL: {
 			context_emit_code(ctx, "mov %s, %i\n", get_reg_name_scratch(result.reg, 8), expr->expr_const.token.value_int);
+			break;
+		}
+
+		case TOKEN_KEYWORD_NULL: {
+			context_emit_code(ctx, "mov %s, 0\n", get_reg_name_scratch(result.reg, 8));
 			break;
 		}
 
@@ -1318,8 +1325,8 @@ static Result codegen_expression_op_post(Context * ctx, AST_Expression const * e
 			context_reg_free(ctx, reg_address);
 			context_reg_free(ctx, reg_value);
 
-			if (!type_is_integral(result.type)) {
-				type_error(ctx, "Operator '++' requires operand of integral type");
+			if (!type_is_integral(result.type) && !type_is_pointer(result.type)) {
+				type_error(ctx, "Operator '++' requires operand of integral or pointer type");
 			}
 
 			break;
@@ -1342,8 +1349,8 @@ static Result codegen_expression_op_post(Context * ctx, AST_Expression const * e
 			context_reg_free(ctx, reg_address);
 			context_reg_free(ctx, reg_value);
 
-			if (!type_is_integral(result.type)) {
-				type_error(ctx, "Operator '--' requires operand of integral type");
+			if (!type_is_integral(result.type) && !type_is_pointer(result.type)) {
+				type_error(ctx, "Operator '--' requires operand of integral or pointer type");
 			}
 
 			break;
@@ -1677,7 +1684,13 @@ static void codegen_statement_def_func(Context * ctx, AST_Statement const * stat
 static void codegen_statement_extern(Context * ctx, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_EXTERN);
 
-	context_emit_code(ctx, "EXTERN %s\n", stat->stat_extern.function_def->name);
+	context_emit_code(ctx, "extern %s\n", stat->stat_extern.function_def->name);
+}
+
+static void codegen_statement_export(Context * ctx, AST_Statement const * stat) {
+	assert(stat->type == AST_STATEMENT_EXPORT);
+
+	context_emit_code(ctx, "global %s\n", stat->stat_export.name);
 }
 
 static void codegen_statement_if(Context * ctx, AST_Statement const * stat) {
@@ -1850,78 +1863,88 @@ static void codegen_statement_program(Context * ctx, AST_Statement const * stat)
 
 	ctx->current_scope = stat->stat_program.global_scope;
 
-	Function_Def * main_def = scope_get_function_def(ctx->current_scope, "main");
+	Function_Def * main_def = scope_lookup_function_def(ctx->current_scope, "main");
 	
-	bool main_valid = false;
+	if (main_def) {
+		if (ctx->needs_main) {
+			bool main_valid = false;
 
-	if (main_def->arg_count == 0) {
-		main_valid = true;
-	} else if (main_def->arg_count == 2) {
-		bool arg_0_valid = 
-			type_is_i32(main_def->args[0].type) ||
-			type_is_i64(main_def->args[0].type) ||
-			type_is_u32(main_def->args[0].type) ||
-			type_is_u64(main_def->args[0].type); // Arg 0 should be integral type of at least 4 bytes
+			if (main_def->arg_count == 0) {
+				main_valid = true;
+			} else if (main_def->arg_count == 2) {
+				bool arg_0_valid = 
+					type_is_i32(main_def->args[0].type) ||
+					type_is_i64(main_def->args[0].type) ||
+					type_is_u32(main_def->args[0].type) ||
+					type_is_u64(main_def->args[0].type); // Arg 0 should be integral type of at least 4 bytes
 
-		bool arg_1_valid = 
-			type_is_pointer(main_def->args[1].type) &&
-			type_is_pointer(main_def->args[1].type->base) &&
-			type_is_u8     (main_def->args[1].type->base->base); // Arg 1 should be pointer to strings
+				bool arg_1_valid = 
+					type_is_pointer(main_def->args[1].type) &&
+					type_is_pointer(main_def->args[1].type->base) &&
+					type_is_u8     (main_def->args[1].type->base->base); // Arg 1 should be pointer to strings
 
-		main_valid = arg_0_valid && arg_1_valid;
-	}
+				main_valid = arg_0_valid && arg_1_valid;
+			}
 
-	if (!main_valid) {
-		type_error(ctx, "Entry point 'main' has invalid arguments!\nShould have either 0 arguments or 2 (int, char **)\n");
-	}
+			if (!main_valid) {
+				type_error(ctx, "Entry point 'main' has invalid arguments!\nShould have either 0 arguments or 2 (int, char **)\n");
+			}
 
-	context_emit_code(ctx, "_start:\n");
-	ctx->indent++;
+			context_emit_code(ctx, "global _start\n");
+			context_emit_code(ctx, "_start:\n");
+			ctx->indent++;
 
-	context_emit_code(ctx, "call GetCommandLineA\n");
-	context_emit_code(ctx, "mov r10, rax\n");
-	context_emit_code(ctx, "xor rcx, rcx\n");
-	context_emit_code(ctx, "sub rsp, 8 * 64 ; Max 64 command line args\n");
-	context_emit_code(ctx, "mov rdx, rsp\n");
+			context_emit_code(ctx, "call GetCommandLineA\n");
+			context_emit_code(ctx, "mov r10, rax\n");
+			context_emit_code(ctx, "xor rcx, rcx\n");
+			context_emit_code(ctx, "sub rsp, 8 * 64 ; Max 64 command line args\n");
+			context_emit_code(ctx, "mov rdx, rsp\n");
 
-	context_emit_code(ctx, "arg_loop_top:\n");
-	context_emit_code(ctx, "mov bl, BYTE [rax]\n");
-	context_emit_code(ctx, "test bl, bl\n");
-	context_emit_code(ctx, "jz arg_loop_exit\n");
-	context_emit_code(ctx, "cmp bl, ' '\n");
-	context_emit_code(ctx, "jne arg_loop_next\n");
-	context_emit_code(ctx, "cmp r10, rax\n");
-	context_emit_code(ctx, "je skip\n");
+			context_emit_code(ctx, "arg_loop_top:\n");
+			context_emit_code(ctx, "mov bl, BYTE [rax]\n");
+			context_emit_code(ctx, "test bl, bl\n");
+			context_emit_code(ctx, "jz arg_loop_exit\n");
+			context_emit_code(ctx, "cmp bl, ' '\n");
+			context_emit_code(ctx, "jne arg_loop_next\n");
+			context_emit_code(ctx, "cmp r10, rax\n");
+			context_emit_code(ctx, "je skip\n");
 
-	context_emit_code(ctx, "mov BYTE [rax], 0\n");
-	context_emit_code(ctx, "mov QWORD [rdx], r10\n");
-	context_emit_code(ctx, "add rdx, 8\n");
-	context_emit_code(ctx, "inc rcx\n");
+			context_emit_code(ctx, "mov BYTE [rax], 0\n");
+			context_emit_code(ctx, "mov QWORD [rdx], r10\n");
+			context_emit_code(ctx, "add rdx, 8\n");
+			context_emit_code(ctx, "inc rcx\n");
 
-	context_emit_code(ctx, "skip:\n");
-	context_emit_code(ctx, "mov r10, rax\n");
-	context_emit_code(ctx, "inc r10\n");
+			context_emit_code(ctx, "skip:\n");
+			context_emit_code(ctx, "mov r10, rax\n");
+			context_emit_code(ctx, "inc r10\n");
 	
-	context_emit_code(ctx, "arg_loop_next:\n");
-	context_emit_code(ctx, "inc rax\n");
-	context_emit_code(ctx, "jmp arg_loop_top\n");
+			context_emit_code(ctx, "arg_loop_next:\n");
+			context_emit_code(ctx, "inc rax\n");
+			context_emit_code(ctx, "jmp arg_loop_top\n");
 
-	context_emit_code(ctx, "arg_loop_exit:\n");
-	context_emit_code(ctx, "mov al, BYTE [r10]\n");
-	context_emit_code(ctx, "cmp al, ' '\n");
-	context_emit_code(ctx, "je args_done\n");
-	context_emit_code(ctx, "cmp al, 0\n");
-	context_emit_code(ctx, "je args_done\n");
-	context_emit_code(ctx, "mov QWORD [rdx], r10\n");
-	context_emit_code(ctx, "inc rcx\n");
+			context_emit_code(ctx, "arg_loop_exit:\n");
+			context_emit_code(ctx, "mov al, BYTE [r10]\n");
+			context_emit_code(ctx, "cmp al, ' '\n");
+			context_emit_code(ctx, "je args_done\n");
+			context_emit_code(ctx, "cmp al, 0\n");
+			context_emit_code(ctx, "je args_done\n");
+			context_emit_code(ctx, "mov QWORD [rdx], r10\n");
+			context_emit_code(ctx, "inc rcx\n");
 
-	context_emit_code(ctx, "args_done:\n");
-	context_emit_code(ctx, "mov rdx, rsp\n");
-	context_emit_code(ctx, "sub rsp, 32\n");
-	context_emit_code(ctx, "call main\n");
-	context_emit_code(ctx, "mov ecx, eax\n");
-	context_emit_code(ctx, "call ExitProcess\n\n");
-	ctx->indent--;
+			context_emit_code(ctx, "args_done:\n");
+			context_emit_code(ctx, "mov rdx, rsp\n");
+			context_emit_code(ctx, "sub rsp, 32\n");
+			context_emit_code(ctx, "call main\n");
+			context_emit_code(ctx, "mov ecx, eax\n");
+			context_emit_code(ctx, "call ExitProcess\n\n");
+			ctx->indent--;
+		} else {
+			puts("WARNING: A 'main' function was defined but was not needed for entry!");
+		}
+	} else if (ctx->needs_main) {
+		puts("ERROR: No function 'main' was defined!");
+		error(ERROR_CODEGEN);
+	}
 
 	codegen_statement(ctx, stat->stat_program.stat);
 }
@@ -1940,6 +1963,7 @@ static void codegen_statement(Context * ctx, AST_Statement const * stat) {
 		case AST_STATEMENT_DEF_VAR:  codegen_statement_def_var (ctx, stat); break;
 		case AST_STATEMENT_DEF_FUNC: codegen_statement_def_func(ctx, stat); break;
 		case AST_STATEMENT_EXTERN:   codegen_statement_extern  (ctx, stat); break;
+		case AST_STATEMENT_EXPORT:   codegen_statement_export  (ctx, stat); break;
 
 		case AST_STATEMENT_IF:    codegen_statement_if   (ctx, stat); break;
 		case AST_STATEMENT_WHILE: codegen_statement_while(ctx, stat); break;
@@ -1960,24 +1984,23 @@ static void codegen_statement(Context * ctx, AST_Statement const * stat) {
 	if (stat->type != AST_STATEMENTS) context_trace_pop(ctx);
 }
 
-char const * codegen_program(AST_Statement const * program) {
+char const * codegen_program(AST_Statement const * program, bool needs_main) {
 	Context ctx;
 	context_init(&ctx);
+	ctx.needs_main = needs_main;
 
 	char const asm_init[] =
 		"; Generated by Lang compiler\n\n"
 		
-		"GLOBAL _start\n\n"
-		
 		"extern GetCommandLineA\n"
 		"extern ExitProcess\n\n"
 		
-		"SECTION .code\n";
+		"section .code\n";
 
 	context_emit_code(&ctx, asm_init);
 	codegen_statement(&ctx, program);
 
-	context_emit_code(&ctx, "SECTION .data\n");
+	context_emit_code(&ctx, "section .data\n");
 	for (int i = 0; i < ctx.data_seg_len; i++) {
 		context_emit_code(&ctx, "%s\n", ctx.data_seg_vals[i]);
 	}

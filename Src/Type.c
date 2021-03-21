@@ -350,7 +350,19 @@ Type const * types_unify(Type const * a, Type const * b, Scope * scope) {
 	error(ERROR_TYPECHECK);
 }
 
-Type * type_infer(AST_Expression const * expr, Scope const * scope) {
+Type const * type_dereference(Type const * type) {
+	if (type->type != TYPE_POINTER) {
+		char str_type[128];
+		type_to_string(type, str_type, sizeof(str_type));
+
+		printf("ERROR: Attempt to dereference non-pointer type '%s'!\n", str_type);
+		error(ERROR_TYPECHECK);
+	}
+
+	return type->base;
+}
+
+Type const * type_infer(AST_Expression const * expr, Scope const * scope) {
 	switch (expr->type) {
 		case AST_EXPRESSION_CONST: {
 			Token_Type literal_type = expr->expr_const.token.type;
@@ -384,6 +396,8 @@ Type * type_infer(AST_Expression const * expr, Scope const * scope) {
 
 				case TOKEN_LITERAL_STRING: return make_type_pointer(make_type_u8());
 
+				case TOKEN_KEYWORD_NULL: return make_type_pointer(make_type_void());
+					
 				default: error(ERROR_UNKNOWN);
 			}
 		}
@@ -403,18 +417,8 @@ Type * type_infer(AST_Expression const * expr, Scope const * scope) {
 			Type const * type_inner = type_infer(expr->expr_op_pre.expr, scope);
 
 			switch (expr->expr_op_pre.token.type) {
-				case TOKEN_OPERATOR_BITWISE_AND: return make_type_pointer(type_inner); // Address of
-				case TOKEN_OPERATOR_MULTIPLY: {
-					if (!type_is_pointer(type_inner)) {
-						char str_type[128];
-						type_to_string(type_inner, str_type, sizeof(str_type));
-
-						printf("ERROR: Attempt to dereference non-pointer type '%s'!\n", str_type);
-						error(ERROR_TYPECHECK);
-					}
-
-					return type_inner->base;
-				}
+				case TOKEN_OPERATOR_BITWISE_AND: return make_type_pointer(type_inner); // Address of  (&)
+				case TOKEN_OPERATOR_MULTIPLY:    return type_dereference (type_inner); // Dereference (*)
 
 				case TOKEN_OPERATOR_INC:
 				case TOKEN_OPERATOR_DEC:
@@ -441,6 +445,29 @@ Type * type_infer(AST_Expression const * expr, Scope const * scope) {
 		case AST_EXPRESSION_CAST: return expr->expr_cast.new_type;
 
 		case AST_EXPRESSION_CALL_FUNC: return scope_get_function_def(scope, expr->expr_call.function_name)->return_type;
+
+		case AST_EXPRESSION_ARRAY_ACCESS: {
+			Type const * array_type = type_infer(expr->expr_array_access.expr_array, scope);
+
+			if (array_type->type != TYPE_ARRAY) {
+				error(ERROR_TYPECHECK);
+			}
+
+			return array_type->base;
+		}
+
+		case AST_EXPRESSION_STRUCT_MEMBER: {
+			Type const * struct_type = type_infer(expr->expr_struct_member.expr, scope);
+
+			if (!type_is_struct(struct_type)) {
+				error(ERROR_TYPECHECK);
+			}
+
+			Struct_Def * struct_def = scope_get_struct_def(scope, struct_type->struct_name);
+			Variable   * var_member = scope_get_variable(struct_def->member_scope, expr->expr_struct_member.member_name);
+
+			return var_member->type;
+		}
 	}
 
 	char str_expr[1024];

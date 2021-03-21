@@ -1,0 +1,60 @@
+export malloc;
+export free;
+
+export assert;
+
+export strlen;
+export puts;
+
+extern GetProcessHeap() -> void *;
+extern HeapAlloc(heap: void *, flags: int, size: int)   -> void *;
+extern HeapFree (heap: void *, flags: int, ptr: void *) -> void;
+
+extern GetStdHandle(std_handle: int) -> void *;
+extern WriteFile(handle: void *, buffer: void *, bytes_to_write: int, bytes_written: int *, overlapped: int) -> bool;
+
+extern ExitProcess(exit_code: int) -> void;
+
+let NULL: void * = 0;
+
+let heap: void *;
+
+func malloc(size: int) -> void * {
+	if (heap == NULL) {
+		heap = GetProcessHeap();
+	}
+	
+	return HeapAlloc(heap, 0, size);
+}
+
+func free(ptr: void *) -> void {
+	assert(ptr  != NULL);
+	assert(heap != NULL);
+	
+	HeapFree(heap, 0, ptr);
+}
+
+func assert(expression: bool) -> void {
+	if (!expression) {
+		ExitProcess(1);
+	}
+}
+
+func strlen(str: char *) -> int {
+	let start := str;
+	
+	while (*str != '\0') str++;
+	
+	return str - start;
+}
+
+let STD_OUTPUT_HANDLE: int = -11;
+
+func puts(str: char *) -> void {
+	let std_handle: void * = GetStdHandle(STD_OUTPUT_HANDLE);
+
+	let len := strlen(str);
+
+	let bytes_written: int;
+	WriteFile(std_handle, str, len, &bytes_written, 0);
+}

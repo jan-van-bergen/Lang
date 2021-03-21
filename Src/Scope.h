@@ -73,6 +73,10 @@ void scope_add_var(Scope * scope, char const * name, Type const * type);
 Struct_Def   * scope_add_struct_def  (Scope * scope);
 Function_Def * scope_add_function_def(Scope * scope);
 
+Variable     * scope_lookup_variable    (Scope const * scope, char const * name);
+Struct_Def   * scope_lookup_struct_def  (Scope const * scope, char const * name);
+Function_Def * scope_lookup_function_def(Scope const * scope, char const * name);
+
 Variable     * scope_get_variable    (Scope const * scope, char const * name);
 Struct_Def   * scope_get_struct_def  (Scope const * scope, char const * name);
 Function_Def * scope_get_function_def(Scope const * scope, char const * name);

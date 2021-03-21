@@ -43,47 +43,52 @@ class col:
     UNDERLINE = '\033[4m'
 
 test_cases = [                       
-	("Examples\\type_infer.lang",         0,             "",                      272, ""),
-	("Examples\\args.lang",               0,             "TEST o  t    l",          5, "Examples\\args.exe\nTEST\no\nt\nl\n"),
-	("Examples\\calling_convention.lang", 0,             "",                       11, ""),
-	("Examples\\code.lang",               0,             "",                   0xc0de, ""),
-	("Examples\\extern.lang",             0,             "",                       13, "Hallo wereld!"),
-	("Examples\\functions.lang",          0,             "",                       12, ""),
-	("Examples\\pointer.lang",            0,             "",                       21, ""),
-	("Examples\\double_pointer.lang",     0,             "",                        2, ""),
-	("Examples\\factorial.lang",          0,             "",                        1, ""),
-	("Examples\\div.lang",                0,             "",                        1, ""),
-	("Examples\\mod.lang",                0,             "",                        2, ""),
-	("Examples\\fizzbuzz.lang",           0,             "",                        0, "1 2 buzz 4 fizz buzz 7 8 buzz fizz 11 buzz 13 14 fizzbuzz 16 17 buzz 19 fizz "),
-	("Examples\\logic.lang",              0,             "",                        0, ""),
-	("Examples\\heap.lang",               0,             "",                 67305985, "BruhTest"),
-	("Examples\\scope.lang",              0,             "",                        3, ""),
-	("Examples\\scope2.lang",             0,             "",                       32, ""),
-	("Examples\\cast.lang",               0,             "",               0x0a0b0c0d, ""),
-	("Examples\\struct.lang",             0,             "",                        4, ""),
-	("Examples\\struct2.lang",            0,             "",                       10, ""),
-	("Examples\\struct_assign.lang",      0,             "",                     5678, ""),
-	("Examples\\struct_nested.lang",      0,             "",                        4, ""),
-	("Examples\\struct_global.lang",      0,             "",                       15, ""),
-	("Examples\\struct_invalid.lang",     err.SCOPE,     "",                        0, ""),
-	("Examples\\nested_loops.lang",       0,             "",                      541, "2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293, 307, 311, 313, 317, 331, 337, 347, 349, 353, 359, 367, 373, 379, 383, 389, 397, 401, 409, 419, 421, 431, 433, 439, 443, 449, 457, 461, 463, 467, 479, 487, 491, 499, 503, 509, 521, 523, 541, "),
-	("Examples\\bits.lang",               0,             "",                     0xff, ""),
-	("Examples\\incdec.lang",             0,             "",                        2, ""),
-	("Examples\\file.lang",               0,             "",                        0, ""),
-	("Examples\\array.lang",              0,             "",                    85344, ""),
-	("Examples\\nested_calls.lang",       0,             "",                        2, ""),
-	("Examples\\short_circuit.lang",      0,             "",                        0, ""),
-	("Examples\\float.lang",              0,             "",                      288, ""),
-	("Examples\\float2.lang",             0,             "",                        3, ""),
-	("Examples\\ptrarray.lang",           0,             "",                        0, "Hello\n\tworld\nOla\n\tmundo\nBye\n"),
-	("Examples\\matrix.lang",             0,             "",                      249, "2 0 0 2 \n0 3 0 0 \n0 0 4 1 \n0 0 0 1 \n"),
-	("Examples\\list.lang",               0,             "",                       16, "3 1 4 1 5 9 2 6 5 3 5 "),
-	("Examples\\error_lexing.lang",       err.LEXER,     "",                        0, ""),
-	("Examples\\error_parser.lang",       err.PARSER,    "",                        0, ""),
-	("Examples\\error_scope.lang",        err.SCOPE,     "",                        0, ""),
-	("Examples\\error_typecheck.lang",    err.TYPECHECK, "",                        0, ""),
-	("Examples\\error_linking.lang",      err.LINKER,    "",                        0, ""),
-	("Examples\\invalid_main.lang",       err.TYPECHECK, "",                        0, ""),
+	("Examples\\stdlib.lang", "/out:lib", 0, "", 1, ""), # should always be first
+
+	("Examples\\linked_list.lang",       "/lib:Examples\\stdlib.lib", 0,             "",                       10, ""),
+	("Examples\\hello.lang",             "/lib:Examples\\stdlib.lib", 0,             "",                       12, "Hello world!"),
+	("Examples\\type_infer.lang",         "",                         0,             "",                      272, ""),
+	("Examples\\args.lang",               "",                         0,             "TEST o  t    l",          5, "Examples\\args.exe\nTEST\no\nt\nl\n"),
+	("Examples\\calling_convention.lang", "",                         0,             "",                       11, ""),
+	("Examples\\code.lang",               "",                         0,             "",                   0xc0de, ""),
+	("Examples\\extern.lang",             "",                         0,             "",                       13, "Hallo wereld!"),
+	("Examples\\functions.lang",          "",                         0,             "",                       12, ""),
+	("Examples\\pointer.lang",            "",                         0,             "",                       21, ""),
+	("Examples\\double_pointer.lang",     "",                         0,             "",                        2, ""),
+	("Examples\\factorial.lang",          "",                         0,             "",                        1, ""),
+	("Examples\\div.lang",                "",                         0,             "",                        1, ""),
+	("Examples\\mod.lang",                "",                         0,             "",                        2, ""),
+	("Examples\\fizzbuzz.lang",           "",                         0,             "",                        0, "1 2 buzz 4 fizz buzz 7 8 buzz fizz 11 buzz 13 14 fizzbuzz 16 17 buzz 19 fizz "),
+	("Examples\\logic.lang",              "",                         0,             "",                        0, ""),
+	("Examples\\heap.lang",               "",                         0,             "",                 67305985, "BruhTest"),
+	("Examples\\scope.lang",              "",                         0,             "",                        3, ""),
+	("Examples\\scope2.lang",             "",                         0,             "",                       32, ""),
+	("Examples\\cast.lang",               "",                         0,             "",               0x0a0b0c0d, ""),
+	("Examples\\struct.lang",             "",                         0,             "",                        4, ""),
+	("Examples\\struct2.lang",            "",                         0,             "",                       10, ""),
+	("Examples\\struct_assign.lang",      "",                         0,             "",                     5678, ""),
+	("Examples\\struct_nested.lang",      "",                         0,             "",                        4, ""),
+	("Examples\\struct_global.lang",      "",                         0,             "",                       15, ""),
+	("Examples\\struct_invalid.lang",     "",                         err.SCOPE,     "",                        0, ""),
+	("Examples\\nested_loops.lang",       "",                         0,             "",                      541, "2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293, 307, 311, 313, 317, 331, 337, 347, 349, 353, 359, 367, 373, 379, 383, 389, 397, 401, 409, 419, 421, 431, 433, 439, 443, 449, 457, 461, 463, 467, 479, 487, 491, 499, 503, 509, 521, 523, 541, "),
+	("Examples\\bits.lang",               "",                         0,             "",                     0xff, ""),
+	("Examples\\incdec.lang",             "",                         0,             "",                        2, ""),
+	("Examples\\file.lang",               "",                         0,             "",                        0, ""),
+	("Examples\\array.lang",              "",                         0,             "",                    85344, ""),
+	("Examples\\nested_calls.lang",       "",                         0,             "",                        2, ""),
+	("Examples\\short_circuit.lang",      "",                         0,             "",                        0, ""),
+	("Examples\\float.lang",              "",                         0,             "",                      288, ""),
+	("Examples\\float2.lang",             "",                         0,             "",                        3, ""),
+	("Examples\\float3.lang",             "",                         0,             "",                       10, ""),
+	("Examples\\ptrarray.lang",           "",                         0,             "",                        0, "Hello\n\tworld\nOla\n\tmundo\nBye\n"),
+	("Examples\\matrix.lang",             "",                         0,             "",                      249, "2 0 0 2 \n0 3 0 0 \n0 0 4 1 \n0 0 0 1 \n"),
+	("Examples\\list.lang",               "",                         0,             "",                       16, "3 1 4 1 5 9 2 6 5 3 5 "),
+	("Examples\\error_lexing.lang",       "",                         err.LEXER,     "",                        0, ""),
+	("Examples\\error_parser.lang",       "",                         err.PARSER,    "",                        0, ""),
+	("Examples\\error_scope.lang",        "",                         err.SCOPE,     "",                        0, ""),
+	("Examples\\error_typecheck.lang",    "",                         err.TYPECHECK, "",                        0, ""),
+	("Examples\\error_linking.lang",      "",                         err.LINKER,    "",                        0, ""),
+	("Examples\\invalid_main.lang",       "",                         err.TYPECHECK, "",                        0, ""),
 ]
 
 def run_cmd(cmd):
@@ -95,10 +100,10 @@ num_tests_total       = 0
 
 fail_names = []
 
-for (file, expected_compiler_status, program_args, expected_program_status, expected_program_output) in test_cases:
+for (file, compiler_args, expected_compiler_status, program_args, expected_program_status, expected_program_output) in test_cases:
     num_tests_total += 1
 
-    compiler_cmd = "{} {} > compiler_out.txt".format(compiler_exe, file)
+    compiler_cmd = "{} {} {} > compiler_out.txt".format(compiler_exe, file, compiler_args)
     compiler_status = run_cmd(compiler_cmd)
 
     if (compiler_status != expected_compiler_status):
