@@ -64,14 +64,16 @@ list_make_elem:
     lea r10, QWORD [rbp + -16] ; get address of 'elem'
     mov QWORD [r10], rbx
     
-    ; *elem.value = value
-    mov rbx, QWORD [rbp + -16]
+    ; elem.value = value
+    lea rbx, QWORD [rbp + -16] ; get address of 'elem'
+    mov rbx, QWORD [rbx]
     add rbx, 0 ; member offset 'value'
     movsx r10, DWORD [rbp + 16]
     mov DWORD [rbx], r10d
     
-    ; *elem.next = null
-    mov rbx, QWORD [rbp + -16]
+    ; elem.next = null
+    lea rbx, QWORD [rbp + -16] ; get address of 'elem'
+    mov rbx, QWORD [rbx]
     add rbx, 8 ; member offset 'next'
     mov r10, 0
     mov QWORD [rbx], r10
@@ -114,9 +116,10 @@ list_append:
     movzx rbx, bl
     cmp rbx, 0
     je L_exit0
-        ; while (*list.next != cast(Linked_List*) 0)
+        ; while (list.next != null)
         L_loop1:
-        mov rbx, QWORD [rbp + 16]
+        lea rbx, QWORD [rbp + 16] ; get address of 'list'
+        mov rbx, QWORD [rbx]
         add rbx, 8 ; member offset 'next'
         mov rbx, QWORD [rbx]
         mov r10, 0
@@ -126,8 +129,9 @@ list_append:
         movzx rbx, bl
         cmp rbx, 0
         je L_exit1
-            ; list = *list.next
-            mov rbx, QWORD [rbp + 16]
+            ; list = list.next
+            lea rbx, QWORD [rbp + 16] ; get address of 'list'
+            mov rbx, QWORD [rbx]
             add rbx, 8 ; member offset 'next'
             mov rbx, QWORD [rbx]
             lea r10, QWORD [rbp + 16] ; get address of 'list'
@@ -136,8 +140,9 @@ list_append:
         jmp L_loop1
         L_exit1:
         
-        ; *list.next = elem
-        mov rbx, QWORD [rbp + 16]
+        ; list.next = elem
+        lea rbx, QWORD [rbp + 16] ; get address of 'list'
+        mov rbx, QWORD [rbx]
         add rbx, 8 ; member offset 'next'
         mov r10, QWORD [rbp + -16]
         mov QWORD [rbx], r10
@@ -184,8 +189,9 @@ list_delete:
     mov r10, QWORD [rbp + 16]
     mov QWORD [rbx], r10
     
-    ; let next: Linked_List*; next = *curr.next;
-    mov rbx, QWORD [rbp + -16]
+    ; let next: Linked_List*; next = curr.next;
+    lea rbx, QWORD [rbp + -16] ; get address of 'curr'
+    mov rbx, QWORD [rbx]
     add rbx, 8 ; member offset 'next'
     mov rbx, QWORD [rbx]
     lea r10, QWORD [rbp + -8] ; get address of 'next'
@@ -212,8 +218,9 @@ list_delete:
             
         L_exit4:
         
-        ; if (*next.value == value)
-        mov rbx, QWORD [rbp + -8]
+        ; if (next.value == value)
+        lea rbx, QWORD [rbp + -8] ; get address of 'next'
+        mov rbx, QWORD [rbx]
         add rbx, 0 ; member offset 'value'
         movsx rbx, DWORD [rbx]
         movsx r10, DWORD [rbp + 24]
@@ -233,8 +240,9 @@ list_delete:
         mov r10, QWORD [rbp + -8]
         mov QWORD [rbx], r10
         
-        ; next = *next.next
-        mov rbx, QWORD [rbp + -8]
+        ; next = next.next
+        lea rbx, QWORD [rbp + -8] ; get address of 'next'
+        mov rbx, QWORD [rbx]
         add rbx, 8 ; member offset 'next'
         mov rbx, QWORD [rbx]
         lea r10, QWORD [rbp + -8] ; get address of 'next'
@@ -243,10 +251,12 @@ list_delete:
     jmp L_loop3
     L_exit3:
     
-    ; *curr.next = *next.next
-    mov rbx, QWORD [rbp + -16]
+    ; curr.next = next.next
+    lea rbx, QWORD [rbp + -16] ; get address of 'curr'
+    mov rbx, QWORD [rbx]
     add rbx, 8 ; member offset 'next'
-    mov r10, QWORD [rbp + -8]
+    lea r10, QWORD [rbp + -8] ; get address of 'next'
+    mov r10, QWORD [r10]
     add r10, 8 ; member offset 'next'
     mov r10, QWORD [r10]
     mov QWORD [rbx], r10
@@ -298,9 +308,10 @@ list_length:
     mov r10, 1
     mov DWORD [rbx], r10d
     
-    ; while (*list.next != null)
+    ; while (list.next != null)
     L_loop7:
-    mov rbx, QWORD [rbp + 16]
+    lea rbx, QWORD [rbp + 16] ; get address of 'list'
+    mov rbx, QWORD [rbx]
     add rbx, 8 ; member offset 'next'
     mov rbx, QWORD [rbx]
     mov r10, 0
@@ -310,8 +321,9 @@ list_length:
     movzx rbx, bl
     cmp rbx, 0
     je L_exit7
-        ; list = *list.next
-        mov rbx, QWORD [rbp + 16]
+        ; list = list.next
+        lea rbx, QWORD [rbp + 16] ; get address of 'list'
+        mov rbx, QWORD [rbx]
         add rbx, 8 ; member offset 'next'
         mov rbx, QWORD [rbx]
         lea r10, QWORD [rbp + 16] ; get address of 'list'

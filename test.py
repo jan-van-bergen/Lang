@@ -45,6 +45,7 @@ class col:
 test_cases = [                       
 	("Examples\\stdlib.lang", "/out:lib", 0, "", 1, ""), # should always be first
 
+	("Examples\\struct_array.lang",      "",                          0,             "",                      123, ""),
 	("Examples\\linked_list.lang",       "/lib:Examples\\stdlib.lib", 0,             "",                       10, ""),
 	("Examples\\hello.lang",             "/lib:Examples\\stdlib.lib", 0,             "",                       12, "Hello world!"),
 	("Examples\\type_infer.lang",         "",                         0,             "",                      272, ""),

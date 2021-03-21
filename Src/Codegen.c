@@ -645,15 +645,23 @@ static Result codegen_expression_struct_member(Context * ctx, AST_Expression * e
 	context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS);
 	Result result = codegen_expression(ctx, expr->expr_struct_member.expr);
 
-	if (!type_is_struct(result.type)) {
+	char const * struct_name = NULL;
+
+	if (type_is_struct(result.type)) {
+		struct_name = result.type->struct_name;
+	} else if (type_is_pointer(result.type) && type_is_struct(result.type->base)) {
+		struct_name = result.type->base->struct_name;
+
+		codegen_deref_address(ctx, result.reg, result.type, get_reg_name_scratch(result.reg, 8));
+	} else {
 		char str_type[128];
 		type_to_string(result.type, str_type, sizeof(str_type));
 
-		type_error(ctx, "Operator '.' requires left operand to be a struct. Type was '%s'", str_type);
+		type_error(ctx, "Operator '.' requires left operand to be a struct or pointer to struct. Type was '%s'", str_type);
 	}
 
 	// Lookup the struct member by name
-	Struct_Def * struct_def = scope_get_struct_def(ctx->current_scope, result.type->struct_name);
+	Struct_Def * struct_def = scope_get_struct_def(ctx->current_scope, struct_name);
 	Variable   * var_member = scope_get_variable(struct_def->member_scope, expr->expr_struct_member.member_name);
 
 	// Take the address of the struct and add the offset of the member

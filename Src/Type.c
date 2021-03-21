@@ -459,11 +459,17 @@ Type const * type_infer(AST_Expression const * expr, Scope const * scope) {
 		case AST_EXPRESSION_STRUCT_MEMBER: {
 			Type const * struct_type = type_infer(expr->expr_struct_member.expr, scope);
 
-			if (!type_is_struct(struct_type)) {
+			char const * struct_name = NULL;
+
+			if (type_is_struct(struct_type)) {
+				struct_name = struct_type->struct_name;
+			} else if (type_is_pointer(struct_type) && type_is_struct(struct_type->base)) {
+				struct_name = struct_type->base->struct_name;
+			} else {
 				error(ERROR_TYPECHECK);
 			}
 
-			Struct_Def * struct_def = scope_get_struct_def(scope, struct_type->struct_name);
+			Struct_Def * struct_def = scope_get_struct_def(scope, struct_name);
 			Variable   * var_member = scope_get_variable(struct_def->member_scope, expr->expr_struct_member.member_name);
 
 			return var_member->type;

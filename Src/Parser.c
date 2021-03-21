@@ -302,38 +302,34 @@ static AST_Expression * parser_parse_expression_elementary(Parser * parser) {
 	}
 }
 
-static AST_Expression * parser_parse_expression_dot(Parser * parser) {
+static AST_Expression * parser_parse_expression_dot_or_array_access(Parser * parser) {
 	AST_Expression * lhs = parser_parse_expression_elementary(parser);
 	
 	// Left Associative
-	while (parser_match(parser, TOKEN_DOT)) {
-		parser_advance(parser);
+	while (true) {
+		if (parser_match(parser, TOKEN_DOT)) {
+			parser_advance(parser);
 
-		char const * member_name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
-		lhs = ast_make_expr_struct_member(lhs, member_name);
-	}
+			char const * member_name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
+			lhs = ast_make_expr_struct_member(lhs, member_name);
+		} else if (parser_match(parser, TOKEN_SQUARE_BRACES_OPEN)) {
+			parser_advance(parser);
 
-	return lhs;
-}
+			AST_Expression * expr_index = parser_parse_expression(parser);
+			parser_match_and_advance(parser, TOKEN_SQUARE_BRACES_CLOSE);
 
-static AST_Expression * parser_parse_expression_array_access(Parser * parser) {
-	AST_Expression * lhs = parser_parse_expression_dot(parser);
-	
-	// Left Associative
-	while (parser_match(parser, TOKEN_SQUARE_BRACES_OPEN)) {
-		parser_advance(parser);
-
-		AST_Expression * expr_index = parser_parse_expression(parser);
-		parser_match_and_advance(parser, TOKEN_SQUARE_BRACES_CLOSE);
-
-		lhs = ast_make_expr_array_access(lhs, expr_index);
+			lhs = ast_make_expr_array_access(lhs, expr_index);
+		} else {
+			break;
+		}
+			
 	}
 
 	return lhs;
 }
 
 static AST_Expression * parser_parse_expression_postfix(Parser * parser) {
-	AST_Expression * operand =  parser_parse_expression_array_access(parser);
+	AST_Expression * operand = parser_parse_expression_dot_or_array_access(parser);
 
 	if (parser_match(parser, TOKEN_OPERATOR_INC) || parser_match(parser, TOKEN_OPERATOR_DEC)) {
 		Token const * operator = parser_advance(parser);

@@ -1,0 +1,18 @@
+func main() -> int {
+	struct Point {
+		x : int;
+		y : int;
+	}
+	
+	let points : Point[80];
+	
+	let i := 0;
+	while (i < 80) {
+		points[i].x = i * 2;
+		points[i].y = i * 2 + 1;
+		
+		i++;
+	}
+	
+	return points[40].x + points[21].y;
+}
