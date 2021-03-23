@@ -30,8 +30,7 @@ void              free_variable_buffer(Variable_Buffer * variable_buffer);
 typedef struct Struct_Def {
 	char const * name;
 
-	struct Variable_Buffer * members;
-	struct Scope           * member_scope;
+	struct Scope * member_scope;
 } Struct_Def;
 
 

@@ -682,10 +682,9 @@ static AST_Statement * parser_parse_statement_def_struct(Parser * parser) {
 	
 	Struct_Def * struct_def  = scope_add_struct_def(parser->current_scope);
 	struct_def->name         = name;
-	struct_def->members      = members;
 	struct_def->member_scope = member_scope;
 	
-	align(&struct_def->members->size, struct_def->members->align);
+	align(&struct_def->member_scope->variable_buffer->size, struct_def->member_scope->variable_buffer->align);
 
 	parser_match_and_advance(parser, TOKEN_BRACES_CLOSE);
 

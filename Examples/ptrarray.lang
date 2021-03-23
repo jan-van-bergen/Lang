@@ -35,7 +35,7 @@ func main() -> int {
 	
 	let i: int = 0;
 	while (i < 5) {
-		print(*(strings + i * sizeof(char *)));
+		print(strings[i]);
 		
 		i++;
 	}

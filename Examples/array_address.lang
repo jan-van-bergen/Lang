@@ -1,0 +1,10 @@
+func main() -> int {
+	let array : int[32];
+	array[2] = 1337;
+
+	let offset := 2;
+	let ptr := &array[offset];
+	*ptr = 7331;
+	
+	return array[2];
+}

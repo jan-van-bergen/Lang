@@ -13,16 +13,14 @@ extern HeapAlloc(heap: void *, flags: int, size: int)   -> void *;
 extern HeapFree (heap: void *, flags: int, ptr: void *) -> void;
 
 extern GetStdHandle(std_handle: int) -> void *;
-extern WriteFile(handle: void *, buffer: void *, bytes_to_write: int, bytes_written: int *, overlapped: int) -> bool;
+extern WriteFile(handle: void *, buffer: void *, bytes_to_write: int, bytes_written: int *, overlapped: void *) -> bool;
 
 extern ExitProcess(exit_code: int) -> void;
-
-let NULL: void * = 0;
 
 let heap: void *;
 
 func malloc(size: int) -> void * {
-	if (heap == NULL) {
+	if (heap == null) {
 		heap = GetProcessHeap();
 	}
 	
@@ -30,8 +28,8 @@ func malloc(size: int) -> void * {
 }
 
 func free(ptr: void *) -> void {
-	assert(ptr  != NULL);
-	assert(heap != NULL);
+	assert(ptr  != null);
+	assert(heap != null);
 	
 	HeapFree(heap, 0, ptr);
 }
@@ -42,7 +40,8 @@ func exit(status: int) -> void {
 
 func assert(expression: bool) -> void {
 	if (!expression) {
-		exit(1);
+		puts("*** ASSERTION FAILED ***");
+		exit(-1);
 	}
 }
 
@@ -62,7 +61,7 @@ func puts(str: char *) -> void {
 	let len := strlen(str);
 
 	let bytes_written: int;
-	WriteFile(std_handle, str, len, &bytes_written, 0);
+	WriteFile(std_handle, str, len, &bytes_written, null);
 }
 
 func print_num(num: int) -> void {

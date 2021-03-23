@@ -183,7 +183,7 @@ int type_get_size(Type const * type, Scope * scope) {
 
 		case TYPE_ARRAY: return type_get_size(type->base, scope) * type->array_size;
 
-		case TYPE_STRUCT: return scope_get_struct_def(scope, type->struct_name)->members->size;
+		case TYPE_STRUCT: return scope_get_struct_def(scope, type->struct_name)->member_scope->variable_buffer->size;
 
 		default: error(ERROR_UNKNOWN);
 	}
@@ -214,7 +214,7 @@ int type_get_align(Type const * type, Scope * scope) {
 
 		case TYPE_ARRAY: return type_get_align(type->base, scope);
 
-		case TYPE_STRUCT: return scope_get_struct_def(scope, type->struct_name)->members->align;
+		case TYPE_STRUCT: return scope_get_struct_def(scope, type->struct_name)->member_scope->variable_buffer->align;
 
 		default: error(ERROR_UNKNOWN);
 	}

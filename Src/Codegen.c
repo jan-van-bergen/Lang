@@ -984,7 +984,17 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			break;
 		}
 
-		case TOKEN_OPERATOR_PLUS: {
+		case TOKEN_OPERATOR_PLUS: {		
+			if (type_is_arithmetic(result_left.type) && type_is_arithmetic(result_right.type)) { // arithmetic + arithmetic --> arithmetic
+				result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
+			} else if (type_is_pointer(result_left.type) && type_is_integral(result_right.type)) { // pointer + integral --> pointer
+				context_emit_code(ctx, "imul %s, %i\n", reg_name_right, type_get_size(result_left.type->base, ctx->current_scope));
+			} else if (type_is_array(result_left.type) && type_is_integral(result_right.type)) { // array + integral --> pointer
+				result_left.type = make_type_pointer(result_left.type->base);
+			} else {
+				type_error(ctx, "Left of operator '+' must be integral, float, array, or pointer type, right must be integral or float type!");
+			}
+
 			char const * add = "add";
 			if (type_is_f32(result_left.type)) {
 				add = "addss";
@@ -993,20 +1003,20 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			}
 			context_emit_code(ctx, "%s %s, %s\n", add, reg_name_left, reg_name_right);
 
-			if (type_is_arithmetic(result_left.type) && type_is_arithmetic(result_right.type)) { // arithmetic + arithmetic --> arithmetic
-				result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
-			} else if (type_is_pointer(result_left.type) && type_is_integral(result_right.type)) { // pointer + integral --> pointer
-				// Resulting type is pointer, do nothing
-			} else if (type_is_array(result_left.type) && type_is_integral(result_right.type)) { // array + integral --> pointer
-				result_left.type = make_type_pointer(result_left.type->base);
-			} else {
-				type_error(ctx, "Left of operator '+' must be integral, float, array, or pointer type, right must be integral or float type!");
-			}
-
 			break;
 		}
 
 		case TOKEN_OPERATOR_MINUS: {
+			if (type_is_arithmetic(result_left.type) && type_is_arithmetic(result_right.type)) { // arithmetic - arithmetic --> arithmetic
+				result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
+			} else if (type_is_pointer(result_left.type) && type_is_integral(result_right.type)) { // pointer - integral --> pointer
+				context_emit_code(ctx, "imul %s, %i\n", reg_name_right, type_get_size(result_left.type->base, ctx->current_scope));
+			} else if (type_is_pointer(result_left.type) && type_is_pointer(result_right.type) && types_unifiable(result_left.type, result_right.type)) { // pointer - pointer --> integral
+				result_left.type = make_type_i64();
+			} else {
+				type_error(ctx, "Operator '-' cannot cannot have integral type on the left and pointer type on the right");
+			}
+			
 			char const * sub = "sub";
 			if (type_is_f32(result_left.type)) {
 				sub = "subss";
@@ -1014,16 +1024,6 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 				sub = "subsd";
 			}
 			context_emit_code(ctx, "%s %s, %s\n", sub, reg_name_left, reg_name_right);
-
-			if (type_is_arithmetic(result_left.type) && type_is_arithmetic(result_right.type)) { // arithmetic - arithmetic --> arithmetic
-				result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
-			} else if (type_is_pointer(result_left.type) && type_is_integral(result_right.type)) { // pointer - integral --> pointer
-				// Resulting type is pointer, do nothing
-			} else if (type_is_pointer(result_left.type) && type_is_pointer(result_right.type) && types_unifiable(result_left.type, result_right.type)) { // pointer - pointer --> integral
-				result_left.type = make_type_i64();
-			} else {
-				type_error(ctx, "Operator '-' cannot cannot have integral type on the left and pointer type on the right");
-			}
 
 			break;
 		}
@@ -1207,14 +1207,16 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 			
 			result.reg = codegen_deref_address(ctx, result.reg, result.type, get_reg_name_scratch(result.reg, 8));
 
-			context_emit_code(ctx, "inc %s\n", get_reg_name_scratch(result.reg, 8));
+			if (type_is_integral(result.type)) {
+				context_emit_code(ctx, "inc %s\n", get_reg_name_scratch(result.reg, 8));
+			} else if (type_is_pointer(result.type)) {
+				context_emit_code(ctx, "add %s, %i\n", get_reg_name_scratch(result.reg, 8), type_get_size(result.type->base, ctx->current_scope));
+			} else {
+				type_error(ctx, "Operator '++' requires operand of integral or pointer type");
+			}
 			context_emit_code(ctx, "mov %s [%s], %s\n", get_word_name(type_size), get_reg_name_scratch(reg_address, 8), get_reg_name_scratch(result.reg, type_size));
 
 			context_reg_free(ctx, reg_address);
-
-			if (!type_is_integral(result.type)) {
-				type_error(ctx, "Operator '++' requires operand of integral type");
-			}
 
 			break;
 		}
@@ -1228,14 +1230,16 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 			
 			result.reg = codegen_deref_address(ctx, result.reg, result.type, get_reg_name_scratch(result.reg, 8));
 
-			context_emit_code(ctx, "dec %s\n", get_reg_name_scratch(result.reg, 8));
+			if (type_is_integral(result.type)) {
+				context_emit_code(ctx, "dec %s\n", get_reg_name_scratch(result.reg, 8));
+			} else if (type_is_pointer(result.type)) {
+				context_emit_code(ctx, "sub %s, %i\n", get_reg_name_scratch(result.reg, 8), type_get_size(result.type->base, ctx->current_scope));
+			} else {
+				type_error(ctx, "Operator '--' requires operand of integral or pointer type");
+			}
 			context_emit_code(ctx, "mov %s [%s], %s\n", get_word_name(type_size), get_reg_name_scratch(reg_address, 8), get_reg_name_scratch(result.reg, type_size));
 
 			context_reg_free(ctx, reg_address);
-
-			if (!type_is_integral(result.type)) {
-				type_error(ctx, "Operator '--' requires operand of integral type");
-			}
 
 			break;
 		}
@@ -1327,7 +1331,15 @@ static Result codegen_expression_op_post(Context * ctx, AST_Expression const * e
 			result.reg = codegen_deref_address(ctx, result.reg, result.type, get_reg_name_scratch(result.reg, 8));
 
 			context_emit_code(ctx, "mov %s, %s\n", get_reg_name_scratch(reg_value, 8), get_reg_name_scratch(result.reg, 8));
-			context_emit_code(ctx, "inc %s\n",     get_reg_name_scratch(reg_value, 8));
+			
+			if (type_is_integral(result.type)) {
+				context_emit_code(ctx, "inc %s\n", get_reg_name_scratch(reg_value, 8));
+			} else if (type_is_pointer(result.type)) {
+				context_emit_code(ctx, "add %s, %i\n", get_reg_name_scratch(reg_value, 8), type_get_size(result.type->base, ctx->current_scope));
+			} else {
+				type_error(ctx, "Operator '++' requires operand of integral or pointer type");
+			}
+
 			context_emit_code(ctx, "mov %s [%s], %s\n", get_word_name(type_size), get_reg_name_scratch(reg_address, 8), get_reg_name_scratch(reg_value, type_size));
 
 			context_reg_free(ctx, reg_address);
@@ -1351,7 +1363,15 @@ static Result codegen_expression_op_post(Context * ctx, AST_Expression const * e
 			result.reg = codegen_deref_address(ctx, result.reg, result.type, get_reg_name_scratch(result.reg, 8));
 
 			context_emit_code(ctx, "mov %s, %s\n", get_reg_name_scratch(reg_value, 8), get_reg_name_scratch(result.reg, 8));
-			context_emit_code(ctx, "dec %s\n",     get_reg_name_scratch(reg_value, 8));
+			
+			if (type_is_integral(result.type)) {
+				context_emit_code(ctx, "dec %s\n", get_reg_name_scratch(reg_value, 8));
+			} else if (type_is_pointer(result.type)) {
+				context_emit_code(ctx, "sub %s, %i\n", get_reg_name_scratch(reg_value, 8), type_get_size(result.type->base, ctx->current_scope));
+			} else {
+				type_error(ctx, "Operator '--' requires operand of integral or pointer type");
+			}
+
 			context_emit_code(ctx, "mov %s [%s], %s\n", get_word_name(type_size), get_reg_name_scratch(reg_address, 8), get_reg_name_scratch(reg_value, type_size));
 
 			context_reg_free(ctx, reg_address);
@@ -1697,6 +1717,9 @@ static void codegen_statement_extern(Context * ctx, AST_Statement const * stat) 
 
 static void codegen_statement_export(Context * ctx, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_EXPORT);
+
+	// Lookup function to make sure it exists
+	scope_get_function_def(ctx->current_scope, stat->stat_export.name);
 
 	context_emit_code(ctx, "global %s\n", stat->stat_export.name);
 }

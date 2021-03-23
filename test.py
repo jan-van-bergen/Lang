@@ -45,6 +45,10 @@ class col:
 test_cases = [                       
 	("Examples\\stdlib.lang", "/out:lib", 0, "", 1, ""), # should always be first
 
+	("Examples\\array_address.lang",      "",                          0,             "",                     7331, ""),
+	("Examples\\ptr_arith.lang",          "",                          0,             "",               0x04030201, ""),
+	("Examples\\sort.lang",               "/lib:Examples\\stdlib.lib", 0,             "",                        1, "1, 2, 3, 4, 5, 7, 8, 9"),
+	("Examples\\voidstar.lang",           "",                          err.TYPECHECK, "",                        0, ""),
 	("Examples\\eval.lang",               "/lib:Examples\\stdlib.lib", 0,             "12 + 2*3",               18, ""),
 	("Examples\\matrix.lang",             "/lib:Examples\\stdlib.lib", 0,             "",                      249, "2 0 0 2 \n0 3 0 0 \n0 0 4 1 \n0 0 0 1 \n"),
 	("Examples\\struct_array.lang",       "",                          0,             "",                      123, ""),

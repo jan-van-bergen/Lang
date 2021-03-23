@@ -1,0 +1,95 @@
+extern malloc(size: int) -> void *;
+extern free(ptr: void *);
+
+extern assert(assertion: bool);
+
+extern print_num(num: int);
+extern puts(str: char *);
+
+export merge;
+export sort;
+export main;
+
+func merge(array: int *, first: int, middle: int, last: int) {
+	let count := last - first;
+	let tmp   := cast(int *) malloc(count * sizeof(int));
+	
+	let head_left  : int * = array + first;
+	let head_right : int * = array + middle;
+	
+	let i := 0;
+	
+	// Merge into tmp buffer
+	while (true) {
+		let done_left  : bool = (head_left  == array + middle);
+		let done_right : bool = (head_right == array + last);
+		
+		if (done_left && done_right) break;
+		
+		let pick_left : bool;
+		
+		if (done_left) {
+			pick_left = false;
+		} else if (done_right) {
+			pick_left = true;
+		} else {
+			pick_left = (*head_left < *head_right);
+		}
+		
+		if (pick_left) {
+			tmp[i] = *head_left;
+			head_left++;
+		} else {
+			tmp[i] = *head_right;
+			head_right++;
+		}
+		i++;
+	}
+
+	assert(i == count);
+
+	// Copy tmp buffer back over
+	i = 0;
+	while (i < count) {
+		array[first + i] = tmp[i];
+		i++;
+	}
+	
+	free(tmp);
+}
+
+func sort(array: int *, first: int, last: int) {
+	if (last - first <= 1) return;
+	
+	let middle := (first + last) / 2;
+	
+	sort(array, first, middle);
+	sort(array, middle, last);
+	
+	merge(array, first, middle, last);
+}
+
+func main() -> int {
+	let array : int[8];
+	array[0] = 8;
+	array[1] = 4;
+	array[2] = 5;
+	array[3] = 3;
+	array[4] = 7;
+	array[5] = 1;
+	array[6] = 2;
+	array[7] = 9;
+	
+	sort(array, 0, 8);
+	
+	let i := 0;
+	while (i < 8) {
+		let elem := array[i];
+		print_num(elem);
+		if (i < 7) puts(", ");
+		
+		i++;
+	}
+	
+	return array[0];
+}

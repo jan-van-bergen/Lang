@@ -68,7 +68,7 @@ void compile_file(char const * filename, Compiler_Config const * config) {
 	char const cmd[1024];
 
 	// Assemble
-	sprintf_s(cmd, sizeof(cmd), "nasm -f win64 \"%s\" -o \"%s\"", file_asm, file_obj);
+	sprintf_s(cmd, sizeof(cmd), "nasm -f win64 \"%s\" -o \"%s\" -g", file_asm, file_obj);
 	if (system(cmd) != EXIT_SUCCESS) error(ERROR_ASSEMBLER);
 
 	switch (config->output) {

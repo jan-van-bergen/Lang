@@ -1,0 +1,13 @@
+func main() -> int {
+	let array : u8[4];
+	array[0] = cast(u8) 1;
+	array[1] = cast(u8) 2;
+	array[2] = cast(u8) 4;
+	array[3] = cast(u8) 3;
+
+	let ptr := cast(u16 *) array;
+	ptr++;
+	*ptr = cast(u16) 0x0403;
+	
+	return *(cast(int *) array);
+}
