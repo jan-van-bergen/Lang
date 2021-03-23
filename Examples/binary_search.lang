@@ -1,0 +1,52 @@
+extern assert(assertion: bool);
+
+func is_sorted(array: int *, length: int) -> bool {
+	let i := 0;
+	while (i < length - 1) {
+		if (array[i] > array[i + 1]) return false;
+		
+		i++;
+	}
+	
+	return true;
+}
+
+func binary_search(array: int *, length: int, value: int) -> int {
+	let low  := 0;
+	let high := length;
+	
+	while (low < high) {
+		let middle := (low + high) / 2;
+		let ref := array[middle];
+		
+		if (value == ref) return middle;
+		
+		if (value < ref) {
+			high = middle;
+		} else {
+			low = middle + 1;
+		}
+	}
+	
+	return -1; // Not found
+}
+
+func main() -> int {
+	let array : int[12];
+	array[0]  = 1;
+	array[1]  = 1;
+	array[2]  = 2;
+	array[3]  = 3;
+	array[4]  = 5;
+	array[5]  = 8;
+	array[6]  = 13;
+	array[7]  = 21;
+	array[8]  = 34;
+	array[9]  = 55;
+	array[10] = 89;
+	array[11] = 144;
+	
+	assert(is_sorted(array, 12));
+	
+	return binary_search(array, 12, 89); // 10
+}

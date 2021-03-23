@@ -1633,12 +1633,12 @@ static void codegen_statement_def_var(Context * ctx, AST_Statement const * stat)
 
 			context_reg_free(ctx, result.reg);
 		} else {
-			if (type_is_struct(var->type)) {
-				int struct_size = type_get_size(var->type, ctx->current_scope);
+			if (type_is_struct(var->type) || type_is_array(var->type)) {
+				int aggregate_size = type_get_size(var->type, ctx->current_scope);
 
 				context_emit_code(ctx, "lea rdi, QWORD [%s] ; zero initialize '%s'\n", var_address, var_name);
 				context_emit_code(ctx, "xor rax, rax\n");
-				context_emit_code(ctx, "mov ecx, %i\n", struct_size);
+				context_emit_code(ctx, "mov ecx, %i\n", aggregate_size);
 				context_emit_code(ctx, "rep stosb\n");
 			} else {
 				context_emit_code(ctx, "mov %s [%s], 0 ; zero initialize '%s'\n", get_word_name(type_size), var_address, var_name);

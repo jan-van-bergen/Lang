@@ -45,6 +45,8 @@ class col:
 test_cases = [                       
 	("Examples\\stdlib.lang", "/out:lib", 0, "", 1, ""), # should always be first
 
+	("Examples\\binary_search.lang",      "",                          0,             "",                       10, ""),
+	("Examples\\invert_tree.lang",        "",                          0,             "",                        0, "13 14 10 7 4 6 1 3 8 "),
 	("Examples\\array_address.lang",      "",                          0,             "",                     7331, ""),
 	("Examples\\ptr_arith.lang",          "",                          0,             "",               0x04030201, ""),
 	("Examples\\sort.lang",               "/lib:Examples\\stdlib.lib", 0,             "",                        1, "1, 2, 3, 4, 5, 7, 8, 9"),

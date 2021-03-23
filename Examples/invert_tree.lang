@@ -1,0 +1,63 @@
+extern malloc(size: int) -> void *;
+
+extern puts(str: char *);
+extern print_num(num: int);
+
+struct Binary_Tree {
+	value : int;
+	child_left  : Binary_Tree *;
+	child_right : Binary_Tree *;
+}
+
+func alloc_node(value : int) -> Binary_Tree * {
+	let node := cast(Binary_Tree *) malloc(sizeof(Binary_Tree));
+	node.value = value;
+	node.child_left  = null;
+	node.child_right = null;
+	
+	return node;
+}
+
+func invert_tree(node : Binary_Tree *) {
+	if (node == null) return;
+	
+	invert_tree(node.child_left);
+	invert_tree(node.child_right);
+	
+	let tmp := node.child_left;
+	node.child_left  = node.child_right;
+	node.child_right = tmp;
+}
+
+func post_order(node : Binary_Tree *) {
+	if (node == null) return;
+
+	post_order(node.child_left);
+	post_order(node.child_right);
+
+	print_num(node.value);
+	puts(" ");
+}
+
+func main() -> int {
+	//         8
+	//       /   \
+	//     3       10
+	//    / \        \
+	//   1   6        14
+	//      / \      /
+	//     4   7    13
+	let root := alloc_node(8);
+	root.child_left  = alloc_node(3);
+	root.child_right = alloc_node(10);
+	root.child_left.child_left   = alloc_node(1);
+	root.child_left.child_right  = alloc_node(6);
+	root.child_right.child_right = alloc_node(14);
+	root.child_left.child_right.child_left  = alloc_node(4);
+	root.child_left.child_right.child_right = alloc_node(7);
+	root.child_right.child_right.child_left = alloc_node(13);
+	
+	invert_tree(root);
+	
+	post_order(root);
+}
