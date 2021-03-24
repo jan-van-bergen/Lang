@@ -1,14 +1,14 @@
 func main() -> int {
-	let arr: u32[64]; // Stack allocated array
+	arr: u32[64]; // Stack allocated array
 
-	let i: int;
+	i: int;
 	while (i < 64) {
 		arr[i] = i * i;
 		
 		i++;
 	}
 	
-	let sum: int;
+	sum: int;
 	
 	i = 0;
 	while (i < 64) {

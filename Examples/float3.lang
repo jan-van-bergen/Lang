@@ -7,8 +7,8 @@ func function(d: double, f: float) -> float {
 }
 
 func main() -> int {
-	let d: double = 4.5;
-	let f: float  = 3.25f;
+	d: double = 4.5;
+	f: float  = 3.25f;
 
 	return cast(int) function(d, f);
 }

@@ -2,21 +2,21 @@ extern GetStdHandle(std_handle: int) -> void *;
 extern WriteFile(handle: void *, buffer: void *, bytes_to_write: int, bytes_written: int *, overlapped: u64) -> bool;
 extern strlen(str: char *) -> int;
 
-let STD_OUTPUT_HANDLE := -11;
+STD_OUTPUT_HANDLE := -11;
 
 func print(str: char *, str_len: int) -> void {
-	let std_handle: int * = GetStdHandle(STD_OUTPUT_HANDLE);
+	std_handle: int * = GetStdHandle(STD_OUTPUT_HANDLE);
 
-	let bytes_written: int;
+	bytes_written: int;
 	WriteFile(std_handle, str, str_len, &bytes_written, 0);
 }
 
 func print_num(num: int) -> void {
-	let num_str: char * = "         ";
-	let idx: int = 0;
+	num_str: char * = "         ";
+	idx: int = 0;
 
 	while (num > 0) {
-		let digit: char = cast(char) (num % 10);
+		digit: char = cast(char) (num % 10);
 		
 		*(num_str + idx) = digit + '0';
 		
@@ -24,10 +24,10 @@ func print_num(num: int) -> void {
 		idx = idx + 1;
 	}
 	
-	let i: int = 0;
+	i: int = 0;
 
 	while (i < idx / 2) {
-		let tmp: char = *(num_str + i);
+		tmp: char = *(num_str + i);
 		*(num_str + i) = *(num_str + idx - i - 1);
 		*(num_str + idx - i - 1) = tmp;
 
@@ -40,11 +40,11 @@ func print_num(num: int) -> void {
 }
 
 func fizzbuzz(n: int) -> void {
-	let i: int = 1;
+	i: int = 1;
 
 	while (i <= n) {
-		let divisible_by_3: bool = i % 3 == 0;
-		let divisible_by_5: bool = i % 5 == 0;
+		divisible_by_3: bool = i % 3 == 0;
+		divisible_by_5: bool = i % 5 == 0;
 
 		if (divisible_by_5 && divisible_by_3) {
 			print("fizzbuzz ", 9);

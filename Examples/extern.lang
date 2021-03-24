@@ -2,16 +2,16 @@ extern GetStdHandle(std_handle: int) -> void *;
 extern WriteFile(handle: void *, buffer: void *, bytes_to_write: int, bytes_written: int *, overlapped: int) -> bool;
 extern strlen(str: char *) -> int;
 
-let STD_OUTPUT_HANDLE: int = -11;
+STD_OUTPUT_HANDLE: int = -11;
 	
-let string: char * = "Hallo wereld!";
+string: char * = "Hallo wereld!";
 	
 func main() -> int {
-	let std_handle: void * = GetStdHandle(STD_OUTPUT_HANDLE);
+	std_handle: void * = GetStdHandle(STD_OUTPUT_HANDLE);
 	
-	let str_len: int = strlen(string);
+	str_len: int = strlen(string);
 
-	let bytes_written: int;
+	bytes_written: int;
 	WriteFile(std_handle, string, str_len, &bytes_written, 0);
 	
 	return bytes_written;

@@ -1,14 +1,14 @@
 func main() -> int {
-	let a: int = test(true,  5); // 5
-	let b: int = test(false, 5); // 3
+	a: int = test(true,  5); // 5
+	b: int = test(false, 5); // 3
 	
 	if (a != 5 || b != 3) return -1;
 	
-	let common_name: int = 3;
+	common_name: int = 3;
 	
-	let outter: int = 0;
+	outter: int = 0;
 	if (true) {
-		let common_name: int;
+		common_name: int;
 		common_name = 5; // assings 'common_name' from the previous line 5
 		outter = common_name; 
 	}
@@ -23,7 +23,7 @@ func test(ret_arg: bool, arg: int) -> int {
 	if (ret_arg) {
 		return arg; // Returns argument 'arg', because local 'arg' is not in scope
 	} else {
-		let arg: int = 3;
+		arg: int = 3;
 		
 		return arg; // Returns local 'arg'
 	}

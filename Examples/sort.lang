@@ -11,22 +11,22 @@ export sort;
 export main;
 
 func merge(array: int *, first: int, middle: int, last: int) {
-	let count := last - first;
-	let tmp   := cast(int *) malloc(count * sizeof(int));
+	count := last - first;
+	tmp   := cast(int *) malloc(count * sizeof(int));
 	
-	let head_left  : int * = array + first;
-	let head_right : int * = array + middle;
+	head_left  : int * = array + first;
+	head_right : int * = array + middle;
 	
-	let i := 0;
+	i := 0;
 	
 	// Merge into tmp buffer
 	while (true) {
-		let done_left  : bool = (head_left  == array + middle);
-		let done_right : bool = (head_right == array + last);
+		done_left  : bool = (head_left  == array + middle);
+		done_right : bool = (head_right == array + last);
 		
 		if (done_left && done_right) break;
 		
-		let pick_left : bool;
+		pick_left : bool;
 		
 		if (done_left) {
 			pick_left = false;
@@ -37,11 +37,9 @@ func merge(array: int *, first: int, middle: int, last: int) {
 		}
 		
 		if (pick_left) {
-			tmp[i] = *head_left;
-			head_left++;
+			tmp[i] = *head_left++;
 		} else {
-			tmp[i] = *head_right;
-			head_right++;
+			tmp[i] = *head_right++;
 		}
 		i++;
 	}
@@ -61,7 +59,7 @@ func merge(array: int *, first: int, middle: int, last: int) {
 func sort(array: int *, first: int, last: int) {
 	if (last - first <= 1) return;
 	
-	let middle := (first + last) / 2;
+	middle := (first + last) / 2;
 	
 	sort(array, first, middle);
 	sort(array, middle, last);
@@ -70,7 +68,7 @@ func sort(array: int *, first: int, last: int) {
 }
 
 func main() -> int {
-	let array : int[8];
+	array : int[8];
 	array[0] = 8;
 	array[1] = 4;
 	array[2] = 5;
@@ -82,9 +80,9 @@ func main() -> int {
 	
 	sort(array, 0, 8);
 	
-	let i := 0;
+	i := 0;
 	while (i < 8) {
-		let elem := array[i];
+		elem := array[i];
 		print_num(elem);
 		if (i < 7) puts(", ");
 		

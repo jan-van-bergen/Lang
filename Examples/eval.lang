@@ -12,10 +12,10 @@ func is_digit(c: char) -> bool {
 func parse_expr_base(cur: char **) -> int {
 	skip_space(cur);
 
-	let c := **cur;
+	c := **cur;
 
 	if (is_digit(c)) {
-		let num := 0;
+		num := 0;
 		
 		while (is_digit(c)) {
 			num = num * 10 + (c - '0');
@@ -28,7 +28,7 @@ func parse_expr_base(cur: char **) -> int {
 	} else if (c == '(') {
 		(*cur)++;
 		
-		let expr: int = parse_expr(cur);
+		expr: int = parse_expr(cur);
 		
 		skip_space(cur);	
 		(*cur)++; // Parse closing parens
@@ -41,13 +41,13 @@ func parse_expr_base(cur: char **) -> int {
 }
 
 func parse_expr_mul(cur: char **) -> int {
-	let lhs := parse_expr_base(cur);
+	lhs := parse_expr_base(cur);
 	skip_space(cur);
 
 	while (**cur == '*') {
 		(*cur)++;
 		
-		let rhs := parse_expr_base(cur);
+		rhs := parse_expr_base(cur);
 		skip_space(cur);
 		
 		lhs = lhs * rhs;
@@ -57,13 +57,13 @@ func parse_expr_mul(cur: char **) -> int {
 }
 
 func parse_expr_add(cur: char **) -> int {
-	let lhs := parse_expr_mul(cur);
+	lhs := parse_expr_mul(cur);
 	skip_space(cur);
 
 	while (**cur == '+') {
 		(*cur)++;
 		
-		let rhs := parse_expr_mul(cur);
+		rhs := parse_expr_mul(cur);
 		skip_space(cur);
 		
 		lhs = lhs + rhs;
@@ -77,9 +77,9 @@ func parse_expr(cur: char **) -> int {
 }
 
 func main(arg: char *) -> int {
-	let cur := arg;
+	cur := arg;
 	while (*(cur++) != ' ') { }
 
-	let result := parse_expr(&cur);
+	result := parse_expr(&cur);
 	return result;
 }

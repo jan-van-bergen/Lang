@@ -1,13 +1,13 @@
 func main() -> int {
-	let signed_8:  i8  = 2;
-	let signed_16: i16 = 127 + 53;
-	let signed_32: i32 = 2364 - 32767;
-	let signed_64: i64 = 238643254 - 2147483647;
+	signed_8:  i8  = 2;
+	signed_16: i16 = 127 + 53;
+	signed_32: i32 = 2364 - 32767;
+	signed_64: i64 = 238643254 - 2147483647;
 	
-	let unsigned_8:  u8  = 2;
-	let unsigned_16: u16 = 256 + 53;
-	let unsigned_32: u32 = 65536 + 2364;
-	let unsigned_64: u64 = 4294967296 + 238643254;
+	unsigned_8:  u8  = 2;
+	unsigned_16: u16 = 256 + 53;
+	unsigned_32: u32 = 65536 + 2364;
+	unsigned_64: u64 = 4294967296 + 238643254;
 
 	signed_16 =           signed_8;
 	signed_16 = cast(i16) signed_32;

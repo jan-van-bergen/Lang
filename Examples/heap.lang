@@ -7,9 +7,9 @@ extern WriteFile(handle: void *, buffer: void *, bytes_to_write: int, bytes_writ
 
 extern ExitProcess(exit_code: int) -> void;
 
-let NULL: void * = 0;
+NULL: void * = 0;
 
-let heap: void *;
+heap: void *;
 
 func malloc(size: int) -> void * {
 	if (heap == NULL) {
@@ -32,17 +32,17 @@ func assert(expression: bool) -> void {
 	}
 }
 
-let STD_OUTPUT_HANDLE: int = -11;
+STD_OUTPUT_HANDLE: int = -11;
 
 func print(str: char *, str_len: int) -> void {
-	let std_handle: void * = GetStdHandle(STD_OUTPUT_HANDLE);
+	std_handle: void * = GetStdHandle(STD_OUTPUT_HANDLE);
 
-	let bytes_written: int;
+	bytes_written: int;
 	WriteFile(std_handle, str, str_len, &bytes_written, 0);
 }
 
 func strlen(str: char *) -> int {
-	let len: int = 0;
+	len: int = 0;
 	
 	while (*(str + len) != 0) len = len + 1;
 	
@@ -50,7 +50,7 @@ func strlen(str: char *) -> int {
 }
 
 func main() -> int {
-	let mem: char * = malloc(16);
+	mem: char * = malloc(16);
 	
 	*(mem + 0) = 'B';
 	*(mem + 1) = 'r';
@@ -62,12 +62,12 @@ func main() -> int {
 	*(mem + 7) = 't';
 	*(mem + 8) = '\0';
 
-	let str_len: int = strlen(mem);
+	str_len: int = strlen(mem);
 
 	print(mem, str_len);
 	free(mem);
 
-	let mem2: char * = malloc(16);
+	mem2: char * = malloc(16);
 
 	*(mem2 + 0) = cast(u8) 1;
 	*(mem2 + 1) = cast(u8) 2;

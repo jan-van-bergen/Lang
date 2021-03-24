@@ -1,7 +1,7 @@
 extern assert(assertion: bool);
 
 func is_sorted(array: int *, length: int) -> bool {
-	let i := 0;
+	i := 0;
 	while (i < length - 1) {
 		if (array[i] > array[i + 1]) return false;
 		
@@ -12,12 +12,12 @@ func is_sorted(array: int *, length: int) -> bool {
 }
 
 func binary_search(array: int *, length: int, value: int) -> int {
-	let low  := 0;
-	let high := length;
+	low  := 0;
+	high := length;
 	
 	while (low < high) {
-		let middle := (low + high) / 2;
-		let ref := array[middle];
+		middle := (low + high) / 2;
+		ref := array[middle];
 		
 		if (value == ref) return middle;
 		
@@ -32,7 +32,7 @@ func binary_search(array: int *, length: int, value: int) -> int {
 }
 
 func main() -> int {
-	let array : int[12];
+	array : int[12];
 	array[0]  = 1;
 	array[1]  = 1;
 	array[2]  = 2;

@@ -13,7 +13,6 @@ typedef enum Token_Type {
 
 	TOKEN_DOT,
 
-	TOKEN_KEYWORD_LET,      // let
 	TOKEN_KEYWORD_CAST,     // cast()
 	TOKEN_KEYWORD_SIZEOF,   // sizeof
 	TOKEN_KEYWORD_NULL,     // null

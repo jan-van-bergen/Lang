@@ -2,22 +2,22 @@ extern GetStdHandle(std_handle: int) -> void *;
 extern WriteFile(handle: void *, buffer: void *, bytes_to_write: int, bytes_written: int *, overlapped: void *) -> bool;
 extern strlen(str: char *) -> int;
 
-let STD_OUTPUT_HANDLE: int = -11;
+STD_OUTPUT_HANDLE: int = -11;
 
 func main(arg: char *) -> int {
-	let std_handle := GetStdHandle(STD_OUTPUT_HANDLE);
+	std_handle := GetStdHandle(STD_OUTPUT_HANDLE);
 
-	let arg_count := 0;
-	let start     := arg;
+	arg_count := 0;
+	start     := arg;
 	
 	while (true) {
 		if (*arg == '\0') break;
 		
 		if (*arg == ' ') {
-			let length : u64 = arg - start;
+			length : u64 = arg - start;
 
 			if (length > 0) {
-				let bytes_written: int;
+				bytes_written: int;
 			
 				WriteFile(std_handle, start, length, &bytes_written, null);		
 				WriteFile(std_handle, "\n",  1,      &bytes_written, null);

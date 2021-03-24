@@ -5,7 +5,7 @@ struct Test {
 }
 
 func main() -> int {
-	let test: Test;
+	test: Test;
 	test.a = 3;
 	test.b = 4;
 	test.c = 5;
@@ -14,9 +14,9 @@ func main() -> int {
 }
 
 // func ref() -> int {
-	// let test_a: i64;
-	// let test_b: i32;
-	// let test_c: i32;
+	// test_a: i64;
+	// test_b: i32;
+	// test_c: i32;
 	
 	// test_a = 3;
 	// test_b = 4;

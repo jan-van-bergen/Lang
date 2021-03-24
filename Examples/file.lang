@@ -1,64 +1,57 @@
-extern OpenFile(
-	lpFileName   : char *,
-	lpReOpenBuff : void *,
-	uStyle       : u32       
-) -> void *;
+extern malloc(size: int) -> void *;
+extern free(ptr: void *);
 
-extern WriteFile(
-	handle         : void *,
-	buffer         : void *,
-	bytes_to_write : int,
-	bytes_written  : int *,
-	overlapped     : int
-) -> bool;
+extern fopen(name: char *, mode: char *) -> void *;
+extern fclose(handle: void *);
 
-extern CloseHandle(handle: void *) -> void;
+extern fsize(handle: void *) -> int;
 
-extern strlen(str: char *) -> u64;
+extern fread (handle: void *, bytes: char *, num_bytes: int) -> bool;
+extern fwrite(handle: void *, bytes: char *, num_bytes: int) -> bool;
 
-let NULL: void * = 0;
-
-let GENERIC_WRITE         : int = 0x40000000;
-let CREATE_NEW            : int = 1;
-let FILE_ATTRIBUTE_NORMAL : int = 0x00000080;
-
-let OF_CREATE : u32 = 0x00001000;
-let OF_READ   : u32 = 0x00000000;
+extern puts(str: char *);
+extern strlen(str: char *) -> int;
 
 func main() -> int {
-	let file_name: char * = "TEST.TXT";
+	file_name := "TEST.TXT";
 
-	struct OFSTRUCT {
-		cBytes:     u8;
-		fFixedDisk: u8;
-		nErrCode:   u16;
-		Reserved1:  u16;
-		Reserved2:  u16;
-		szPathName: char[128];
+	handle := fopen(file_name, "w");
+	if (handle == cast(void *) -1) {
+		puts("Unable to open file for writing!\n");
+		return -1;
 	}
-	let ofstruct: OFSTRUCT;
 
-	// Open the file
-	let file_handle: void * = OpenFile(file_name, &ofstruct, OF_CREATE | OF_READ);
-	if (file_handle == cast(void *) -1) return -1;
+	str := "test123";
+	len := strlen(str);
 
-	// Get the path from the OFSTRUCT
-	let path:     char * = ofstruct.szPathName; // Array decays to pointer
-	let path_len: int    = cast(int) strlen(path);
+	success := fwrite(handle, str, len);
+	if (!success) {
+		puts("Unable to write file!\n");
+		return -1;
+	}
 
-	// Write its path to the file
-	let bytes_written: int;
-	let err: bool = WriteFile( 
-		file_handle,
-		path,
-		path_len,
-		&bytes_written,
-		0
-	);
+	fclose(handle);
 
-	CloseHandle(file_handle);
+	handle = fopen(file_name, "r");
+	if (handle == cast(void *) -1) {
+		puts("Unable to open file for reading!\n");
+		return -1;
+	}
 
-	if (err == false) return -1;
+	size := fsize(handle);
+	buf  := cast(u8 *) malloc(size + 1);
+
+	success = fread(handle, buf, size);
+	if (!success) {
+		puts("Unable to read file!\n");
+		return -1; 
+	}
+
+	fclose(handle);
+
+	buf[size] = '\0';
+	puts(buf);
+	free(buf);
 
 	return 0;
 }

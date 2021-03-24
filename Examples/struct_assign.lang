@@ -4,12 +4,12 @@ struct Struct {
 }
 
 func main() -> int {
-	let var := 5678;
+	var := 5678;
 	
-	let a: Struct;
+	a: Struct;
 	a.fst = 1234;
 	a.snd = var;
 	
-	let b := a;
+	b := a;
 	return b.snd;
 }

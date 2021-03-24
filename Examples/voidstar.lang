@@ -1,4 +1,4 @@
 func main() {
-	let ptr : void *;
+	ptr : void *;
 	return *ptr;
 }

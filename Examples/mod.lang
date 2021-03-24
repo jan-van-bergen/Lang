@@ -1,6 +1,6 @@
 func main() -> int {
-	let a: int = 321 % 43; // 20
-	let b: int = 3 % 5;    // 3
+	a: int = 321 % 43; // 20
+	b: int = 3 % 5;    // 3
 	
 	return a % b; // 2
 }

@@ -7,10 +7,10 @@ func min(x: float, y: float) -> float {
 }
 
 func main() -> int {
-	let a: float = 4.25f;
-	let b: float = 2.74f;
+	a: float = 4.25f;
+	b: float = 2.74f;
 	
-	let m: float = min(a, b);
+	m: float = min(a, b);
 
 	return cast(int) (m + 0.5f);
 }

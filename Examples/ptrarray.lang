@@ -2,7 +2,7 @@ extern GetStdHandle(std_handle: int) -> void *;
 extern WriteFile(handle: void *, buffer: void *, bytes_to_write: int, bytes_written: int *, overlapped: int) -> bool;
 
 func strlen(str: char *) -> int {
-	let len: int = 0;
+	len: int = 0;
 	
 	while (*(str + len) != 0) len = len + 1;
 	
@@ -10,22 +10,22 @@ func strlen(str: char *) -> int {
 }
 
 func print(str: char *) -> void {
-	let std_handle: void * = GetStdHandle(-11);
+	std_handle: void * = GetStdHandle(-11);
 
-	let str_len: int = strlen(str);
+	str_len: int = strlen(str);
 
-	let bytes_written: int;
+	bytes_written: int;
 	WriteFile(std_handle, str, str_len, &bytes_written, 0);
 }
 
-let str_0 := "Hello\n";
-let str_1 := "\tworld\n";
-let str_2 := "Ola\n";
-let str_3 := "\tmundo\n";
-let str_4 := "Bye\n";
+str_0 := "Hello\n";
+str_1 := "\tworld\n";
+str_2 := "Ola\n";
+str_3 := "\tmundo\n";
+str_4 := "Bye\n";
 
 func main() -> int {
-	let strings: char *[5];
+	strings: char *[5];
 	
 	strings[0] = str_0;
 	strings[1] = str_1;
@@ -33,7 +33,7 @@ func main() -> int {
 	strings[3] = str_3;
 	strings[4] = str_4;
 	
-	let i: int = 0;
+	i: int = 0;
 	while (i < 5) {
 		print(strings[i]);
 		

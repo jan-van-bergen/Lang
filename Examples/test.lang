@@ -1,19 +1,19 @@
 extern WriteFile(handle: void *, buffer: void *, bytes_to_write: int, bytes_written: int *, overlapped: int) -> bool;
 extern GetStdHandle(std_handle: int) -> void *;
 
-let STD_OUTPUT_HANDLE: int = -11;
+STD_OUTPUT_HANDLE: int = -11;
 
 func puts(str: char *) {
-	let std_handle: void * = GetStdHandle(STD_OUTPUT_HANDLE);
+	std_handle: void * = GetStdHandle(STD_OUTPUT_HANDLE);
 
-	let len := 1;
+	len := 1;
 
-	let bytes_written: int;
+	bytes_written: int;
 	WriteFile(std_handle, str, len, &bytes_written, 1234);
 }
 
 func main() {
-	let arr : u8[32];
+	arr : u8[32];
 	
 	puts("1");
 }

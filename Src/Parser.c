@@ -48,6 +48,15 @@ static bool parser_match(Parser const * parser, Token_Type token_type) {
 	return parser->tokens[parser->index].type == token_type;
 }
 
+static bool parser_matchn(Parser const * parser, Token_Type token_type, int offset) {
+	if (parser->index + offset < parser->token_count) {
+		return parser->tokens[parser->index + offset].type == token_type;
+	} else {
+		return false;
+	}
+}
+
+
 static Token const * parser_advance(Parser * parser) {
 	//char string[128];
 	//token_to_string(&parser->tokens[parser->index], string, sizeof(string));
@@ -94,7 +103,7 @@ static bool parser_match_statement_expr(Parser const * parser) {
 }
 
 static bool parser_match_statement_def_var(Parser const * parser) {
-	return parser_match(parser, TOKEN_KEYWORD_LET);
+	return parser_match(parser, TOKEN_IDENTIFIER) && parser_matchn(parser, TOKEN_COLON, 1);
 }
 
 static bool parser_match_statement_def_func(Parser const * parser) {
@@ -544,8 +553,6 @@ static AST_Statement * parser_parse_statement_expr(Parser * parser) {
 }
 
 static AST_Statement * parser_parse_statement_def_var(Parser * parser) {
-	parser_match_and_advance(parser, TOKEN_KEYWORD_LET);
-
 	char const * var_name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
 	parser_match_and_advance(parser, TOKEN_COLON);
 
@@ -805,15 +812,15 @@ static AST_Statement * parser_parse_statement_block(Parser * parser) {
 }
 
 static AST_Statement * parser_parse_statement(Parser * parser) {
-	if (parser_match_expression(parser)) {
-		return parser_parse_statement_expr(parser);
-	} else if (parser_match_statement_def_var(parser)) {
+	if (parser_match_statement_def_var(parser)) {
 		return parser_parse_statement_def_var(parser);
 	} else if (parser_match_statement_def_func(parser)) {
 		return parser_parse_statement_def_func(parser);
 	} else if (parser_match_statement_def_struct(parser)) {
 		return parser_parse_statement_def_struct(parser);
-	} else if (parser_match_statement_extern(parser)) {
+	} else if (parser_match_expression(parser)) {
+		return parser_parse_statement_expr(parser);
+	} else  if (parser_match_statement_extern(parser)) {
 		return parser_parse_statement_extern(parser);
 	} else if (parser_match_statement_export(parser)) {
 		return parser_parse_statement_export(parser);

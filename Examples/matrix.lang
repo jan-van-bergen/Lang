@@ -48,8 +48,8 @@ func matrix_index(matrix: Matrix4 *, i: int, j: int) -> float * {
 }
 
 func matrix_multiply(a: Matrix4 *, b: Matrix4 *, result: Matrix4 *) {
-	let i: int;
-	let j: int;
+	i: int;
+	j: int;
 
 	while (i < 4) {
 		j = 0;
@@ -81,9 +81,9 @@ func matrix_transform_direction(matrix: Matrix4 *, vector: Vector3 *, result: Ve
 }
 
 func matrix_trace(matrix: Matrix4 *) -> float {
-	let trace: float;
+	trace: float;
 
-	let i: int;
+	i: int;
 	while (i < 4) {
 		trace = trace + *matrix_index(matrix, i, i);
 
@@ -94,11 +94,11 @@ func matrix_trace(matrix: Matrix4 *) -> float {
 }
 
 func matrix_print(matrix: Matrix4 *) {
-	let i: int;
+	i: int;
 	while (i < 4) {
-		let j: int;
+		j: int;
 		while (j < 4) {
-			let num: int = cast(int) *matrix_index(matrix, i, j);
+			num: int = cast(int) *matrix_index(matrix, i, j);
 			print_num(num);
 			puts(" ");
 
@@ -112,15 +112,15 @@ func matrix_print(matrix: Matrix4 *) {
 }
 
 func main() -> int {
-	let a: Matrix4; matrix_translate(&a, 2.0f, 0.0f, 1.0f);
-	let b: Matrix4; matrix_scale    (&b, 2.0f, 3.0f, 4.0f);
+	a: Matrix4; matrix_translate(&a, 2.0f, 0.0f, 1.0f);
+	b: Matrix4; matrix_scale    (&b, 2.0f, 3.0f, 4.0f);
 	
-	let c: Matrix4; matrix_multiply(&a, &b, &c);
+	c: Matrix4; matrix_multiply(&a, &b, &c);
 	matrix_print(&c);
 
-	let v: Vector3; vector_init(&v, 3.0f, 5.0f, 6.0f);
+	v: Vector3; vector_init(&v, 3.0f, 5.0f, 6.0f);
 	
-	let result: Vector3; matrix_transform_position(&c, &v, &result);
+	result: Vector3; matrix_transform_position(&c, &v, &result);
 	
 	return cast(int) vector_dot(&v, &result);
 }

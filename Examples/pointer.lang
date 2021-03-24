@@ -3,7 +3,7 @@ func bla(ptr: int *) -> int {
 }
 
 func deref(ptr: int *) -> int {
-	let local: int;
+	local: int;
 	
 	*ptr = 21;
 	
@@ -12,12 +12,12 @@ func deref(ptr: int *) -> int {
 }
 
 func main() -> int {
-	let a: int = 42;
+	a: int = 42;
 	
-	let p: int *;
+	p: int *;
 	p = &a;
 	
-	let p2: int *;
+	p2: int *;
 	p2 = p;
 	
 	deref(p2);

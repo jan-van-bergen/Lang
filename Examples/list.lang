@@ -12,9 +12,9 @@ func assert(expression: bool) -> void {
 	}
 }
 
-let NULL: void * = 0;
+NULL: void * = 0;
 
-let heap: void *;
+heap: void *;
 
 func malloc(size: int) -> void * {
 	if (heap == NULL) {
@@ -35,21 +35,21 @@ extern GetStdHandle(std_handle: int) -> void *;
 extern WriteFile(handle: void *, buffer: void *, bytes_to_write: int, bytes_written: int *, overlapped: u64) -> bool;
 extern strlen(str: char *) -> int;
 
-let STD_OUTPUT_HANDLE: int = -11;
+STD_OUTPUT_HANDLE: int = -11;
 
 func print(str: char *, str_len: int) -> void {
-	let std_handle: int * = GetStdHandle(STD_OUTPUT_HANDLE);
+	std_handle: int * = GetStdHandle(STD_OUTPUT_HANDLE);
 
-	let bytes_written: int;
+	bytes_written: int;
 	WriteFile(std_handle, str, str_len, &bytes_written, 0);
 }
 
 func print_num(num: int) -> void {
-	let num_str: char * = "         ";
-	let idx: int = 0;
+	num_str: char * = "         ";
+	idx: int = 0;
 
 	while (num > 0) {
-		let digit: char = cast(char) (num % 10);
+		digit: char = cast(char) (num % 10);
 		
 		*(num_str + idx) = digit + '0';
 		
@@ -57,10 +57,10 @@ func print_num(num: int) -> void {
 		idx = idx + 1;
 	}
 	
-	let i: int = 0;
+	i: int = 0;
 
 	while (i < idx / 2) {
-		let tmp: char = *(num_str + i);
+		tmp: char = *(num_str + i);
 		*(num_str + i) = *(num_str + idx - i - 1);
 		*(num_str + idx - i - 1) = tmp;
 
@@ -88,10 +88,10 @@ func list_push(list: List *, element: int) {
 	if ((*list).length == (*list).capacity) {
 		(*list).capacity = (*list).capacity * 2;
 
-		let new_data: int * = malloc((*list).capacity * sizeof(int));
+		new_data: int * = malloc((*list).capacity * sizeof(int));
 		//CopyMemory(new_data, (*list).data, (*list).length);
 
-		let i: int;
+		i: int;
 		while (i < (*list).length) {
 			new_data[i] = (*list).data[i];
 			
@@ -106,7 +106,7 @@ func list_push(list: List *, element: int) {
 }
 
 func main() -> int {
-	let list: List;
+	list: List;
 	list_init(&list);
 
 	list_push(&list, 3); // capacity == 2
@@ -121,7 +121,7 @@ func main() -> int {
 	list_push(&list, 3);
 	list_push(&list, 5);
 
-	let i: int;
+	i: int;
 	while (i < list.length) {
 		print_num(list.data[i]);
 	

@@ -1,8 +1,8 @@
 func main() -> int {
-	let i: int = 1234;
+	i: int = 1234;
 	
-	let ptr_int  : = &i;
-	let ptr_char := cast(char *) ptr_int;
+	ptr_int  : = &i;
+	ptr_char := cast(char *) ptr_int;
 	
 	*(ptr_char + 0) = cast(u8) 0xd;
 	*(ptr_char + 1) = cast(u8) 0xc;

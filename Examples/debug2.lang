@@ -1,5 +1,5 @@
 func fun(x: int) -> int { 
-	let i: int = x;
+	i: int = x;
 	
 	return i + 2;
 }

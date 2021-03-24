@@ -1,14 +1,14 @@
-let N: int = 100;
+N: int = 100;
 
 // Prints first N primes
 func main() -> int {
-	let num_primes : int = 0;
+	num_primes : int = 0;
 	
-	let i : int = 2;
+	i : int = 2;
 	while (true) {
-		let i_is_prime: bool = true;
+		i_is_prime: bool = true;
 		
-		let j: int = 2;
+		j: int = 2;
 		while (j < i) {
 			if (i % j == 0) {
 				i_is_prime = false;
@@ -39,18 +39,18 @@ extern GetStdHandle(std_handle: int) -> void *;
 extern WriteFile(handle: void *, buffer: void *, bytes_to_write: int, bytes_written: int *, overlapped: int) -> bool;
 
 func print(str: char *, str_len: int) -> void {
-	let std_handle: int * = GetStdHandle(-11);
+	std_handle: int * = GetStdHandle(-11);
 
-	let bytes_written: int;
+	bytes_written: int;
 	WriteFile(std_handle, str, str_len, &bytes_written, 0);
 }
 
 func print_num(num: int) -> void {
-	let num_str: char * = "         ";
-	let idx: int = 0;
+	num_str: char * = "         ";
+	idx: int = 0;
 
 	while (num > 0) {
-		let digit: char = cast(char) (num % 10);
+		digit: char = cast(char) (num % 10);
 		
 		*(num_str + idx) = digit + '0';
 		
@@ -58,10 +58,10 @@ func print_num(num: int) -> void {
 		idx = idx + 1;
 	}
 	
-	let i: int = 0;
+	i: int = 0;
 
 	while (i < idx / 2) {
-		let tmp: char = *(num_str + i);
+		tmp: char = *(num_str + i);
 		*(num_str + i) = *(num_str + idx - i - 1);
 		*(num_str + idx - i - 1) = tmp;
 

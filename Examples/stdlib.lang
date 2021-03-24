@@ -8,16 +8,29 @@ export strlen;
 export puts;
 export print_num;
 
+export fopen;
+export fclose;
+export fsize;
+export fread;
+export fwrite;
+
 extern GetProcessHeap() -> void *;
-extern HeapAlloc(heap: void *, flags: int, size: int)   -> void *;
-extern HeapFree (heap: void *, flags: int, ptr: void *) -> void;
+extern HeapAlloc(heap: void *, flags: int, size: int) -> void *;
+extern HeapFree (heap: void *, flags: int, ptr: void *);
 
 extern GetStdHandle(std_handle: int) -> void *;
+extern OpenFile(name : char *, ofstruct : void *, style : u32) -> void *;
+
+extern GetFileSize(handle: void *, size_h: int *) -> int;
+
+extern ReadFile (handle: void *, buffer: void *, bytes_to_read : int, bytes_read   : int *, overlapped: void *) -> bool;
 extern WriteFile(handle: void *, buffer: void *, bytes_to_write: int, bytes_written: int *, overlapped: void *) -> bool;
 
-extern ExitProcess(exit_code: int) -> void;
+extern CloseHandle(handle: void *);
 
-let heap: void *;
+extern ExitProcess(exit_code: int);
+
+heap: void *;
 
 func malloc(size: int) -> void * {
 	if (heap == null) {
@@ -46,30 +59,30 @@ func assert(expression: bool) -> void {
 }
 
 func strlen(str: char *) -> int {
-	let start := str;
+	start := str;
 	
 	while (*str != '\0') str++;
 	
 	return str - start;
 }
 
-let STD_OUTPUT_HANDLE: int = -11;
+STD_OUTPUT_HANDLE: int = -11;
 
 func puts(str: char *) -> void {
-	let std_handle: void * = GetStdHandle(STD_OUTPUT_HANDLE);
+	std_handle: void * = GetStdHandle(STD_OUTPUT_HANDLE);
 
-	let len := strlen(str);
+	len := strlen(str);
 
-	let bytes_written: int;
+	bytes_written: int;
 	WriteFile(std_handle, str, len, &bytes_written, null);
 }
 
 func print_num(num: int) -> void {
-	let num_str: char[32];
-	let idx: int = 0;
+	num_str: char[32];
+	idx: int = 0;
 
 	 // Calculate required string length
-	let n := num;
+	n := num;
 	while (true) {
 		n = n / 10;
 		idx++;
@@ -81,7 +94,7 @@ func print_num(num: int) -> void {
 	num_str[idx--] = '\0';
 	
 	while (true) {
-		let digit: char = cast(char) (num % 10);		
+		digit: char = cast(char) (num % 10);		
 		num_str[idx--] = digit + '0';
 		
 		num = num / 10;
@@ -89,4 +102,48 @@ func print_num(num: int) -> void {
 	}
 	
 	puts(num_str);
+}
+
+OF_CREATE    : u32 = 0x00001000;
+OF_READ      : u32 = 0x00000000;
+OF_READWRITE : u32 = 0x00000002;
+
+func fopen(name: char *, mode: char *) -> void * {
+	struct OFSTRUCT {
+		cBytes:     u8;
+		fFixedDisk: u8;
+		nErrCode:   u16;
+		Reserved1:  u16;
+		Reserved2:  u16;
+		szPathName: char[128];
+	}
+	ofstruct: OFSTRUCT;
+	
+	flags : u32;
+	
+	if (mode[0] == 'r') {
+		flags = OF_READ;
+	} else if (mode[0] == 'w') {
+		flags = OF_READWRITE | OF_CREATE;
+	}
+	
+	return OpenFile(name, &ofstruct, flags);
+}
+
+func fclose(handle: void *) {
+	CloseHandle(handle);
+}
+
+func fsize(handle: void *) -> int {
+	return GetFileSize(handle, null);
+}
+
+func fread(handle: void *, bytes: char *, num_bytes: int) -> bool {
+	num_bytes_read : int;
+	return ReadFile(handle, bytes, num_bytes, &num_bytes_read, null);
+}
+
+func fwrite(handle: void *, bytes: char *, num_bytes: int) -> bool {
+	num_bytes_written : int;
+	return WriteFile(handle, bytes, num_bytes, &num_bytes_written, null);
 }

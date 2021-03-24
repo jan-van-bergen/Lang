@@ -4,7 +4,7 @@ struct Bla {
 	a: i8;
 }
 
-let globla: Bla;
+globla: Bla;
 
 func main() -> int {
 	globla.b = 3;

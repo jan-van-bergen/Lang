@@ -1,7 +1,7 @@
 func main() -> int {
-	let a: = 1;
+	a: = 1;
 	
-	let b: int;
+	b: int;
 	
 	if (a > 0) {
 		b = 0xc0de;

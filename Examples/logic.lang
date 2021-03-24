@@ -7,7 +7,7 @@ func assert(expression: bool) -> void {
 }
 
 func main() -> int {
-	let a: bool;
+	a: bool;
 	
 	a = true || false;
 	assert(a == true);

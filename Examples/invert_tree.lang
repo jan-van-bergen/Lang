@@ -10,7 +10,7 @@ struct Binary_Tree {
 }
 
 func alloc_node(value : int) -> Binary_Tree * {
-	let node := cast(Binary_Tree *) malloc(sizeof(Binary_Tree));
+	node := cast(Binary_Tree *) malloc(sizeof(Binary_Tree));
 	node.value = value;
 	node.child_left  = null;
 	node.child_right = null;
@@ -24,7 +24,7 @@ func invert_tree(node : Binary_Tree *) {
 	invert_tree(node.child_left);
 	invert_tree(node.child_right);
 	
-	let tmp := node.child_left;
+	tmp := node.child_left;
 	node.child_left  = node.child_right;
 	node.child_right = tmp;
 }
@@ -47,7 +47,7 @@ func main() -> int {
 	//   1   6        14
 	//      / \      /
 	//     4   7    13
-	let root := alloc_node(8);
+	root := alloc_node(8);
 	root.child_left  = alloc_node(3);
 	root.child_right = alloc_node(10);
 	root.child_left.child_left   = alloc_node(1);

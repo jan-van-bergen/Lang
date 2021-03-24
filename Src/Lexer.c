@@ -328,7 +328,6 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 	str[str_len] = '\0';
 
 	// Keywords
-	if (strcmp(str, "let")      == 0) { token->type = TOKEN_KEYWORD_LET;      return; }
 	if (strcmp(str, "cast")     == 0) { token->type = TOKEN_KEYWORD_CAST;     return; }
 	if (strcmp(str, "sizeof")   == 0) { token->type = TOKEN_KEYWORD_SIZEOF;   return; }
 	if (strcmp(str, "null")     == 0) { token->type = TOKEN_KEYWORD_NULL;     return; }
@@ -345,8 +344,6 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 
 	token->type = TOKEN_IDENTIFIER;
 	token->value_str = str;
-		
-	return;
 }
 
 static Token * lexer_new_token(Lexer * lexer) {

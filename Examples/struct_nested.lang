@@ -9,12 +9,12 @@ func main() -> int {
 		n: Nested;
 	}
 
-	let test: Test;
+	test: Test;
 	test.a   = cast(char) 3;
 	test.n.b = 4;
 	test.n.c = 5;
 	
-	let nest: Nested = test.n; // Struct assigment does copy
+	nest: Nested = test.n; // Struct assigment does copy
 	
 	return nest.b;
 }

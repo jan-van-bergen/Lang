@@ -8,7 +8,7 @@ struct Linked_List {
 
 // Constructor
 func list_make_elem(value: int) -> Linked_List * {
-	let elem := cast(Linked_List *) malloc(sizeof(Linked_List));
+	elem := cast(Linked_List *) malloc(sizeof(Linked_List));
 	elem.value = value;
 	elem.next  = null;
 	
@@ -17,7 +17,7 @@ func list_make_elem(value: int) -> Linked_List * {
 
 // Appends new element to the list
 func list_append(list: Linked_List *, value: int) -> Linked_List * {
-	let elem := list_make_elem(value);
+	elem := list_make_elem(value);
 	
 	if (list != null) {
 		while (list.next != null) {
@@ -33,8 +33,8 @@ func list_append(list: Linked_List *, value: int) -> Linked_List * {
 func list_delete(list: Linked_List *, value: int) -> bool {
 	if (list == null) return false;
 	
-	let curr := list;
-	let next := curr.next;
+	curr := list;
+	next := curr.next;
 	
 	while (true) {
 		if (next == null) return false;
@@ -54,7 +54,7 @@ func list_delete(list: Linked_List *, value: int) -> bool {
 func list_length(list: Linked_List *) -> int {
 	if (list == null) return 0;
 	
-	let length := 1;
+	length := 1;
 	
 	while (list.next != null) {
 		list = list.next;
@@ -65,7 +65,7 @@ func list_length(list: Linked_List *) -> int {
 } 
 
 func main() -> int {
-	let head := list_make_elem(3);
+	head := list_make_elem(3);
 	
 	list_append(head, 2);
 	list_append(head, 1);
