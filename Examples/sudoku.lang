@@ -1,0 +1,132 @@
+extern putc(c: char);
+extern puts(str: char *);
+extern print_num(num: int);
+
+extern assert(assertion: bool);
+
+func is_valid_move(sudoku: u8 *, x: int, y: int, value: u8) -> bool {
+	assert(sudoku[x + y * 9] == 0);
+
+	// Check row
+	i := 0;
+	while (i < 9) {
+		if (sudoku[i + y * 9] == value) return false;
+		i++;
+	}
+	
+	// Check column
+	j := 0;
+	while (j < 9) {
+		if (sudoku[x + j * 9] == value) return false;
+		j++;
+	}
+	
+	// Check block	
+	bx := (x / cast(u8) 3) * cast(u8) 3;
+	by := (y / cast(u8) 3) * cast(u8) 3;
+	
+	j = 0;
+	while (j < 3) {		
+		i = 0;
+		while (i < 3) {
+			if (sudoku[(bx + i) + (by + j) * 9] == value) return false;
+			i++;
+		}
+		j++;
+	}
+	
+	return true;
+}
+
+func backtrack(sudoku: u8 *, x: int, y: int) -> bool {
+	next_x := x + 1;
+	next_y := y;
+	
+	next_done := false;
+	
+	if (next_x == 9) {
+		next_x = 0;
+		next_y++;
+		
+		if (next_y == 9) next_done = true; // After the current cell we are done
+	}
+	
+	// Check if the cell at (x, y) is already filled
+	if (sudoku[x + y * 9] != 0) {
+		return next_done || backtrack(sudoku, next_x, next_y);
+	}
+
+	value := cast(u8) 1;
+	while (value <= 9) {
+		if (is_valid_move(sudoku, x, y, value)) {		
+			sudoku[x + y * 9] = value;
+			
+			if (next_done || backtrack(sudoku, next_x, next_y)) {
+				return true;
+			}
+			
+			sudoku[x + y * 9] = cast(u8) 0;
+		}
+
+		value++;
+	}
+	
+	return false;
+}
+
+func print_sudoku(sudoku: u8 *) {
+	y := 0;
+	while (y < 9) {
+		x := 0;
+		while (x < 9) {
+			num := sudoku[x + y * 9];
+			
+			if (num == 0) {
+				putc(' ');
+			} else {
+				putc('0' + num);	
+			}
+			
+			x++;
+		}
+		putc('\n');
+		y++;
+	}
+}
+
+func main(arg: char *) -> bool {
+	// Skip first arg
+	while (*arg != ' ' && *arg != '\0') arg++;
+	while (*arg == ' ' && *arg != '\0') arg++;
+	
+	if (*arg == '\0') {
+		puts("WARNING: No argument provided!\n");
+		return false;
+	}
+	
+	sudoku: u8[81];
+	
+	index := 0;
+	while (index < 81) {
+		if (*arg == '\0') {
+			puts("ERROR: Incomplete Sudoku provided!\n");
+			return false;
+		}
+		
+		c := *arg++;		
+		if (c >= '0' && c <= '9') {
+			c = c - '0';
+		} else {
+			c = cast(u8) 0;
+		}
+
+		sudoku[index++] = c;
+	}
+
+	valid := backtrack(sudoku, 0, 0);
+	
+	puts("Solution:\n");
+	print_sudoku(sudoku);
+	
+	return valid;
+}

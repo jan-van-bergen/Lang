@@ -408,9 +408,73 @@ Type const * type_infer(AST_Expression const * expr, Scope const * scope) {
 			Type const * type_left  = type_infer(expr->expr_op_bin.expr_left,  scope);
 			Type const * type_right = type_infer(expr->expr_op_bin.expr_right, scope);
 
-			if (!types_unifiable(type_left, type_right)) break;
+//			if (!types_unifiable(type_left, type_right)) break;
 
-			return types_unify(type_left, type_right, scope);
+			switch (expr->expr_op_bin.token.type) {
+				case TOKEN_ASSIGN: {
+//					if (type_is_pointer(type_left) && type_is_array(type_right) && types_unifiable)
+					break; // Unify types
+				}
+
+				case TOKEN_OPERATOR_EQ:
+				case TOKEN_OPERATOR_NE:
+				case TOKEN_OPERATOR_LT:
+				case TOKEN_OPERATOR_LT_EQ:
+				case TOKEN_OPERATOR_GT:
+				case TOKEN_OPERATOR_GT_EQ: {
+					if (types_unifiable(type_left, type_right)) {
+						return make_type_bool();
+					}
+					break; // Unify types
+				}
+
+				case TOKEN_OPERATOR_LOGICAL_AND:
+				case TOKEN_OPERATOR_LOGICAL_OR: {
+					if (type_is_bool(type_left) && type_is_bool(type_right)) {
+						return make_type_bool();
+					}
+
+					error(ERROR_TYPECHECK);
+				}
+
+				case TOKEN_OPERATOR_MINUS: {
+					if (type_is_pointer(type_left) && type_is_pointer(type_right)) {
+						return make_type_u64();
+					}
+					break; // Unify types
+				}
+				case TOKEN_OPERATOR_PLUS: {
+					if (type_is_pointer(type_left) && type_is_integral(type_right)) {
+						return type_left;
+					}
+					if (type_is_integral(type_left) && type_is_pointer(type_right)) {
+						return type_right;
+					}
+					break; // Unify types
+				}
+				case TOKEN_OPERATOR_MULTIPLY:
+				case TOKEN_OPERATOR_DIVIDE:
+				case TOKEN_OPERATOR_MODULO: break; // Unify types
+
+				case TOKEN_OPERATOR_BITWISE_AND:
+				case TOKEN_OPERATOR_BITWISE_OR:
+				case TOKEN_OPERATOR_BITWISE_XOR:
+				case TOKEN_OPERATOR_SHIFT_LEFT:
+				case TOKEN_OPERATOR_SHIFT_RIGHT: {
+					if (!type_is_integral(type_left) || !type_is_integral(type_right)) {
+						error(ERROR_TYPECHECK);
+					}
+					break; // Unify types
+				}
+
+				default: error(ERROR_UNKNOWN);
+			}
+			
+			if (types_unifiable(type_left, type_right)) {
+				return types_unify(type_left, type_right, scope);
+			}
+
+			break; // Error
 		}
 
 		case AST_EXPRESSION_OPERATOR_PRE:  {

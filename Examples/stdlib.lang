@@ -1,10 +1,16 @@
 export malloc;
+export calloc;
 export free;
+export memset;
 
 export exit;
 export assert;
 
 export strlen;
+export strcmp;
+
+export putn;
+export putc;
 export puts;
 export print_num;
 
@@ -40,6 +46,12 @@ func malloc(size: int) -> void * {
 	return HeapAlloc(heap, 0, size);
 }
 
+func calloc(size: int) -> void * {
+	ptr := malloc(size);
+	memset(ptr, 0, size);
+	return ptr;
+}
+
 func free(ptr: void *) -> void {
 	assert(ptr  != null);
 	assert(heap != null);
@@ -47,11 +59,19 @@ func free(ptr: void *) -> void {
 	HeapFree(heap, 0, ptr);
 }
 
-func exit(status: int) -> void {
+func memset(ptr: void *, value: u8, size: int) {
+	cur := cast(u8 *) ptr;
+	end := (cast(u8 *) ptr) + size;
+	while (cur < end) {
+		*cur++ = value;
+	}
+}
+
+func exit(status: int) {
 	ExitProcess(status);
 }
 
-func assert(expression: bool) -> void {
+func assert(expression: bool) {
 	if (!expression) {
 		puts("*** ASSERTION FAILED ***");
 		exit(-1);
@@ -66,18 +86,38 @@ func strlen(str: char *) -> int {
 	return str - start;
 }
 
-STD_OUTPUT_HANDLE: int = -11;
-
-func puts(str: char *) -> void {
-	std_handle: void * = GetStdHandle(STD_OUTPUT_HANDLE);
-
-	len := strlen(str);
-
-	bytes_written: int;
-	WriteFile(std_handle, str, len, &bytes_written, null);
+func strcmp(a: char *, b: char *) -> int {
+	while (true) {
+		if (*a != *b) return *a - *b;
+		
+		if (*a == '\0') return 0;
+		
+		a++;
+		b++;
+	}
 }
 
-func print_num(num: int) -> void {
+STD_OUTPUT_HANDLE: int = -11;
+
+func putn(str: char *, n: int) {
+	std_handle: void * = GetStdHandle(STD_OUTPUT_HANDLE);
+
+	bytes_written: int;
+	WriteFile(std_handle, str, n, &bytes_written, null);
+}
+
+func putc(c: char) {
+	putn(&c, 1);
+}
+
+func puts(str: char *) {
+	if (str == null) return;
+
+	len := strlen(str);
+	putn(str, len);
+}
+
+func print_num(num: int) {
 	num_str: char[32];
 	idx: int = 0;
 

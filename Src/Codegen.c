@@ -452,7 +452,7 @@ static Result codegen_expression_const(Context * ctx, AST_Expression const * exp
 			unsigned flt; memcpy(&flt, &expr->expr_const.token.value_float, 4);
 
 			char str_lit_flt[64];
-			sprintf_s(str_lit_flt, sizeof(str_lit_flt), "%xh ; %ff", flt, expr->expr_const.token.value_float);
+			sprintf_s(str_lit_flt, sizeof(str_lit_flt), "0%xh ; %ff", flt, expr->expr_const.token.value_float);
 
 			codegen_add_float_literal(ctx, str_lit_name, str_lit_flt);
 			context_emit_code(ctx, "movss %s, DWORD [REL %s]\n", get_reg_name_scratch(result.reg, 8), str_lit_name);
@@ -769,25 +769,47 @@ static void codegen_compare(Context * ctx, char const * cmp_inst, char const * s
 }
 
 // Helper function used by relational operators
-static void codegen_relational(Context * ctx, char const * operator, char const * set_inst, Result * result_left, Result * result_right) {
+static void codegen_relational(Context * ctx, char const * operator, Token_Type token_operator, Result * result_left, Result * result_right) {
 	if ((type_is_integral(result_left->type) && type_is_integral(result_right->type)) ||
 		(type_is_pointer (result_left->type) && type_is_pointer (result_right->type) && types_unifiable(result_left->type, result_right->type))
 	) {
-		codegen_compare(ctx, "cmp", set_inst, result_left->reg, result_right->reg, result_left->reg);
-	} else if (type_is_f32(result_left->type) && type_is_f32(result_right->type)) {
-		context_reg_free(ctx, result_left->reg);
-		int reg = context_reg_request(ctx);
+		char const * set_instr = NULL;
 
-		codegen_compare(ctx, "comiss", set_inst, result_left->reg, result_right->reg, reg);
-		result_left->reg = reg;
-	} else if (type_is_f64(result_left->type) && type_is_f64(result_right->type)) {
-		context_reg_free(ctx, result_left->reg);
-		int reg = context_reg_request(ctx);
+		switch (token_operator)	{
+			case TOKEN_OPERATOR_LT:    set_instr = "setl";  break;
+			case TOKEN_OPERATOR_LT_EQ: set_instr = "setle"; break;
+			case TOKEN_OPERATOR_GT:    set_instr = "setg";  break;
+			case TOKEN_OPERATOR_GT_EQ: set_instr = "setge"; break;
+			default: error(ERROR_UNKNOWN);
+		}
 
-		codegen_compare(ctx, "comisd", set_inst, result_left->reg, result_right->reg, reg);
-		result_left->reg = reg;
+		codegen_compare(ctx, "cmp", set_instr, result_left->reg, result_right->reg, result_left->reg);
 	} else {
-		type_error(ctx, "Operator '%s' requires two integral, float, or pointer types", operator);
+		char const * set_instr = NULL;
+
+		switch (token_operator)	{
+			case TOKEN_OPERATOR_LT:    set_instr = "setb";  break;
+			case TOKEN_OPERATOR_LT_EQ: set_instr = "setbe"; break;
+			case TOKEN_OPERATOR_GT:    set_instr = "seta";  break;
+			case TOKEN_OPERATOR_GT_EQ: set_instr = "setae"; break;
+			default: error(ERROR_UNKNOWN);
+		}
+
+		if (type_is_f32(result_left->type) && type_is_f32(result_right->type)) {
+			context_reg_free(ctx, result_left->reg);
+			int reg = context_reg_request(ctx);
+
+			codegen_compare(ctx, "comiss", set_instr, result_left->reg, result_right->reg, reg);
+			result_left->reg = reg;
+		} else if (type_is_f64(result_left->type) && type_is_f64(result_right->type)) {
+			context_reg_free(ctx, result_left->reg);
+			int reg = context_reg_request(ctx);
+
+			codegen_compare(ctx, "comisd", set_instr, result_left->reg, result_right->reg, reg);
+			result_left->reg = reg;
+		} else {
+			type_error(ctx, "Operator '%s' requires two integral, float, or pointer types", operator);
+		}
 	}
 
 	result_left->type = make_type_bool();
@@ -1058,10 +1080,10 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			break;
 		}
 
-		case TOKEN_OPERATOR_LT:    codegen_relational(ctx, "<",  "setl",  &result_left, &result_right); break;
-		case TOKEN_OPERATOR_LT_EQ: codegen_relational(ctx, "<=", "setle", &result_left, &result_right); break;
-		case TOKEN_OPERATOR_GT:    codegen_relational(ctx, ">",  "setg",  &result_left, &result_right); break;
-		case TOKEN_OPERATOR_GT_EQ: codegen_relational(ctx, ">=", "setge", &result_left, &result_right); break;
+		case TOKEN_OPERATOR_LT:    codegen_relational(ctx, "<",  TOKEN_OPERATOR_LT,    &result_left, &result_right); break;
+		case TOKEN_OPERATOR_LT_EQ: codegen_relational(ctx, "<=", TOKEN_OPERATOR_LT_EQ, &result_left, &result_right); break;
+		case TOKEN_OPERATOR_GT:    codegen_relational(ctx, ">",  TOKEN_OPERATOR_GT,    &result_left, &result_right); break;
+		case TOKEN_OPERATOR_GT_EQ: codegen_relational(ctx, ">=", TOKEN_OPERATOR_GT_EQ, &result_left, &result_right); break;
 
 		case TOKEN_OPERATOR_EQ: {
 			codegen_compare(ctx, "cmp", "sete", result_left.reg, result_right.reg, result_left.reg);
@@ -1899,6 +1921,7 @@ static void codegen_statement_program(Context * ctx, AST_Statement const * stat)
 	if (main_def) {
 		if (ctx->needs_main) {
 			bool main_valid = false;
+			bool needs_args = false;
 
 			if (main_def->arg_count == 0) {
 				main_valid = true;
@@ -1906,6 +1929,7 @@ static void codegen_statement_program(Context * ctx, AST_Statement const * stat)
 				main_valid = 
 					type_is_pointer(main_def->args[0].type) &&
 					type_is_u8     (main_def->args[0].type->base); // Arg should be pointer to char
+				needs_args = true;
 			}
 
 			if (!main_valid) {
@@ -1916,8 +1940,11 @@ static void codegen_statement_program(Context * ctx, AST_Statement const * stat)
 			context_emit_code(ctx, "_start:\n");
 			ctx->indent++;
 
-			context_emit_code(ctx, "call GetCommandLineA\n");
-			context_emit_code(ctx, "mov rcx, rax\n");
+			if (needs_args) {
+				context_emit_code(ctx, "call GetCommandLineA\n");
+				context_emit_code(ctx, "mov rcx, rax\n");
+			}
+
 			context_emit_code(ctx, "call main\n");
 			context_emit_code(ctx, "mov ecx, eax\n");
 			context_emit_code(ctx, "call ExitProcess\n\n");

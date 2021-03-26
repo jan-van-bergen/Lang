@@ -7,6 +7,37 @@
 
 #include "Error.h"
 
+bool is_escape_char(char c) {
+	switch (c) {
+		case '\a':
+		case '\b':
+		case '\f':
+		case '\n':
+		case '\r':
+		case '\t':
+		case '\'':
+		case '\"':
+		case '\0':
+		case '\\': return true;
+
+		default: return false;
+	}
+}
+
+char remove_escape(char c) {
+	switch (c) {
+		case '\a': return 'a';
+		case '\b': return 'b';
+		case '\f': return 'f';
+		case '\n': return 'n';
+		case '\r': return 'r';
+		case '\t': return 't';
+		case '\0': return '0';
+
+		default: return c;
+	}
+}
+
 char const * read_file(char const * filename) {
 	FILE * f;
 	fopen_s(&f, filename, "rb");

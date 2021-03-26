@@ -80,7 +80,7 @@ void compile_file(char const * filename, Compiler_Config const * config) {
 
 		case COMPILER_OUTPUT_EXE: {
 			// Link
-			int cmd_offset = sprintf_s(cmd, sizeof(cmd), "link \"%s\" \"Examples\\stdlib.obj\" /out:\"%s\" /subsystem:console /entry:_start /debug /nologo /defaultlib:\"%s\" ",
+			int cmd_offset = sprintf_s(cmd, sizeof(cmd), "link \"%s\" /out:\"%s\" /subsystem:console /entry:_start /debug /nologo /defaultlib:\"%s\" ",
 				file_obj,
 				file_exe,
 				loc_kernel32

@@ -1,0 +1,219 @@
+///////////////////////////////////////////////////////
+// Based on: https://gist.github.com/tonious/1377768 //
+///////////////////////////////////////////////////////
+
+extern malloc(size: int) -> void *;
+
+extern assert(assertion: bool);
+
+extern puts(str: char *);
+extern print_num(num: int);
+
+struct AVL_Node {
+	value : int;
+	child_left:  AVL_Node *;
+	child_right: AVL_Node *;
+}
+
+func avl_node_alloc(value: int) -> AVL_Node * {
+	node := cast(AVL_Node *) malloc(sizeof(AVL_Node));
+	node.value = value;
+	node.child_left  = null;
+	node.child_right = null;
+	return node;
+}
+
+func avl_node_height(node: AVL_Node *) -> int {
+	if (node == null) return 0;
+
+	height_left  := avl_node_height(node.child_left);
+	height_right := avl_node_height(node.child_right);
+
+	if (height_left > height_right) {
+		return height_left + 1;
+	} else {
+		return height_right + 1;
+	}
+}
+
+func avl_balance_factor(node: AVL_Node *) -> int {
+	if (node == null) return 0;
+
+	height_left  := avl_node_height(node.child_left);
+	height_right := avl_node_height(node.child_right);
+
+	return height_left - height_right;
+}
+
+// Rotations
+func avl_rotate_ll(node: AVL_Node *) -> AVL_Node * {
+ 	a := node;
+	b := a.child_left;
+	
+	a.child_left  = b.child_right;
+	b.child_right = a;
+
+	return b;
+}
+
+func avl_rotate_lr(node: AVL_Node *) -> AVL_Node * {
+	a := node;
+	b := a.child_left;
+	c := b.child_right;
+	
+	a.child_left  = c.child_right;
+	b.child_right = c.child_left; 
+	c.child_left  = b;
+	c.child_right = a;
+
+	return c;
+}
+
+func avl_rotate_rl(node: AVL_Node *) -> AVL_Node * {
+	a := node;
+	b := a.child_right;
+	c := b.child_left;
+	
+	a.child_right = c.child_left;
+	b.child_left  = c.child_right; 
+	c.child_right = b;
+	c.child_left  = a;
+
+	return c;
+}
+
+func avl_rotate_rr(node: AVL_Node *) -> AVL_Node * {
+	a := node;
+	b := a.child_right;
+	
+	a.child_right = b.child_left;
+	b.child_left  = a; 
+
+	return b;
+}
+
+func avl_balance(node: AVL_Node *) -> AVL_Node * {
+	assert(node != null);
+	
+	if (node.child_left)  node.child_left  = avl_balance(node.child_left);
+	if (node.child_right) node.child_right = avl_balance(node.child_right);
+
+	factor := avl_balance_factor(node);
+
+	if (factor >= 2) {
+		if (avl_balance_factor(node.child_left) <= -1) { 
+			return avl_rotate_lr(node);
+		} else { 
+			return avl_rotate_ll(node);
+		}
+	} else if (factor <= -2 ) {
+		if (avl_balance_factor(node.child_right) >= 1) {
+			return avl_rotate_rl(node);
+		} else {
+			return avl_rotate_rr(node);
+		}
+	} 
+
+	return node;
+}
+
+func avl_insert(root: AVL_Node *, value: int) -> AVL_Node * {
+	node := avl_node_alloc(value);
+	
+	if (root == null) {
+		return node;
+	}
+
+	prev : AVL_Node * = null;
+	curr : AVL_Node * = null;
+
+	curr = root;
+
+	while (curr != null) {
+		prev = curr;
+
+		if (value < curr.value) {
+			curr = curr.child_left;
+		} else {
+			curr = curr.child_right;
+		}
+	}
+
+	if (value < prev.value) {
+		prev.child_left = node;
+	} else {
+		prev.child_right = node;
+	}
+
+	return avl_balance(root);
+}
+
+func pretty_print(root: AVL_Node *) {
+	struct Ref {
+		node   : AVL_Node *;
+		indent : int;
+	}
+	
+	queue      := cast(Ref *) malloc(100 * sizeof(Ref));
+	queue_head := &queue[0];
+	queue_tail := &queue[0];
+	
+	distance := 1 << (avl_node_height(root) - 1);
+	
+	ref := queue_tail++;
+	ref.node   = root;
+	ref.indent = distance;
+	
+	distance = distance / 2;
+	
+	indent := 0;
+	
+	next_pot := 1;
+	index    := 0;
+	
+	// BFS
+	while (queue_head != queue_tail) {
+		ref = queue_head++;
+		
+		if (ref.node.child_left != null) {
+			ref_left := queue_tail++;
+			ref_left.node   = ref.node.child_left;
+			ref_left.indent = ref.indent - distance;
+		}
+		if (ref.node.child_right != null) {
+			ref_right := queue_tail++;
+			ref_right.node   = ref.node.child_right;
+			ref_right.indent = ref.indent + distance;
+		}
+		
+		while (++indent < ref.indent) puts(" ");
+	
+		print_num(ref.node.value);
+		
+		// Every power of 2 insert a new line
+		if (++index == next_pot) {
+			index    = 0;
+			next_pot = next_pot * 2;
+		
+			distance = distance / 2;
+		
+			puts("\n");
+			indent = 0;
+		}
+	}
+}
+
+func main() -> int {
+	root := avl_insert(null, 1);
+	root  = avl_insert(root, 2);
+	root  = avl_insert(root, 3);
+	root  = avl_insert(root, 4);
+	root  = avl_insert(root, 5);
+	root  = avl_insert(root, 6);
+	root  = avl_insert(root, 7);
+
+	puts("\n");
+	pretty_print(root);
+
+	return root.value;
+}

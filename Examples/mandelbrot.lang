@@ -1,0 +1,88 @@
+extern fopen(name: char *, mode: char *) -> void *;
+extern fclose(handle: void *);
+
+extern fwrite(handle: void *, bytes: u8 *, num_bytes: int) -> bool;
+
+extern print_num(num: int);
+extern puts(str: char *);
+
+extern malloc(size: int) -> void *;
+extern free(ptr: void *);
+
+extern strlen(str: char *) -> int;
+
+struct Complex {
+	real : float;
+	imag : float;
+}
+
+func main() -> int {
+	width  := 512;
+	height := 512;
+	
+	max_iterations := 255;
+
+	x_min := -1.5f;
+	x_max :=  0.5f;
+	y_min := -1.0f;
+	y_max :=  1.0f;
+	
+	dx := (x_max - x_min) / cast(float) width;
+	dy := (y_max - y_min) / cast(float) height;
+	
+	colours := cast(u8 *) malloc(width * height * 3);
+	
+	y := 0;
+	while (y < height) {
+		x := 0;
+		while (x < width) {
+			c: Complex;
+			c.real = x_min + dx * cast(float) x;
+			c.imag = y_min + dy * cast(float) y;
+
+			z: Complex;
+
+			i := 0;
+			while (i < max_iterations) {
+				z_real2 := z.real * z.real;
+				z_imag2 := z.imag * z.imag;
+
+				if (z_real2 + z_imag2 > 4.0f) break;
+
+				// z' = z^2 + c
+				z.imag = 2.0f * z.real  * z.imag  + c.imag;
+				z.real =        z_real2 - z_imag2 + c.real;
+
+				i++;
+			}
+
+			index := (x + y * 512) * 3;
+			colours[index]     = cast(u8) i;
+			colours[index + 1] = cast(u8) i;
+			colours[index + 2] = cast(u8) i;
+
+			x++;
+		}
+
+		y++;
+	}
+	
+	handle := fopen("Examples\\mandelbrot.ppm", "w");
+	if (handle == cast(void *) -1) {
+		puts("Unable to open file!\n");
+		return -1;
+	}
+	
+	header     := "P6\n512\n512\n255\n";
+	header_len := strlen(header);
+	
+	success := 
+		fwrite(handle, header, header_len) && 
+		fwrite(handle, colours, width * height * 3);
+	
+	if (!success) puts("Failed to write file!\n");
+	
+	free(colours);
+	
+	fclose(handle);
+}

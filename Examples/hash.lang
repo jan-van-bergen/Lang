@@ -1,0 +1,152 @@
+extern malloc(size: int) -> void *;
+extern calloc(size: int) -> void *;
+extern free(ptr: void *);
+
+extern assert(assertion: bool);
+
+extern strcmp(a: char *, b: char *) -> int;
+
+extern puts(str: char *);
+
+func hash_str(str: char *) -> u64 {
+	hash := cast(u64) 5381;
+
+    while (*str != '\0') {
+        hash = (hash << 5) + hash + *str;
+		str++;
+	}
+
+    return hash;
+}
+
+struct Hash_Table_Entry {
+	key   : char *;
+	value : void *;
+}
+
+struct Hash_Table {
+	capacity : int;
+	length   : int;
+	entries  : Hash_Table_Entry *;
+}
+
+func hash_table_alloc(capacity: int) -> Hash_Table * {
+	table := cast(Hash_Table *) malloc(sizeof(Hash_Table));
+	table.capacity = capacity;
+	table.length   = 0;
+	table.entries  = cast(Hash_Table_Entry *) calloc(capacity * sizeof(Hash_Table_Entry));
+
+	return table;
+}
+
+func hash_table_resize(table: Hash_Table *) {
+	puts("Resizing...\n");
+
+	new_table := hash_table_alloc(table.capacity * 2);
+	
+	i := 0;
+	while (i < table.capacity) {
+		if (table.entries[i].key != null) {
+			hash_table_insert(new_table, table.entries[i].key, table.entries[i].value);
+		}
+		
+		i++;
+	}
+	
+	assert(table.length == new_table.length);
+
+	free(table.entries);
+	table.entries  = new_table.entries;
+	table.capacity = new_table.capacity;
+	
+	free(new_table);
+}
+
+func hash_table_insert(table: Hash_Table *, key: char *, value: void *) {
+	assert(key != null);
+
+	hash  := hash_str(key);
+    index := hash % table.capacity;
+
+	if (table.length >= table.capacity * 3 / 4) {
+		hash_table_resize(table);
+	}
+
+    while (table.entries[index].key != null) {
+		if (strcmp(key, table.entries[index].key) == 0) {
+			table.entries[index].value = value;
+			return;
+		}
+
+		if (++index >= table.capacity) index = 0; // Linear probing
+    }
+	
+	table.length++;
+	table.entries[index].key   = key;
+	table.entries[index].value = value;
+}
+
+func hash_table_lookup(table: Hash_Table *, key: char *) -> void * {
+	assert(key != null);
+
+	hash  := hash_str(key);
+	index := hash % table.capacity;
+	
+	while (table.entries[index].key != null) {
+		if (strcmp(key, table.entries[index].key) == 0) {
+			return cast(void *) table.entries[index].value;
+		}
+
+		if (++index >= table.capacity) index = 0; // Linear probing
+    }
+	
+	return null;
+}
+
+func print_table(table: Hash_Table *) {
+	puts("Table Contains:\n");
+
+	i := 0;
+	while (i < table.capacity) {
+		if (table.entries[i].key == null) {
+			puts("...\n");
+		} else {
+			puts(table.entries[i].key);
+			puts(" -> ");
+			puts(table.entries[i].value);
+			puts("\n");
+		}
+		
+		i++;
+	}
+	
+	puts("\n");
+}
+
+func main() {
+	dictionary := hash_table_alloc(4);
+	hash_table_insert(dictionary, "cat",   "kat");
+	hash_table_insert(dictionary, "dog",   "hond");
+	hash_table_insert(dictionary, "tree",  "boom");
+	hash_table_insert(dictionary, "house", "huis");
+	
+	hash_table_insert(dictionary, "one",   "eeeeeeeeeeen");
+	hash_table_insert(dictionary, "one",   "een"); // Overwrites previous
+	hash_table_insert(dictionary, "two",   "twee");
+	hash_table_insert(dictionary, "three", "drie");
+	hash_table_insert(dictionary, "four",  "vier");
+	hash_table_insert(dictionary, "five",  "vijf");
+	hash_table_insert(dictionary, "six",   "zes");
+	hash_table_insert(dictionary, "seven", "zeven");
+	hash_table_insert(dictionary, "eight", "acht");
+	hash_table_insert(dictionary, "nine",  "negen");
+	
+	str := cast(char *) hash_table_lookup(dictionary, "one");
+	if (str == null) {
+		puts("Not found!");
+	} else {
+		puts(str);
+	}
+	
+//	print_table(dictionary);
+}

@@ -14,7 +14,7 @@ func main(arg: char *) -> int {
 		if (*arg == '\0') break;
 		
 		if (*arg == ' ') {
-			length : u64 = arg - start;
+			length := arg - start;
 
 			if (length > 0) {
 				bytes_written: int;

@@ -24,8 +24,40 @@ void token_to_string(Token const * token, char * string, int string_size) {
 
 		case TOKEN_LITERAL_BOOL: sprintf_s(string, string_size, "%s", token->value_int ? "true" : "false"); return;
 
-		case TOKEN_LITERAL_CHAR:   sprintf_s(string, string_size, "'%c'",   token->value_int); return;
-		case TOKEN_LITERAL_STRING: sprintf_s(string, string_size, "\"%s\"", token->value_str); return;
+		case TOKEN_LITERAL_CHAR: {
+			*string++ = '\'';
+
+			if (is_escape_char(token->value_int)) {
+				*string++ = '\\';
+				*string++ = remove_escape(token->value_int);
+			} else {
+				*string++ = token->value_int;
+			}
+
+			*string++ = '\'';
+			*string++ = '\0';
+
+			return;
+		}
+
+		case TOKEN_LITERAL_STRING: {
+			*string++ = '\"';
+
+			char * cur = token->value_str;
+			while (*cur) {
+				if (is_escape_char(*cur)) {
+					*string++ = '\\';
+					*string++ = remove_escape(*cur++);
+				} else {
+					*string++ = *cur++;
+				}
+			}
+
+			*string++ = '\"';
+			*string++ = '\0';
+
+			return;
+		}
 
 		case TOKEN_DOT: strcpy_s(string, string_size, "."); return;
 

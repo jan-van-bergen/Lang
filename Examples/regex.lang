@@ -1,0 +1,63 @@
+extern puts(str: char *);
+
+func match(string: char *, string_end: char *, pattern: char *, pattern_end: char *) -> bool {
+	if (pattern == pattern_end) return string == string_end;
+	
+	pattern_skip := 1; // Normally consume only 1 character of the pattern, except when a ? pattern must match
+	
+	if (pattern < pattern_end - 1) {
+		if (*(pattern + 1) == '*' || *(pattern + 1) == '?') { // Match 0 chars	
+			if (match(string, string_end, pattern + 2, pattern_end)) {
+				return true;
+			}
+			
+			if (*(pattern + 1) == '?') pattern_skip = 2;
+		}
+
+		if (*(pattern + 1) == '*' || *(pattern + 1) == '+') { // Match 1 or more chars	
+			while (*string == *pattern && ++string <= string_end) {
+				if (match(string, string_end, pattern + 2, pattern_end)) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+	}
+	
+	if (string == string_end || (*pattern != '.' && *string != *pattern)) {
+		return false;
+	} else {
+		return match(string + 1, string_end, pattern + pattern_skip, pattern_end);
+	}
+}
+
+func main(arg: char *) -> bool {
+	while (*arg != ' ' && *arg != '\0') arg++; // Ignore first arg
+	while (*arg == ' ' && *arg != '\0') arg++; // Ignore spaces after first arg
+	
+	if (*arg == '\0') {
+		puts("No arguments provided!\n");
+		return false;
+	}
+	
+	// Parse pattern
+	pattern := arg;
+	while (*arg != ' ' && *arg != '\0') arg++;
+	pattern_end := arg;
+	while (*arg == ' ' && *arg != '\0') arg++;
+	
+	if (*arg == '\0') {
+		puts("No string to match provided!\n");
+		return false;
+	}
+	
+	// Parse string to match
+	string := arg;
+	while (*arg != ' ' && *arg != '\0') arg++;
+	string_end := arg;
+	while (*arg == ' ' && *arg != '\0') arg++;
+	
+	// Check if the provided string matches the provided pattern
+	return match(string, string_end, pattern, pattern_end);
+}
