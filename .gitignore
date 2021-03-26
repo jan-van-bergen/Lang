@@ -349,6 +349,7 @@ Examples/*.asm
 compiler_out.txt
 test_out.txt
 TEST.TXT
+Examples/mandelbrot.ppm
 
 # CMake
 CMakeLists.txt.user
