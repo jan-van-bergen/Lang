@@ -7,6 +7,32 @@
 
 #include "Error.h"
 
+void * mem_alloc(size_t size) {
+	void * ptr = malloc(size);
+
+	if (!ptr) {
+		puts("ERROR: malloc failed!");
+		error(ERROR_INTERNAL);
+	}
+
+	return ptr;
+}
+
+void * mem_realloc(void * old_ptr, size_t new_size) {
+	void * ptr = realloc(old_ptr, new_size);
+
+	if (!ptr) {
+		puts("ERROR: realloc failed!");
+		error(ERROR_INTERNAL);
+	}
+
+	return ptr;
+}
+
+void mem_free(void * ptr) {
+	free(ptr);
+}
+
 bool is_escape_char(char c) {
 	switch (c) {
 		case '\a':
@@ -44,14 +70,14 @@ char const * read_file(char const * filename) {
 
 	if (f == NULL) {
 		printf("ERROR: Unable to open file %s!\n", filename);
-		error(ERROR_UNKNOWN);
+		error(ERROR_INTERNAL);
 	}
 
 	fseek(f, 0, SEEK_END);
 	int file_length = ftell(f);
 	fseek(f, 0, SEEK_SET);
 
-	char * string = malloc(file_length + 1);
+	char * string = mem_alloc(file_length + 1);
 	fread(string, 1, file_length, f);
 	string[file_length] = '\0';
 
@@ -78,7 +104,7 @@ char const * replace_file_extension(char const * filename, char const * file_ext
 
 	int file_extension_len = strlen(file_extension);
 	int    str_size = extension_index + file_extension_len + 2;
-	char * str = malloc(str_size);
+	char * str = mem_alloc(str_size);
 
 	memcpy_s(str,                       str_size,                       filename,       extension_index);
 	memcpy_s(str + extension_index + 1, str_size - extension_index - 1, file_extension, file_extension_len);

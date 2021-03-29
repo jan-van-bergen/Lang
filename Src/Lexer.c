@@ -18,11 +18,11 @@ void lexer_init(Lexer * lexer, char const * source) {
 
 	lexer->tokens_len = 0;
 	lexer->tokens_cap = 32;
-	lexer->tokens = malloc(lexer->tokens_cap * sizeof(Token));
+	lexer->tokens = mem_alloc(lexer->tokens_cap * sizeof(Token));
 }
 
-void lexer_free(Lexer * lexer) {
-	free(lexer->tokens);
+void lexer_mem_free(Lexer * lexer) {
+	mem_free(lexer->tokens);
 }
 
 static char lexer_peek(Lexer const * lexer) {
@@ -212,7 +212,7 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 		int index_str_end = lexer->index;
 
 		int    str_len = index_str_end - index_str_start;
-		char * str     = malloc(str_len + 1);
+		char * str     = mem_alloc(str_len + 1);
 
 		memcpy(str, lexer->source + index_str_start, index_str_end - index_str_start);
 		str[str_len] = '\0';
@@ -322,7 +322,7 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 	int index_str_end = lexer->index;
 
 	int    str_len = index_str_end - index_str_start;
-	char * str     = malloc(str_len + 1);
+	char * str     = mem_alloc(str_len + 1);
 
 	memcpy(str, lexer->source + index_str_start, index_str_end - index_str_start);
 	str[str_len] = '\0';
@@ -349,7 +349,7 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 static Token * lexer_new_token(Lexer * lexer) {
 	if (lexer->tokens_len == lexer->tokens_cap) {
 		lexer->tokens_cap *= 2;
-		lexer->tokens = realloc(lexer->tokens, lexer->tokens_cap * sizeof(Token));
+		lexer->tokens = mem_realloc(lexer->tokens, lexer->tokens_cap * sizeof(Token));
 	}
 		
 	return lexer->tokens + lexer->tokens_len++;

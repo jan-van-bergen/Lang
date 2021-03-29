@@ -147,6 +147,6 @@ func main() {
 	} else {
 		puts(str);
 	}
-	
+
 //	print_table(dictionary);
 }

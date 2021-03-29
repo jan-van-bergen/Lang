@@ -77,7 +77,7 @@ typedef struct AST_Expression {
 		} expr_op_post;
 
 		struct Call {
-			char const * function_name;
+			struct AST_Expression * expr_function;
 
 			int                   arg_count;
 			struct AST_Call_Arg * args;
@@ -194,7 +194,7 @@ AST_Expression * ast_make_expr_op_bin (Token const * token, AST_Expression * exp
 AST_Expression * ast_make_expr_op_pre (Token const * token, AST_Expression * expr);
 AST_Expression * ast_make_expr_op_post(Token const * token, AST_Expression * expr);
 
-AST_Expression * ast_make_expr_call(char const * function_name, int arg_count, AST_Call_Arg * args); 
+AST_Expression * ast_make_expr_call(AST_Expression * expr_function, int arg_count, AST_Call_Arg * args); 
 
 
 AST_Statement * ast_make_stat_program(Variable_Buffer * globals, Scope * global_scope, AST_Statement * stat);

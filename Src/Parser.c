@@ -75,6 +75,10 @@ static Token const * parser_match_and_advance(Parser * parser, Token_Type token_
 	return parser_advance(parser);
 }
 
+static bool parser_match_type(Parser const * parser) {
+	return parser_match(parser, TOKEN_PARENTESES_OPEN) || parser_match(parser, TOKEN_IDENTIFIER);
+}
+
 static bool parser_match_expression(Parser const * parser) {
 	return
 		parser_match(parser, TOKEN_IDENTIFIER) || // Variable
@@ -170,52 +174,102 @@ static Type const * parser_parse_type(Parser * parser) {
 	Type * type = type_table_new_type();
 	type->base = NULL;
 
-	char const * identifier = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
+	if (parser_match(parser, TOKEN_PARENTESES_OPEN)) {
+		parser_advance(parser);
 
-	if (strcmp(identifier, "void") == 0) {
-		type->type = TYPE_VOID;
-	} else if (strcmp(identifier, "i8") == 0) {
-		type->type = TYPE_I8;
-	} else if (strcmp(identifier, "i16") == 0) {
-		type->type = TYPE_I16;
-	} else if (strcmp(identifier, "i32") == 0 || strcmp(identifier, "int") == 0) {
-		type->type = TYPE_I32;
-	} else if (strcmp(identifier, "i64") == 0) {
-		type->type = TYPE_I64;
-	} else if (strcmp(identifier, "u8") == 0 || strcmp(identifier, "char") == 0) {
-		type->type = TYPE_U8;
-	} else if (strcmp(identifier, "u16") == 0) {
-		type->type = TYPE_U16;
-	} else if (strcmp(identifier, "u32") == 0) {
-		type->type = TYPE_U32;
-	} else if (strcmp(identifier, "u64") == 0) {
-		type->type = TYPE_U64;
-	} else if (strcmp(identifier, "f32") == 0 || strcmp(identifier, "float") == 0) {
-		type->type = TYPE_F32;
-	} else if (strcmp(identifier, "f64") == 0 || strcmp(identifier, "double") == 0) {
-		type->type = TYPE_F64;
-	} else if (strcmp(identifier, "bool") == 0) {
-		type->type = TYPE_BOOL;
+		int num_extra_parens = 0;
+		while (parser_match(parser, TOKEN_PARENTESES_OPEN)) {
+			parser_advance(parser);
+			num_extra_parens++;
+		}
+
+		int     arg_count = 0;
+		Type ** arg_types = NULL;
+
+		// Parse arguments (if any)
+		if (!parser_match(parser, TOKEN_PARENTESES_CLOSE)) {
+			int arg_types_cap = 16;
+			arg_types = mem_alloc(arg_types_cap * sizeof(Type *));
+
+			arg_types[arg_count++] = parser_parse_type(parser);
+
+			while (parser_match(parser, TOKEN_COMMA)) {
+				parser_advance(parser);
+
+				if (arg_count == arg_types_cap) {
+					arg_types_cap *= 2;
+					arg_types = mem_realloc(arg_types, arg_types_cap);
+				}
+
+				arg_types[arg_count++] = parser_parse_type(parser);
+			}
+		}
+
+		parser_match_and_advance(parser, TOKEN_PARENTESES_CLOSE);
+
+		// Parse return type
+		Type const * return_type = NULL;
+
+		if (parser_match(parser, TOKEN_ARROW)) {
+			parser_advance(parser);
+			return_type = parser_parse_type(parser);
+		} else {
+			return_type = make_type_void();
+		}
+
+		for (int i = 0; i < num_extra_parens; i++) {
+			parser_match_and_advance(parser, TOKEN_PARENTESES_CLOSE);
+		}
+
+		type = make_type_function(arg_types, arg_count, return_type);
 	} else {
-		type->type        = TYPE_STRUCT;
-		type->struct_name = identifier;
-	}
+		char const * identifier = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
 
-	while (
-		parser_match(parser, TOKEN_OPERATOR_MULTIPLY) ||
-		parser_match(parser, TOKEN_SQUARE_BRACES_OPEN)
-	) {
-		if (parser_match(parser, TOKEN_OPERATOR_MULTIPLY)) {
-			parser_advance(parser);
+		if (strcmp(identifier, "void") == 0) {
+			type->type = TYPE_VOID;
+		} else if (strcmp(identifier, "i8") == 0) {
+			type->type = TYPE_I8;
+		} else if (strcmp(identifier, "i16") == 0) {
+			type->type = TYPE_I16;
+		} else if (strcmp(identifier, "i32") == 0 || strcmp(identifier, "int") == 0) {
+			type->type = TYPE_I32;
+		} else if (strcmp(identifier, "i64") == 0) {
+			type->type = TYPE_I64;
+		} else if (strcmp(identifier, "u8") == 0 || strcmp(identifier, "char") == 0) {
+			type->type = TYPE_U8;
+		} else if (strcmp(identifier, "u16") == 0) {
+			type->type = TYPE_U16;
+		} else if (strcmp(identifier, "u32") == 0) {
+			type->type = TYPE_U32;
+		} else if (strcmp(identifier, "u64") == 0) {
+			type->type = TYPE_U64;
+		} else if (strcmp(identifier, "f32") == 0 || strcmp(identifier, "float") == 0) {
+			type->type = TYPE_F32;
+		} else if (strcmp(identifier, "f64") == 0 || strcmp(identifier, "double") == 0) {
+			type->type = TYPE_F64;
+		} else if (strcmp(identifier, "bool") == 0) {
+			type->type = TYPE_BOOL;
+		} else {
+			type->type        = TYPE_STRUCT;
+			type->struct_name = identifier;
+		}
 
-			type = make_type_pointer(type);
-		} else if (parser_match(parser, TOKEN_SQUARE_BRACES_OPEN)) {
-			parser_advance(parser);
+		while (
+			parser_match(parser, TOKEN_OPERATOR_MULTIPLY) ||
+			parser_match(parser, TOKEN_SQUARE_BRACES_OPEN)
+		) {
+			if (parser_match(parser, TOKEN_OPERATOR_MULTIPLY)) {
+				parser_advance(parser);
 
-			int array_size = parser_match_and_advance(parser, TOKEN_LITERAL_INT)->value_int;
-			parser_match_and_advance(parser, TOKEN_SQUARE_BRACES_CLOSE);
+				type = make_type_pointer(type);
+			} else if (parser_match(parser, TOKEN_SQUARE_BRACES_OPEN)) {
+				parser_advance(parser);
 
-			type = make_type_array(type, array_size);
+				int array_size = parser_match_and_advance(parser, TOKEN_LITERAL_INT)->value_int;
+				parser_match_and_advance(parser, TOKEN_SQUARE_BRACES_CLOSE);
+
+				type = make_type_array(type, array_size);
+			}
 		}
 	}
 
@@ -233,7 +287,7 @@ static AST_Call_Arg * parser_parse_call_args(Parser * parser, int * arg_count) {
 	*arg_count = 0;
 
 	int arg_capacity = 16;
-	AST_Call_Arg * args = malloc(arg_capacity * sizeof(AST_Call_Arg));
+	AST_Call_Arg * args = mem_alloc(arg_capacity * sizeof(AST_Call_Arg));
 
 	parser_match_and_advance(parser, TOKEN_PARENTESES_OPEN);
 	
@@ -246,7 +300,7 @@ static AST_Call_Arg * parser_parse_call_args(Parser * parser, int * arg_count) {
 
 		if (*arg_count == arg_capacity) {
 			arg_capacity *= 2;
-			args = realloc(args, arg_capacity * sizeof(AST_Call_Arg));
+			args = mem_realloc(args, arg_capacity * sizeof(AST_Call_Arg));
 		}
 
 		AST_Call_Arg * arg = args + (*arg_count)++;
@@ -262,14 +316,7 @@ static AST_Expression * parser_parse_expression_elementary(Parser * parser) {
 	if (parser_match(parser, TOKEN_IDENTIFIER)) {
 		Token const * identifier = parser_advance(parser);
 
-		if (parser_match(parser, TOKEN_PARENTESES_OPEN)) {
-			int            arg_count;
-			AST_Call_Arg * args = parser_parse_call_args(parser, &arg_count);
-
-			return ast_make_expr_call(identifier->value_str, arg_count, args);
-		} else {
-			return ast_make_expr_var(identifier->value_str);
-		}
+		return ast_make_expr_var(identifier->value_str);
 	} else if (
 		parser_match(parser, TOKEN_LITERAL_INT)    ||
 		parser_match(parser, TOKEN_LITERAL_F32)    ||
@@ -336,8 +383,21 @@ static AST_Expression * parser_parse_expression_dot_or_array_access(Parser * par
 	return lhs;
 }
 
+static AST_Expression * parser_parse_exprssion_call(Parser * parser) {
+	AST_Expression * expr = parser_parse_expression_dot_or_array_access(parser);
+
+	while (parser_match(parser, TOKEN_PARENTESES_OPEN)) {
+		int            arg_count;
+		AST_Call_Arg * args = parser_parse_call_args(parser, &arg_count);
+
+		expr = ast_make_expr_call(expr, arg_count, args);
+	}
+
+	return expr;
+}
+
 static AST_Expression * parser_parse_expression_postfix(Parser * parser) {
-	AST_Expression * operand = parser_parse_expression_dot_or_array_access(parser);
+	AST_Expression * operand = parser_parse_exprssion_call(parser);
 
 	if (parser_match(parser, TOKEN_OPERATOR_INC) || parser_match(parser, TOKEN_OPERATOR_DEC)) {
 		Token const * operator = parser_advance(parser);
@@ -557,7 +617,7 @@ static AST_Statement * parser_parse_statement_def_var(Parser * parser) {
 	parser_match_and_advance(parser, TOKEN_COLON);
 
 	Type const * type = NULL;
-	if (parser_match(parser, TOKEN_IDENTIFIER)) {
+	if (parser_match_type(parser)) {
 		type = parser_parse_type(parser);
 	}
 
@@ -598,7 +658,7 @@ static AST_Def_Arg * parser_parse_def_args(Parser * parser, int * arg_count) {
 	*arg_count = 0;
 
 	int arg_capacity = 16;
-	AST_Def_Arg * args = malloc(arg_capacity * sizeof(AST_Def_Arg));
+	AST_Def_Arg * args = mem_alloc(arg_capacity * sizeof(AST_Def_Arg));
 
 	parser_match_and_advance(parser, TOKEN_PARENTESES_OPEN);
 	
@@ -611,7 +671,7 @@ static AST_Def_Arg * parser_parse_def_args(Parser * parser, int * arg_count) {
 
 		if (*arg_count == arg_capacity) {
 			arg_capacity *= 2;
-			args = realloc(args, arg_capacity * sizeof (AST_Def_Arg));
+			args = mem_realloc(args, arg_capacity * sizeof (AST_Def_Arg));
 		}
 
 		parser_parse_def_arg(parser, args + (*arg_count)++);
@@ -658,6 +718,17 @@ static AST_Statement * parser_parse_statement_def_func(Parser * parser) {
 		scope_add_arg(scope_args, arg->name, arg->type);
 	}
 	
+	Type const ** type_args = NULL;
+	if (function_def->arg_count > 0) {
+		type_args = mem_alloc(function_def->arg_count * sizeof(Type *));
+
+		for (int i = 0; i < function_def->arg_count; i++) {
+			type_args[i] = function_def->args[i].type;
+		}
+	}
+
+	scope_add_var(parser->current_scope->prev, func_name, make_type_function(type_args, function_def->arg_count, function_def->return_type));
+
 	AST_Statement * body = parser_parse_statement_block(parser);
 
 	parser->current_variable_buffer = prev_variable_buffer; // Pop Variable Buffer
@@ -714,6 +785,17 @@ static AST_Statement * parser_parse_statement_extern(Parser * parser) {
 	}
 
 	parser_match_and_advance(parser, TOKEN_SEMICOLON);
+	
+	Type const ** type_args = NULL;
+	if (function_def->arg_count > 0) {
+		type_args = mem_alloc(function_def->arg_count * sizeof(Type *));
+
+		for (int i = 0; i < function_def->arg_count; i++) {
+			type_args[i] = function_def->args[i].type;
+		}
+	}
+
+	scope_add_var(parser->current_scope, function_def->name, make_type_function(type_args, function_def->arg_count, function_def->return_type));
 
 	return ast_make_stat_extern(function_def);
 }

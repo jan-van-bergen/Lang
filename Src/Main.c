@@ -20,7 +20,7 @@ bool match_arg(char const ** arg, char const * target) {
 }
 
 int main(int arg_count, char const * args[]) {
-	char const * filename = "Examples\\stdlib.lang";
+	char const * filename = "Examples\\avl.lang";
 
 	Compiler_Config config;
 	config.output = COMPILER_OUTPUT_EXE;
@@ -55,13 +55,13 @@ int main(int arg_count, char const * args[]) {
 	char const * file_exe = replace_file_extension(filename, "exe");
 
 	int ret = system(file_exe);
-	printf("Program returned: %i\n", ret);
+	printf("Program returned: %i (%x)\n", ret, ret);
 	
-	free(file_exe);
+	mem_free(file_exe);
 
 	__debugbreak();
 
-	return ERROR_UNKNOWN;
+	return ERROR_INTERNAL;
 #endif
 
 	return ERROR_SUCCESS;

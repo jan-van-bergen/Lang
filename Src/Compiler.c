@@ -22,7 +22,7 @@ void compile_file(char const * filename, Compiler_Config const * config) {
 
 	lexer_lex(&lexer);
 
-	free(source);
+	mem_free(source);
 
 	// Parsing phase
 	Parser parser;
@@ -32,7 +32,7 @@ void compile_file(char const * filename, Compiler_Config const * config) {
 
 	AST_Statement * program = parser_parse_program(&parser);
 	
-	lexer_free(&lexer);
+	lexer_mem_free(&lexer);
 
 	//printf("\n\nPretty Print:\n\n");
 	//ast_pretty_print(program);
@@ -42,7 +42,7 @@ void compile_file(char const * filename, Compiler_Config const * config) {
 
 	ast_free_statement(program);
 	
-	type_table_free();
+	type_table_mem_free();
 
 	// Output
 	char const * file_asm = replace_file_extension(filename, "asm");
@@ -61,14 +61,14 @@ void compile_file(char const * filename, Compiler_Config const * config) {
 	fwrite(code, 1, strlen(code), file);
 	fclose(file);
 
-	free(code);
+	mem_free(code);
 
-	char const * loc_kernel32 = "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.18362.0\\um\\x64\\kernel32.lib";
+	char const * lib_path = "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.18362.0\\um\\x64";
 	
 	char const cmd[1024];
 
 	// Assemble
-	sprintf_s(cmd, sizeof(cmd), "nasm -f win64 \"%s\" -o \"%s\" -g", file_asm, file_obj);
+	sprintf_s(cmd, sizeof(cmd), "nasm -f win64 \"%s\" -o \"%s\" -g -Werror", file_asm, file_obj);
 	if (system(cmd) != EXIT_SUCCESS) error(ERROR_ASSEMBLER);
 
 	switch (config->output) {
@@ -80,28 +80,28 @@ void compile_file(char const * filename, Compiler_Config const * config) {
 
 		case COMPILER_OUTPUT_EXE: {
 			// Link
-			int cmd_offset = sprintf_s(cmd, sizeof(cmd), "link \"%s\" /out:\"%s\" /subsystem:console /entry:_start /debug /nologo /defaultlib:\"%s\" ",
+			int cmd_offset = sprintf_s(cmd, sizeof(cmd), "link \"%s\" /out:\"%s\" /subsystem:console /entry:_start /debug /nologo /libpath:\"%s\" kernel32.lib",
 				file_obj,
 				file_exe,
-				loc_kernel32
+				lib_path
 			);
 
 			for (int i = 0; i < config->lib_count; i++) {
-				cmd_offset += sprintf_s(cmd + cmd_offset, sizeof(cmd) - cmd_offset, " /defaultlib:\"%s\" ", config->libs[i]);
+				cmd_offset += sprintf_s(cmd + cmd_offset, sizeof(cmd) - cmd_offset, " \"%s\" ", config->libs[i]);
 			}
 
 			break;
 		}
 
-		default: error(ERROR_UNKNOWN);
+		default: error(ERROR_INTERNAL);
 	}
 
 	if (system(cmd) != EXIT_SUCCESS) {
 		puts(cmd);	
 		error(ERROR_LINKER);
 	}
-	free(file_asm);
-	free(file_obj);
-	free(file_exe);
-	free(file_lib);
+	mem_free(file_asm);
+	mem_free(file_obj);
+	mem_free(file_exe);
+	mem_free(file_lib);
 }

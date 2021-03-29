@@ -21,6 +21,8 @@ typedef enum Type_Type {
 
 	TYPE_POINTER,
 
+	TYPE_FUNCTION,
+
 	TYPE_ARRAY,
 	TYPE_STRUCT
 } Type_Type;
@@ -34,11 +36,18 @@ typedef struct Type {
 		int array_size;           // Active if type == TYPE_ARRAY
 
 		char const * struct_name; // Active if type == TYPE_STRUCT
+
+		struct {
+			struct Type const ** args;
+			int                  arg_count;
+
+			struct Type const * return_type;
+		} function;
 	};
 } Type;
 
 void type_table_init();
-void type_table_free();
+void type_table_mem_free();
 
 Type * type_table_new_type();
 
@@ -62,8 +71,9 @@ Type const * make_type_bool();
 Type const * make_type_array  (Type const * base_type, int size);
 Type const * make_type_pointer(Type const * base_type);
 
+Type const * make_type_function(Type const ** arg_types, int arg_count, Type const * return_type);
 
-void type_to_string(Type const * type, char * string, int string_size);
+int type_to_string(Type const * type, char * string, int string_size);
 
 
 int type_get_size (Type const * type, struct Scope * scope);
@@ -92,6 +102,8 @@ bool type_is_bool(Type const * type);
 
 bool type_is_array  (Type const * type);
 bool type_is_pointer(Type const * type);
+
+bool type_is_function(Type const * type);
 
 bool type_is_struct(Type const * type);
 

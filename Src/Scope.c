@@ -12,7 +12,7 @@
 static int variable_buffer_add_variable(Variable_Buffer * buf, char const * name, Type const * type, bool is_global) {
 	if (buf->vars_len == buf->vars_cap) {
 		buf->vars_cap *= 2;
-		buf->vars = realloc(buf->vars, buf->vars_cap * sizeof(Variable));
+		buf->vars = mem_realloc(buf->vars, buf->vars_cap * sizeof(Variable));
 	}
 
 	int index = buf->vars_len++;
@@ -26,12 +26,12 @@ static int variable_buffer_add_variable(Variable_Buffer * buf, char const * name
 }
 
 Variable_Buffer * make_variable_buffer(char const * name) {
-	Variable_Buffer * buf = malloc(sizeof(Variable_Buffer));
+	Variable_Buffer * buf = mem_alloc(sizeof(Variable_Buffer));
 	buf->name = name;
 
 	buf->vars_len = 0;
 	buf->vars_cap = 16;
-	buf->vars = malloc(buf->vars_cap * sizeof(Variable));
+	buf->vars = mem_alloc(buf->vars_cap * sizeof(Variable));
 
 	buf->size  = 0;
 	buf->align = 0;
@@ -40,34 +40,34 @@ Variable_Buffer * make_variable_buffer(char const * name) {
 }
 
 void free_variable_buffer(Variable_Buffer * list) {
-	free(list->vars);
-	free(list);
+	mem_free(list->vars);
+	mem_free(list);
 }
 
 Scope * make_scope(Variable_Buffer * buf) {
-	Scope * scope = malloc(sizeof(Scope));
+	Scope * scope = mem_alloc(sizeof(Scope));
 	scope->prev = NULL;
 
 	scope->indices_len = 0;
 	scope->indices_cap = 16;
-	scope->indices = malloc(scope->indices_cap * sizeof(int));
+	scope->indices = mem_alloc(scope->indices_cap * sizeof(int));
 
 	scope->variable_buffer = buf;
 	
 	scope->struct_defs_len = 0;
 	scope->struct_defs_cap = 16;
-	scope->struct_defs = malloc(scope->struct_defs_cap * sizeof(Struct_Def));
+	scope->struct_defs = mem_alloc(scope->struct_defs_cap * sizeof(Struct_Def));
 
 	scope->function_defs_len = 0;
 	scope->function_defs_cap = 16;
-	scope->function_defs = malloc(scope->function_defs_cap * sizeof(Function_Def));
+	scope->function_defs = mem_alloc(scope->function_defs_cap * sizeof(Function_Def));
 
 	return scope;
 }
 
 void free_scope(Scope * scope) {
-	free(scope->indices);
-	free(scope);
+	mem_free(scope->indices);
+	mem_free(scope);
 }
 
 bool scope_is_global(Scope const * scope) {
@@ -87,7 +87,7 @@ void scope_add_arg(Scope * scope, char const * name, Type const * type) {
 	
 	if (scope->indices_len == scope->indices_cap) {
 		scope->indices_cap *= 2;
-		scope->indices = realloc(scope->indices, scope->indices_cap * sizeof(int));
+		scope->indices = mem_realloc(scope->indices, scope->indices_cap * sizeof(int));
 	}
 
 	scope->indices[scope->indices_len++] = index;
@@ -123,7 +123,7 @@ void scope_add_var(Scope * scope, char const * name, Type const * type) {
 
 	if (scope->indices_len == scope->indices_cap) {
 		scope->indices_cap *= 2;
-		scope->indices = realloc(scope->indices, scope->indices_cap * sizeof(int));
+		scope->indices = mem_realloc(scope->indices, scope->indices_cap * sizeof(int));
 	}
 
 	scope->indices[scope->indices_len++] = index;
@@ -146,11 +146,11 @@ void scope_add_var(Scope * scope, char const * name, Type const * type) {
 Struct_Def * scope_add_struct_def(Scope * scope) {
 	if (scope->struct_defs_len == scope->struct_defs_cap) {
 		scope->struct_defs_cap *= 2;
-		scope->struct_defs = realloc(scope->struct_defs, scope->struct_defs_cap * sizeof(Struct_Def));
+		scope->struct_defs = mem_realloc(scope->struct_defs, scope->struct_defs_cap * sizeof(Struct_Def));
 	}
 
 	Struct_Def ** struct_def = scope->struct_defs + scope->struct_defs_len++;
-	*struct_def = malloc(sizeof(Struct_Def));
+	*struct_def = mem_alloc(sizeof(Struct_Def));
 
 	return *struct_def; 
 }
@@ -158,11 +158,11 @@ Struct_Def * scope_add_struct_def(Scope * scope) {
 Function_Def * scope_add_function_def(Scope * scope) {
 	if (scope->function_defs_len == scope->function_defs_cap) {
 		scope->function_defs_cap *= 2;
-		scope->function_defs = realloc(scope->function_defs, scope->function_defs_cap * sizeof(Struct_Def));
+		scope->function_defs = mem_realloc(scope->function_defs, scope->function_defs_cap * sizeof(Struct_Def));
 	}
 	
 	Function_Def ** function_def = scope->function_defs + scope->function_defs_len++;
-	*function_def = malloc(sizeof(Function_Def));
+	*function_def = mem_alloc(sizeof(Function_Def));
 
 	return * function_def;
 }
@@ -214,7 +214,7 @@ Variable * scope_get_variable(Scope const * scope, char const * name) {
 }
 
 Struct_Def * scope_get_struct_def(Scope const * scope, char const * name) {
-	while (true) {
+	while (scope) {
 		Struct_Def * struct_def = scope_lookup_struct_def(scope, name);
 		if (struct_def) return struct_def;
 
@@ -225,18 +225,17 @@ Struct_Def * scope_get_struct_def(Scope const * scope, char const * name) {
 			error(ERROR_SCOPE);
 		}
 	}
+
+	return NULL;
 }
 
 Function_Def * scope_get_function_def(Scope const * scope, char const * name) {
-	while (true) {
+	while (scope) {
 		Function_Def * function = scope_lookup_function_def(scope, name);
 		if (function) return function;
 	
 		scope = scope->prev;
-
-		if (scope == NULL) {
-			printf("ERROR: Function '%s' is not defined or not in scope!", name);
-			error(ERROR_SCOPE);
-		}
 	}
+
+	return NULL;
 }

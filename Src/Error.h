@@ -1,4 +1,5 @@
 #pragma once
+#include "Util.h"
 
 typedef enum Error {
 	ERROR_SUCCESS = 0,
@@ -9,7 +10,7 @@ typedef enum Error {
 	ERROR_CODEGEN,
 	ERROR_ASSEMBLER,
 	ERROR_LINKER,
-	ERROR_UNKNOWN   
+	ERROR_INTERNAL   
 } Error;
 
-__declspec(noreturn) void error(Error error);
+NO_RETURN void error(Error error);

@@ -1,0 +1,27 @@
+func f(x: int, c: int) -> int {
+	return x * x + c;
+}
+
+func apply(array: int *, length: int, function: (int, int) -> int) {
+	i := 0;
+	while (i < length) {
+		array[i] = function(array[i], i);
+		i++;
+	}
+}
+
+func main() -> int {
+	array: int[8];
+	array[0] = 1;
+	array[1] = 2;
+	array[2] = 3;
+	array[3] = 4;
+	array[4] = 5;
+	array[5] = 6;
+	array[6] = 7;
+	array[7] = 8;
+	
+	apply(array, 8, f);
+	
+	return array[7];
+}

@@ -1,0 +1,246 @@
+extern puts(str: char *);
+extern print_num(num: int);
+
+struct WNDCLASSEXA {
+	struct_size : u32;
+	style       : u32;
+	wnd_proc    : (void *, u32, u64, u64) -> void;
+	cls_extra   : int;
+	wnd_extra   : int;
+	instance    : void *;
+	icon        : void *;
+	cursor      : void *;
+	bg          : void *;
+	menu_name   : char *;
+	class_name  : char *;
+	icon_small  : void *;
+}
+
+extern GetLastError() -> u32;
+
+extern GetModuleHandleA(lpModuleName: char *) -> void *;
+
+extern LoadIconA  (hInstance: void *, lpIconName:   char *) -> void *;
+extern LoadCursorA(hInstance: void *, lpCursorName: char *) -> void *;
+
+extern RegisterClassExA(lpWndClass: WNDCLASSEXA *) -> void *;
+
+extern CreateWindowExA(
+	ex_style    : u32,
+	class_name  : char *,
+	window_name : char *,
+	dw_style    : u32,
+	x           : u64,
+	y           : u64,
+	width       : u64,
+	height      : u64,
+	hwnd_parent : void *,
+	menu        : void *,
+	instance    : void *,
+	param       : void *
+) -> void *;
+
+extern ShowWindow(hWnd: void *, nCmdShow: int) -> bool;
+extern DestroyWindow(hWnd: void *);
+
+extern MoveWindow(hwnd: void *, x: int, y: int, cx: int, cy: int, repaint: bool) -> bool;
+
+MB_YESNO := 0x00000004;
+
+IDYES := 6;
+IDNO  := 7;
+
+extern MessageBoxA(hwnd: void *, text: char *, caption: char *, type: u32) -> int;	
+
+extern DefWindowProcA(hwnd: void *, msg: u32, wparam: u64, lparam: u64) -> int;
+
+extern PostQuitMessage(code: int);
+
+struct MSG {
+	hwnd     : void *;
+	message  : u32;
+	wParam   : u64;
+	lParam   : u64;
+	time     : u32;
+	ptx      : u32;
+	pty      : u32;
+	lPrivate : u32;
+}
+
+WS_EX_CLIENTEDGE    := 0x00000200;
+WS_OVERLAPPEDWINDOW := 0x00cf0000;
+WS_OVERLAPPED       := 0x00000000;
+WS_POPUP            := 0x80000000;
+WS_CHILD            := 0x40000000;
+WS_MINIMIZE         := 0x20000000;
+WS_VISIBLE          := 0x10000000;
+WS_DISABLED         := 0x08000000;
+WS_CLIPSIBLINGS     := 0x04000000;
+WS_CLIPCHILDREN     := 0x02000000;
+WS_MAXIMIZE         := 0x01000000;
+WS_CAPTION          := 0x00c00000;
+WS_BORDER           := 0x00800000;
+WS_DLGFRAME         := 0x00400000;
+WS_VSCROLL          := 0x00200000;
+WS_HSCROLL          := 0x00100000;
+WS_SYSMENU          := 0x00080000;
+WS_THICKFRAME       := 0x00040000;
+WS_GROUP            := 0x00020000;
+WS_TABSTOP          := 0x00010000;
+
+ES_MULTILINE   := 0x0004;
+ES_AUTOVSCROLL := 0x0040;
+ES_AUTOHSCROLL := 0x0080;
+
+CW_USEDEFAULT := 0x80000000;
+
+SW_SHOWDEFAULT := 10;
+
+WM_CREATE  := 0x0001;
+WM_DESTROY := 0x0002;
+WM_SIZE    := 0x0005;
+WM_PAINT   := 0x000f;
+WM_CLOSE   := 0x0010;
+WM_SETFONT := 0x0030;
+
+extern GetMessageA(msg: MSG *, hwnd: void *, msg_filter_min: u32, msg_filter_max: u32) -> bool;
+extern SendMessageA(hwnd: void *, msg: u32, wparam: u64, lparam: u64) -> int;
+extern TranslateMessage(msg: MSG *) -> bool;
+extern DispatchMessageA(msg: MSG *) -> u32;
+
+extern GetStockObject(i: int) -> void *;
+extern GetDlgItem(dlg: void *, dlg_item: int) -> void *;
+
+struct RECT {
+	left   : u32;
+	top    : u32;
+	right  : u32;
+	bottom : u32;
+}
+
+extern GetClientRect(hwnd: void *, rect: RECT *) -> bool;
+
+struct PAINTSTRUCT {
+	hdc        : void *;
+	erase      : bool;
+	rect       : RECT;
+	restore    : bool;
+	inc_update : bool;
+	reserved   : u8[32];
+}
+
+DT_CENTER     := 0x01;
+DT_VCENTER    := 0x04;
+DT_SINGLELINE := 0x20;
+
+extern BeginPaint(hwnd: void *, lpPaint: PAINTSTRUCT *) -> void *;
+extern EndPaint  (hwnd: void *, lpPaint: PAINTSTRUCT *) -> bool;
+
+extern FillRect(hdc: void *, rect: RECT *, hbr: void *) -> int;
+extern DrawTextA(hdc: void *, text: char *, len: int, rect: RECT *, format: u32) -> int;
+
+DEFAULT_GUI_FONT := 17;
+
+IDC_MAIN_TEXTBOX := 101;
+
+SWP_NOZORDER := 0x0004;
+
+func window_proc(hwnd: void *, msg: u32, wparam: u64, lparam: u64) -> int {
+	if (msg == WM_CREATE) {
+		instance := GetModuleHandleA(null);
+		
+		text_box := CreateWindowExA(
+			WS_EX_CLIENTEDGE,
+			"EDIT",
+			"",
+			WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL,
+			0, 0, 100, 100,
+			hwnd,                          // Parent window
+			cast(void *) IDC_MAIN_TEXTBOX, // Menu handle
+			instance,                      // Instance handle
+			null                           // User data
+		);
+		if (text_box == null) {
+			puts("Could not create text box!\n");
+			return -1;
+		}
+		
+		font := GetStockObject(DEFAULT_GUI_FONT);
+		SendMessageA(text_box, WM_SETFONT, cast(u64) font, 0);
+	} else if (msg == WM_DESTROY) {
+		PostQuitMessage(1234);
+		return 0;
+	} else if (msg == WM_SIZE) {
+		rect : RECT;
+		GetClientRect(hwnd, &rect);
+		
+		text_box := GetDlgItem(hwnd, IDC_MAIN_TEXTBOX);
+        MoveWindow(text_box, 0, 0, rect.right, rect.bottom, true);
+		
+		return 0;
+	} else if (msg == WM_PAINT) {
+		// ps: PAINTSTRUCT;
+		// hdc := BeginPaint(hwnd, &ps);
+		
+		// FillRect(hdc, &ps.rect, cast (void *) 7);
+		// DrawTextA(hdc, "Test", 4, &ps.rect, DT_CENTER | DT_VCENTER);
+		
+		// EndPaint(hwnd, &ps);
+		// return 0;
+	} else if (msg == WM_CLOSE) {
+		if (MessageBoxA(null, "Are you sure you want to quit?", "Message Box", MB_YESNO) == IDYES) {		
+			DestroyWindow(hwnd);
+		}
+		return 0;
+	}
+	
+	return DefWindowProcA(hwnd, msg, wparam, lparam);
+}
+
+func main() -> int {
+	CLASS_NAME := "WinClass";
+
+	instance := GetModuleHandleA(null);
+
+	wc: WNDCLASSEXA;
+	wc.struct_size = sizeof(WNDCLASSEXA);
+	wc.wnd_proc    = window_proc;
+	wc.instance    = instance;
+	wc.class_name  = CLASS_NAME;
+
+	atom := RegisterClassExA(&wc);
+	if (atom == null) {
+		puts("RegisterClassExA failed!\n");
+		return GetLastError();
+	}
+	
+	hwnd := CreateWindowExA(
+		0,
+		CLASS_NAME,
+		"Look mom, no C",
+		WS_OVERLAPPEDWINDOW,
+
+		// Size and position
+		CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+
+		null,     // Parent window    
+		null,     // Menu
+		instance, // Instance handle
+		null      // User data
+	);
+
+	if (hwnd == null) {
+		puts("CreateWindowExA failed!\n");
+		return GetLastError();
+	}
+
+	ShowWindow(hwnd, SW_SHOWDEFAULT);
+	
+	msg: MSG;
+	while (GetMessageA(&msg, null, 0, 0)) {
+		TranslateMessage(&msg);
+		DispatchMessageA(&msg);
+	}
+	
+	puts("done");
+}

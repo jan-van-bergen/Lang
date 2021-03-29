@@ -16,6 +16,6 @@ typedef struct Lexer {
 } Lexer;
 
 void lexer_init(Lexer * lexer, char const * source);
-void lexer_free(Lexer * lexer);
+void lexer_mem_free(Lexer * lexer);
 
 void lexer_lex(Lexer * lexer);

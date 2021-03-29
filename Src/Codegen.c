@@ -82,11 +82,11 @@ static void context_init(Context * ctx) {
 
 	ctx->code_len = 0;
 	ctx->code_cap = 512;
-	ctx->code     = malloc(ctx->code_cap);
+	ctx->code     = mem_alloc(ctx->code_cap);
 
 	ctx->data_seg_len  = 0;
 	ctx->data_seg_cap  = 16;
-	ctx->data_seg_vals = malloc(ctx->data_seg_cap * sizeof(char const *));
+	ctx->data_seg_vals = mem_alloc(ctx->data_seg_cap * sizeof(char const *));
 
 	ctx->trace_stack_size = 0;
 }
@@ -137,7 +137,7 @@ static bool context_call_reg_is_reserved(Context * ctx, int reg) {
 	return ctx->reg_mask_call & (1 << reg);
 }
 
-static void context_call_reg_free(Context * ctx, int reg) {
+static void context_call_reg_mem_free(Context * ctx, int reg) {
 	assert(reg >= 0 && reg < 4);
 
 	ctx->reg_mask_call &= ~(1 << reg);
@@ -180,7 +180,7 @@ static void context_emit_code(Context * ctx, char const * fmt, ...) {
 	int new_length = ctx->code_len + new_code_len;
 	if (new_length >= ctx->code_cap) {
 		ctx->code_cap *= 2;
-		ctx->code = realloc(ctx->code, ctx->code_cap);
+		ctx->code = mem_realloc(ctx->code, ctx->code_cap);
 	}
 
 	// Append formatted code
@@ -191,7 +191,7 @@ static void context_emit_code(Context * ctx, char const * fmt, ...) {
 static void context_add_data_seg(Context * ctx, char const * data) {
 	if (ctx->data_seg_len == ctx->data_seg_cap) {
 		ctx->data_seg_cap *= 2;
-		ctx->data_seg_vals = realloc(ctx->data_seg_vals, ctx->data_seg_cap * sizeof(char const *));
+		ctx->data_seg_vals = mem_realloc(ctx->data_seg_vals, ctx->data_seg_cap * sizeof(char const *));
 	}
 
 	ctx->data_seg_vals[ctx->data_seg_len++] = data;
@@ -236,7 +236,7 @@ static void print_stack_trace(Context * ctx) {
 	}
 }
 
-static void type_error(Context * ctx, char const * msg, ...) {
+static NO_RETURN void type_error(Context * ctx, char const * msg, ...) {
 	print_stack_trace(ctx);
 
 	va_list args;
@@ -318,7 +318,7 @@ static void codegen_add_global(Context * ctx, Variable * var, bool sign, unsigne
 	int var_name_len = strlen(var->name);
 
 	int    global_size = var_name_len + 5 + 32;
-	char * global = malloc(global_size);
+	char * global = mem_alloc(global_size);
 
 	if (type_is_struct(var->type)) {
 		if (value != 0) {
@@ -348,7 +348,7 @@ static void codegen_add_float_literal(Context * ctx, char const * flt_name, char
 	int flt_lit_len  = strlen(flt_lit);
 
 	int    str_lit_len = flt_name_len + 4 + flt_lit_len + 1;
-	char * str_lit = malloc(str_lit_len);
+	char * str_lit = mem_alloc(str_lit_len);
 	sprintf_s(str_lit, str_lit_len, "%s dq %s", flt_name, flt_lit);
 
 	context_add_data_seg(ctx, str_lit);
@@ -359,8 +359,8 @@ static void codegen_add_string_literal(Context * ctx, char const * str_name, cha
 	int str_name_len = strlen(str_name);
 	int str_lit_len  = strlen(str_lit);
 
-	int    str_lit_cpy_size = str_name_len + 6 + str_lit_len * 9 + 1;
-	char * str_lit_cpy      = malloc(str_lit_cpy_size);
+	int    str_lit_cpy_size = str_name_len + 6 + str_lit_len * 9 + 5;
+	char * str_lit_cpy      = mem_alloc(str_lit_cpy_size);
 
 	int idx = sprintf_s(str_lit_cpy, str_lit_cpy_size, "%s db ", str_name);
 
@@ -488,7 +488,7 @@ static Result codegen_expression_const(Context * ctx, AST_Expression const * exp
 			break;
 		}
 
-		default: error(ERROR_UNKNOWN);
+		default: error(ERROR_INTERNAL);
 	}
 
 	return result;
@@ -553,7 +553,17 @@ static Result codegen_expression_var(Context * ctx, AST_Expression const * expr)
 		type_is_pointer(var->type) &&
 		type_is_u8(var->type->base);
 
-	if (by_address || is_global_char_ptr || type_is_array(var->type) || type_is_struct(var->type)) {
+	if (type_is_function(var->type)) {
+		Function_Def * function_def = scope_get_function_def(ctx->current_scope, var_name);
+
+		if (function_def) {
+			context_emit_code(ctx, "lea %s, [REL %s] ; get address of function '%s'\n", get_reg_name_scratch(result.reg, 8), var_name, var_name);
+
+			return result;
+		}
+	}
+
+	if (by_address || is_global_char_ptr || type_is_array(var->type) || type_is_struct(var->type) || type_is_function(var->type)) {
 		context_emit_code(ctx, "lea %s, QWORD [%s] ; get address of '%s'\n", get_reg_name_scratch(result.reg, 8), var_address, var_name);
 	} else {
 		result.reg = codegen_deref_address(ctx, result.reg, result.type, var_address);
@@ -780,7 +790,7 @@ static void codegen_relational(Context * ctx, char const * operator, Token_Type 
 			case TOKEN_OPERATOR_LT_EQ: set_instr = "setle"; break;
 			case TOKEN_OPERATOR_GT:    set_instr = "setg";  break;
 			case TOKEN_OPERATOR_GT_EQ: set_instr = "setge"; break;
-			default: error(ERROR_UNKNOWN);
+			default: error(ERROR_INTERNAL);
 		}
 
 		codegen_compare(ctx, "cmp", set_instr, result_left->reg, result_right->reg, result_left->reg);
@@ -792,7 +802,7 @@ static void codegen_relational(Context * ctx, char const * operator, Token_Type 
 			case TOKEN_OPERATOR_LT_EQ: set_instr = "setbe"; break;
 			case TOKEN_OPERATOR_GT:    set_instr = "seta";  break;
 			case TOKEN_OPERATOR_GT_EQ: set_instr = "setae"; break;
-			default: error(ERROR_UNKNOWN);
+			default: error(ERROR_INTERNAL);
 		}
 
 		if (type_is_f32(result_left->type) && type_is_f32(result_right->type)) {
@@ -842,6 +852,10 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS);
 			result_left = codegen_expression(ctx, expr_left);
 			context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
+		}
+
+		if (type_is_void(result_right.type)) {
+			type_error(ctx, "Cannot assign with a right hand side of void type!");
 		}
 
 		int type_size_left  = type_get_size(result_left .type, ctx->current_scope);
@@ -1145,7 +1159,7 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 			break;
 		}
 
-		default: error(ERROR_UNKNOWN);
+		default: error(ERROR_INTERNAL);
 	}
 
 	context_reg_free(ctx, result_right.reg);
@@ -1319,7 +1333,7 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 			break;
 		}
 
-		default: error(ERROR_UNKNOWN);
+		default: error(ERROR_INTERNAL);
 	}
 
 	return result;
@@ -1415,15 +1429,20 @@ static Result codegen_expression_op_post(Context * ctx, AST_Expression const * e
 static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr) {
 	assert(expr->type == AST_EXPRESSION_CALL_FUNC);
 	
+	Type const * function_type = type_infer(expr->expr_call.expr_function, ctx->current_scope); // @HACK, @FIXME
+	
+	if (!type_is_function(function_type)) {
+		type_error(ctx, "ERROR: Attempting to perform function call on non-function expression!");
+	}
+
+	Type const ** arg_types   = function_type->function.args;
+	int           arg_count   = function_type->function.arg_count;
+	Type const  * return_type = function_type->function.return_type;
+	
 	int call_arg_count = expr->expr_call.arg_count;
-
-	// Get function definition
-	Function_Def * def_func = scope_get_function_def(ctx->current_scope, expr->expr_call.function_name);
-
-	if (call_arg_count != def_func->arg_count) {
-		type_error(ctx, "Incorrect number of arguments to function '%s'! Provided %i, needed %i",
-			expr->expr_call.function_name, call_arg_count, def_func->arg_count
-		);
+	
+	if (call_arg_count != arg_count) {
+		type_error(ctx, "Incorrect number of arguments to function! Provided %i, needed %i", call_arg_count, arg_count);
 	}
 
 	bool pushed_regs_call   [4]                 = { false, false, false, false };
@@ -1442,7 +1461,7 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 	int * arg_offsets = _alloca(call_arg_count * sizeof(int));
 
 	for (int i = 0; i < call_arg_count; i++) {
-		AST_Def_Arg * def_arg = &def_func->args[i];
+		Type const * arg_type = arg_types[i];
 
 		arg_offsets[i] = arg_size;
 
@@ -1452,15 +1471,15 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 				// function call), push the register on the stack to preserve it
 				pushed_regs_call[i] = true;
 
-				context_emit_code(ctx, "push %s ; preserve\n", get_reg_name_call(i, 8, type_is_float(def_arg->type)));
+				context_emit_code(ctx, "push %s ; preserve\n", get_reg_name_call(i, 8, type_is_float(arg_type)));
 			} else {
 				context_call_reg_reserve(ctx, i);
 			}
 
 			arg_size += 8;
 		} else {
-			int type_size  = type_get_size (def_arg->type, ctx->current_scope);
-			int type_align = type_get_align(def_arg->type, ctx->current_scope);
+			int type_size  = type_get_size (arg_type, ctx->current_scope);
+			int type_align = type_get_align(arg_type, ctx->current_scope);
 
 			align(&arg_size, type_align);
 			arg_size += type_size;
@@ -1481,18 +1500,16 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 	for (int i = 0; i < call_arg_count; i++) {
 		Result result_arg = codegen_expression(ctx, expr->expr_call.args[i].expr);
 
-		AST_Def_Arg * def_arg = &def_func->args[i];
+		Type const * arg_type = arg_types[i];
 
-		if (!types_unifiable(result_arg.type, def_arg->type)) {
+		if (!types_unifiable(result_arg.type, arg_type)) {
 			char str_type_given   [128];
 			char str_type_expected[128];
 
 			type_to_string(result_arg.type, str_type_given,    sizeof(str_type_given));
-			type_to_string(def_arg->type,   str_type_expected, sizeof(str_type_expected));
+			type_to_string(arg_type,        str_type_expected, sizeof(str_type_expected));
 
-			type_error(ctx, "Argument %i in function call to '%s' has incorrect type. Given type: '%s', expected type: '%s'",
-				i + 1, expr->expr_call.function_name, str_type_given, str_type_expected
-			);
+			type_error(ctx, "Argument %i in function call has incorrect type. Given type: '%s', expected type: '%s'", i + 1, str_type_given, str_type_expected);
 		}
 
 		char const * mov = "mov";
@@ -1505,7 +1522,7 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 		if (i < 4) {
 			context_emit_code(ctx, "%s %s, %s ; arg %i\n", mov, get_reg_name_call(i, 8, type_is_float(result_arg.type)), get_reg_name_scratch(result_arg.reg, 8), i + 1);
 		} else {
-			int type_size = type_get_size(def_arg->type, ctx->current_scope);
+			int type_size = type_get_size(arg_type, ctx->current_scope);
 			char const * word = get_word_name(type_size);
 
 			context_emit_code(ctx, "%s %s [rsp + %i], %s ; arg %i\n", mov, word, arg_offsets[i], get_reg_name_scratch(result_arg.reg, type_size), i + 1);
@@ -1513,16 +1530,32 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 
 		context_reg_free(ctx, result_arg.reg);
 	}
+	
+	Function_Def * function_def = NULL;
 
-	context_emit_code(ctx, "call %s\n", expr->expr_call.function_name);
+	if (expr->expr_call.expr_function->type == AST_EXPRESSION_VAR) {
+		char const * var_name = expr->expr_call.expr_function->expr_var.name;
+		function_def = scope_get_function_def(ctx->current_scope, var_name);
+	}
+
+	bool is_function_ptr = function_def == NULL;
+
+	if (is_function_ptr) {
+		Result result_function = codegen_expression(ctx, expr->expr_call.expr_function);
+		context_emit_code(ctx, "call [%s]\n", get_reg_name_scratch(result_function.reg, 8));
+		context_reg_free(ctx, result_function.reg);
+	} else {
+		context_emit_code(ctx, "call %s\n", function_def->name);
+	}
+
 	context_emit_code(ctx, "add rsp, %i ; pop arguments\n", arg_size);
 
 	// Check if any registers were pushed before this call and need to be restored
 	for (int i = MIN(3, call_arg_count - 1); i >= 0; i--) {
 		if (pushed_regs_call[i]) {
-			context_emit_code(ctx, "pop %s ; restore\n", get_reg_name_call(i, 8, type_is_float(def_func->args[i].type)));
+			context_emit_code(ctx, "pop %s ; restore\n", get_reg_name_call(i, 8, type_is_float(arg_types[i])));
 		} else {
-			context_call_reg_free(ctx, i);
+			context_call_reg_mem_free(ctx, i);
 		}
 	}
 
@@ -1533,7 +1566,7 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 	}
 
 	Result result;
-	result.type = def_func->return_type;
+	result.type = return_type;
 
 	if (type_is_float(result.type)) {
 		result.reg = context_reg_request_float(ctx);
@@ -1740,10 +1773,16 @@ static void codegen_statement_extern(Context * ctx, AST_Statement const * stat) 
 static void codegen_statement_export(Context * ctx, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_EXPORT);
 
-	// Lookup function to make sure it exists
-	scope_get_function_def(ctx->current_scope, stat->stat_export.name);
+	char const * name = stat->stat_export.name;
 
-	context_emit_code(ctx, "global %s\n", stat->stat_export.name);
+	// Lookup function to make sure it exists
+	Function_Def * function_def = scope_get_function_def(ctx->current_scope, name);
+	if (function_def == NULL) {
+		printf("ERROR: Trying to export function '%s' that is not in scope!", name);
+		error(ERROR_SCOPE);
+	}
+
+	context_emit_code(ctx, "global %s\n", name);
 }
 
 static void codegen_statement_if(Context * ctx, AST_Statement const * stat) {
@@ -1853,6 +1892,7 @@ static void codegen_statement_return(Context * ctx, AST_Statement const * stat) 
 	assert(stat->type == AST_STATEMENT_RETURN);
 	
 	Function_Def * func_def = scope_get_function_def(ctx->current_scope, ctx->current_function_name);
+	assert(func_def);
 
 	if (stat->stat_return.expr) {
 		if (ctx->emit_debug_lines) {
@@ -1872,6 +1912,10 @@ static void codegen_statement_return(Context * ctx, AST_Statement const * stat) 
 			char str_def_type[128]; type_to_string(func_def->return_type, str_def_type, sizeof(str_def_type));
 
 			type_error(ctx, "Return statement in function '%s' cannot unify types '%s' and '%s'", ctx->current_function_name, str_ret_type, str_def_type);
+		}
+		
+		if (type_is_void(result.type)) {
+			type_error(ctx, "Return statement in function '%s' cannot return void expression!", ctx->current_function_name);
 		}
 
 		if (type_is_f32(result.type)) {
@@ -1938,6 +1982,7 @@ static void codegen_statement_program(Context * ctx, AST_Statement const * stat)
 
 			context_emit_code(ctx, "global _start\n");
 			context_emit_code(ctx, "_start:\n");
+			context_emit_code(ctx, "push rsp\n");
 			ctx->indent++;
 
 			if (needs_args) {

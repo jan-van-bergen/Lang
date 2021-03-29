@@ -1,0 +1,38 @@
+extern puts(str: char *);
+
+struct S {
+	value: bool;
+	to_str: ((S *) -> void);
+}
+
+func to_str_english(s: S *) {
+	if (s.value) {
+		puts("Value is true\n");
+	} else {
+		puts("Value is false\n");
+	}
+}
+
+func to_str_dutch(s: S *) {
+	if (s.value) {
+		puts("Waarde is waar\n");
+	} else {
+		puts("Waarde is onwaar\n");
+	}
+}
+
+func to_str(s: S*) { s.to_str(s); }
+
+func main() {
+	s_english: S;
+	s_dutch:   S;
+	
+	s_english.value  = true;
+	s_english.to_str = to_str_english;
+	
+	s_dutch.value  = false;
+	s_dutch.to_str = to_str_dutch;
+	
+	to_str(&s_english);
+	to_str(&s_dutch);
+}

@@ -1,0 +1,17 @@
+func f(x: int) -> int { return x + 1; }
+func g(x: int) -> int { return x + 2; }
+func h(x: int) -> int { return x + 3; }
+
+func get_h() -> ((int) -> int) {
+	return h;
+}
+
+func main() -> int {
+	func_ptr: (int) -> int;
+	
+	func_ptr = f;
+	func_ptr = g;
+	func_ptr = get_h();
+	
+	return func_ptr(3);
+}

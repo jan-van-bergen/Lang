@@ -28,7 +28,7 @@ static Type_Block * type_block_first;
 static Type_Block * type_block_curr;
 
 void type_table_init() {
-	type_block_first = malloc(sizeof(Type_Block));
+	type_block_first = mem_alloc(sizeof(Type_Block));
 	type_block_first->next = NULL;
 
 	// Fill with primitive types
@@ -57,10 +57,10 @@ void type_table_init() {
 static void free_type_block(Type_Block * block) {
 	if (block->next) free_type_block(block->next);
 
-	free(block);
+	mem_free(block);
 }
 
-void type_table_free() {
+void type_table_mem_free() {
 	free_type_block(type_block_first);
 
 	type_block_curr = NULL;
@@ -68,7 +68,7 @@ void type_table_free() {
 
 Type * type_table_new_type() {
 	if (type_block_curr->table_len == TYPE_TABLE_BLOCK_SIZE) {
-		Type_Block * block = malloc(sizeof(Type_Block));
+		Type_Block * block = mem_alloc(sizeof(Type_Block));
 		block->table_len = 0;
 		block->next = NULL;
 
@@ -115,45 +115,65 @@ Type const * make_type_pointer(Type const * base_type) {
 	return ptr_type;
 }
 
+Type const * make_type_function(Type const ** arg_types, int arg_count, Type const * return_type) {
+	Type * type = type_table_new_type();
+	type->type = TYPE_FUNCTION;
+	type->function.args        = arg_types;
+	type->function.arg_count   = arg_count;
+	type->function.return_type = return_type;
 
-void type_to_string(Type const * type, char * string, int string_size) {
+	return type;
+}
+
+
+int type_to_string(Type const * type, char * string, int string_size) {
 	switch (type->type) {
-		case TYPE_VOID: sprintf_s(string, string_size, "void"); break;
+		case TYPE_VOID: return sprintf_s(string, string_size, "void");
 
-		case TYPE_I8:  sprintf_s(string, string_size, "i8");  break;
-		case TYPE_I16: sprintf_s(string, string_size, "i16"); break;
-		case TYPE_I32: sprintf_s(string, string_size, "i32"); break;
-		case TYPE_I64: sprintf_s(string, string_size, "i64"); break;
+		case TYPE_I8:  return sprintf_s(string, string_size, "i8");
+		case TYPE_I16: return sprintf_s(string, string_size, "i16");
+		case TYPE_I32: return sprintf_s(string, string_size, "i32");
+		case TYPE_I64: return sprintf_s(string, string_size, "i64");
 
-		case TYPE_U8:  sprintf_s(string, string_size, "u8");  break;
-		case TYPE_U16: sprintf_s(string, string_size, "u16"); break;
-		case TYPE_U32: sprintf_s(string, string_size, "u32"); break;
-		case TYPE_U64: sprintf_s(string, string_size, "u64"); break;
+		case TYPE_U8:  return sprintf_s(string, string_size, "u8");
+		case TYPE_U16: return sprintf_s(string, string_size, "u16");
+		case TYPE_U32: return sprintf_s(string, string_size, "u32");
+		case TYPE_U64: return sprintf_s(string, string_size, "u64");
 
-		case TYPE_F32: sprintf_s(string, string_size, "f32"); break;
-		case TYPE_F64: sprintf_s(string, string_size, "f64"); break;
+		case TYPE_F32: return sprintf_s(string, string_size, "f32");
+		case TYPE_F64: return sprintf_s(string, string_size, "f64");
 
-		case TYPE_BOOL: sprintf_s(string, string_size, "bool"); break;
+		case TYPE_BOOL: return sprintf_s(string, string_size, "bool");
 
 		case TYPE_POINTER: {
-			type_to_string(type->base, string, string_size);
-			strcat_s(string, string_size, "*");
+			int offset = type_to_string(type->base, string, string_size);
+			return offset + sprintf_s(string + offset, string_size - offset, "*");
+		}
 
-			break;
+		case TYPE_FUNCTION: {
+			int offset = sprintf_s(string, string_size, "(");
+
+			for (int i = 0; i < type->function.arg_count; i++) {
+				offset += type_to_string(type->function.args[i], string + offset, string_size - offset);
+
+				if (i < type->function.arg_count - 1) {
+					offset += sprintf_s(string + offset, string_size - offset, ", ");
+				}
+			}
+
+			offset += sprintf_s(string + offset, string_size - offset, ") -> ");
+
+			return offset + type_to_string(type->function.return_type, string + offset, string_size - offset);
 		}
 
 		case TYPE_ARRAY: {
-			type_to_string(type->base, string, string_size);
-
-			int str_len = strlen(string);
-			sprintf_s(string + str_len, string_size - str_len, "[%i]", type->array_size);
-
-			break;
+			int offset = type_to_string(type->base, string, string_size);
+			return offset + sprintf_s(string + offset, string_size - offset, "[%i]", type->array_size);
 		}
 
-		case TYPE_STRUCT: sprintf_s(string, string_size, "%s", type->struct_name); break;
+		case TYPE_STRUCT: return sprintf_s(string, string_size, "%s", type->struct_name);
 
-		default: error(ERROR_TYPECHECK);
+		default: error(ERROR_INTERNAL);
 	}
 }
 
@@ -179,13 +199,14 @@ int type_get_size(Type const * type, Scope * scope) {
 
 		case TYPE_BOOL: return 1;
 
-		case TYPE_POINTER: return 8;
+		case TYPE_POINTER:  return 8;
+		case TYPE_FUNCTION: return 8;
 
 		case TYPE_ARRAY: return type_get_size(type->base, scope) * type->array_size;
 
 		case TYPE_STRUCT: return scope_get_struct_def(scope, type->struct_name)->member_scope->variable_buffer->size;
 
-		default: error(ERROR_UNKNOWN);
+		default: error(ERROR_INTERNAL);
 	}
 }
 
@@ -210,13 +231,14 @@ int type_get_align(Type const * type, Scope * scope) {
 
 		case TYPE_BOOL: return 1;
 
-		case TYPE_POINTER: return 8;
+		case TYPE_POINTER:  return 8;
+		case TYPE_FUNCTION: return 8;
 
 		case TYPE_ARRAY: return type_get_align(type->base, scope);
 
 		case TYPE_STRUCT: return scope_get_struct_def(scope, type->struct_name)->member_scope->variable_buffer->align;
 
-		default: error(ERROR_UNKNOWN);
+		default: error(ERROR_INTERNAL);
 	}
 }
 
@@ -248,6 +270,8 @@ bool type_is_bool(Type const * type) { return type->type == TYPE_BOOL; }
 bool type_is_array(Type const * type) { return type->type == TYPE_ARRAY; }
 
 bool type_is_pointer(Type const * type) { return type->type == TYPE_POINTER; }
+
+bool type_is_function(Type const * type) { return type->type == TYPE_FUNCTION; }
 
 bool type_is_struct(Type const * type) { return type->type == TYPE_STRUCT; }
 
@@ -398,7 +422,7 @@ Type const * type_infer(AST_Expression const * expr, Scope const * scope) {
 
 				case TOKEN_KEYWORD_NULL: return make_type_pointer(make_type_void());
 					
-				default: error(ERROR_UNKNOWN);
+				default: error(ERROR_INTERNAL);
 			}
 		}
 
@@ -467,7 +491,7 @@ Type const * type_infer(AST_Expression const * expr, Scope const * scope) {
 					break; // Unify types
 				}
 
-				default: error(ERROR_UNKNOWN);
+				default: error(ERROR_INTERNAL);
 			}
 			
 			if (types_unifiable(type_left, type_right)) {
@@ -496,7 +520,7 @@ Type const * type_infer(AST_Expression const * expr, Scope const * scope) {
 							case TYPE_U32: return make_type_i32();
 							case TYPE_U64: return make_type_i64();
 
-							default: error(ERROR_UNKNOWN);
+							default: error(ERROR_INTERNAL);
 						}
 					}
 					return type_inner;
@@ -508,7 +532,15 @@ Type const * type_infer(AST_Expression const * expr, Scope const * scope) {
 
 		case AST_EXPRESSION_CAST: return expr->expr_cast.new_type;
 
-		case AST_EXPRESSION_CALL_FUNC: return scope_get_function_def(scope, expr->expr_call.function_name)->return_type;
+		case AST_EXPRESSION_CALL_FUNC: {
+			Type const * type_function = type_infer(expr->expr_call.expr_function, scope);
+
+			if (!type_is_function(type_function)) {
+				error(ERROR_TYPECHECK);
+			}
+
+			return type_function->function.return_type;
+		}
 
 		case AST_EXPRESSION_ARRAY_ACCESS: {
 			Type const * type = type_infer(expr->expr_array_access.expr_array, scope);

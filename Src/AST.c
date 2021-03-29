@@ -8,7 +8,7 @@
 #include "Error.h"
 
 AST_Expression * ast_make_expr_const(Token const * token) {
-	AST_Expression * expr = malloc(sizeof(AST_Expression));
+	AST_Expression * expr = mem_alloc(sizeof(AST_Expression));
 	expr->type = AST_EXPRESSION_CONST;
 	expr->height = 0;
 
@@ -18,7 +18,7 @@ AST_Expression * ast_make_expr_const(Token const * token) {
 }
 
 AST_Expression * ast_make_expr_var(char const * name) {
-	AST_Expression * expr = malloc(sizeof(AST_Expression));
+	AST_Expression * expr = mem_alloc(sizeof(AST_Expression));
 	expr->type = AST_EXPRESSION_VAR;
 	expr->height = 0;
 
@@ -28,7 +28,7 @@ AST_Expression * ast_make_expr_var(char const * name) {
 }
 
 AST_Expression * ast_make_expr_array_access(AST_Expression * expr_array, AST_Expression * expr_index) {
-	AST_Expression * expr = malloc(sizeof(AST_Expression));
+	AST_Expression * expr = mem_alloc(sizeof(AST_Expression));
 	expr->type = AST_EXPRESSION_ARRAY_ACCESS;
 	expr->height = expr_index->height + 1;
 
@@ -38,7 +38,7 @@ AST_Expression * ast_make_expr_array_access(AST_Expression * expr_array, AST_Exp
 	return expr;
 }
 AST_Expression * ast_make_expr_struct_member(AST_Expression * expr_struct, char  const * member_name) {
-	AST_Expression * expr = malloc(sizeof(AST_Expression));
+	AST_Expression * expr = mem_alloc(sizeof(AST_Expression));
 	expr->type = AST_EXPRESSION_STRUCT_MEMBER;
 	expr->height = expr_struct->height + 1;
 
@@ -49,7 +49,7 @@ AST_Expression * ast_make_expr_struct_member(AST_Expression * expr_struct, char 
 }
 
 AST_Expression * ast_make_expr_cast(Type const * type, AST_Expression * expr_cast) {
-	AST_Expression * expr = malloc(sizeof(AST_Expression));
+	AST_Expression * expr = mem_alloc(sizeof(AST_Expression));
 	expr->type = AST_EXPRESSION_CAST;
 	expr->height = expr_cast->height + 1;
 
@@ -60,7 +60,7 @@ AST_Expression * ast_make_expr_cast(Type const * type, AST_Expression * expr_cas
 }
 
 AST_Expression * ast_make_expr_sizeof(Type const * type) {
-	AST_Expression * expr = malloc(sizeof(AST_Expression));
+	AST_Expression * expr = mem_alloc(sizeof(AST_Expression));
 	expr->type = AST_EXPRESSION_SIZEOF;
 	expr->height = 0;
 
@@ -70,7 +70,7 @@ AST_Expression * ast_make_expr_sizeof(Type const * type) {
 }
 
 AST_Expression * ast_make_expr_op_bin(Token const * token, AST_Expression * expr_left, AST_Expression * expr_right) {
-	AST_Expression * expr = malloc(sizeof(AST_Expression));
+	AST_Expression * expr = mem_alloc(sizeof(AST_Expression));
 	expr->type = AST_EXPRESSION_OPERATOR_BIN;
 	expr->height = MAX(expr_left->height, expr_right->height) + 1;
 
@@ -82,7 +82,7 @@ AST_Expression * ast_make_expr_op_bin(Token const * token, AST_Expression * expr
 }
 
 AST_Expression * ast_make_expr_op_pre(Token const * token, AST_Expression * expr_operand) {
-	AST_Expression * expr = malloc(sizeof(AST_Expression));
+	AST_Expression * expr = mem_alloc(sizeof(AST_Expression));
 	expr->type = AST_EXPRESSION_OPERATOR_PRE;
 	expr->height = expr_operand->height + 1;
 
@@ -93,7 +93,7 @@ AST_Expression * ast_make_expr_op_pre(Token const * token, AST_Expression * expr
 }
 
 AST_Expression * ast_make_expr_op_post(Token const * token, AST_Expression * expr_operand) {
-	AST_Expression * expr = malloc(sizeof(AST_Expression));
+	AST_Expression * expr = mem_alloc(sizeof(AST_Expression));
 	expr->type = AST_EXPRESSION_OPERATOR_POST;
 	expr->height = expr_operand->height + 1;
 
@@ -103,17 +103,17 @@ AST_Expression * ast_make_expr_op_post(Token const * token, AST_Expression * exp
 	return expr;
 }
 
-AST_Expression * ast_make_expr_call(char const * function_name, int arg_count, AST_Call_Arg * args) {
+AST_Expression * ast_make_expr_call(AST_Expression * expr_function, int arg_count, AST_Call_Arg * args) {
 	int height = 0;
 	for (int i = 0; i < arg_count; i++) {
 		height = MAX(height, args[i].height);
 	}
 
-	AST_Expression * expr = malloc(sizeof(AST_Expression));
+	AST_Expression * expr = mem_alloc(sizeof(AST_Expression));
 	expr->type = AST_EXPRESSION_CALL_FUNC;
 	expr->height = height + 1;
 
-	expr->expr_call.function_name = function_name;
+	expr->expr_call.expr_function = expr_function;
 
 	expr->expr_call.arg_count = arg_count;
 	expr->expr_call.args      = args;
@@ -123,7 +123,7 @@ AST_Expression * ast_make_expr_call(char const * function_name, int arg_count, A
 
 
 AST_Statement * ast_make_stat_program(Variable_Buffer * globals, Scope * global_scope, AST_Statement * stats) {
-	AST_Statement * stat = malloc(sizeof(AST_Statement));
+	AST_Statement * stat = mem_alloc(sizeof(AST_Statement));
 	stat->type = AST_STATEMENT_PROGRAM;
 
 	stat->stat_program.globals      = globals;
@@ -135,7 +135,7 @@ AST_Statement * ast_make_stat_program(Variable_Buffer * globals, Scope * global_
 }
 
 AST_Statement * ast_make_stat_stats(AST_Statement * head, AST_Statement * cons) {
-	AST_Statement * stat = malloc(sizeof(AST_Statement));
+	AST_Statement * stat = mem_alloc(sizeof(AST_Statement));
 	stat->type = AST_STATEMENTS;
 
 	stat->stat_stats.head = head;
@@ -145,7 +145,7 @@ AST_Statement * ast_make_stat_stats(AST_Statement * head, AST_Statement * cons) 
 }
 
 AST_Statement * ast_make_stat_block(Scope * scope, AST_Statement * stats) {
-	AST_Statement * stat = malloc(sizeof(AST_Statement));
+	AST_Statement * stat = mem_alloc(sizeof(AST_Statement));
 	stat->type = AST_STATEMENT_BLOCK;
 
 	stat->stat_block.scope = scope;
@@ -155,7 +155,7 @@ AST_Statement * ast_make_stat_block(Scope * scope, AST_Statement * stats) {
 }
 
 AST_Statement * ast_make_stat_expr(AST_Expression * expr) {
-	AST_Statement * stat = malloc(sizeof(AST_Statement));
+	AST_Statement * stat = mem_alloc(sizeof(AST_Statement));
 	stat->type = AST_STATEMENT_EXPR;
 
 	stat->stat_expr.expr = expr;
@@ -164,7 +164,7 @@ AST_Statement * ast_make_stat_expr(AST_Expression * expr) {
 }
 
 AST_Statement * ast_make_stat_def_var(char const * name, Type const * type, AST_Expression * assign) {
-	AST_Statement * stat = malloc(sizeof(AST_Statement));
+	AST_Statement * stat = mem_alloc(sizeof(AST_Statement));
 	stat->type = AST_STATEMENT_DEF_VAR;
 
 	stat->stat_def_var.name   = name;
@@ -175,7 +175,7 @@ AST_Statement * ast_make_stat_def_var(char const * name, Type const * type, AST_
 }
 
 AST_Statement * ast_make_stat_def_func(Function_Def * function_def, Variable_Buffer * buffer_args, Variable_Buffer * buffer_vars, Scope * scope_args, AST_Statement * body) {
-	AST_Statement * stat = malloc(sizeof(AST_Statement));
+	AST_Statement * stat = mem_alloc(sizeof(AST_Statement));
 	stat->type = AST_STATEMENT_DEF_FUNC;
 
 	stat->stat_def_func.function_def = function_def;
@@ -190,7 +190,7 @@ AST_Statement * ast_make_stat_def_func(Function_Def * function_def, Variable_Buf
 }
 
 AST_Statement * ast_make_stat_extern(Function_Def * function_def) {
-	AST_Statement * stat = malloc(sizeof(AST_Statement));
+	AST_Statement * stat = mem_alloc(sizeof(AST_Statement));
 	stat->type = AST_STATEMENT_EXTERN;
 
 	stat->stat_def_func.function_def = function_def;
@@ -199,7 +199,7 @@ AST_Statement * ast_make_stat_extern(Function_Def * function_def) {
 }
 
 AST_Statement * ast_make_stat_export(char const * name) {
-	AST_Statement * stat = malloc(sizeof(AST_Statement));
+	AST_Statement * stat = mem_alloc(sizeof(AST_Statement));
 	stat->type = AST_STATEMENT_EXPORT;
 
 	stat->stat_export.name = name;
@@ -208,7 +208,7 @@ AST_Statement * ast_make_stat_export(char const * name) {
 }
 
 AST_Statement * ast_make_stat_if(AST_Expression * condition, AST_Statement * case_true, AST_Statement * case_false) {
-	AST_Statement * stat = malloc(sizeof(AST_Statement));
+	AST_Statement * stat = mem_alloc(sizeof(AST_Statement));
 	stat->type = AST_STATEMENT_IF;
 
 	stat->stat_if.condition  = condition;
@@ -219,7 +219,7 @@ AST_Statement * ast_make_stat_if(AST_Expression * condition, AST_Statement * cas
 }
 
 AST_Statement * ast_make_stat_while(AST_Expression * condition, AST_Statement * body) {
-	AST_Statement * stat = malloc(sizeof(AST_Statement));
+	AST_Statement * stat = mem_alloc(sizeof(AST_Statement));
 	stat->type = AST_STATEMENT_WHILE;
 	
 	stat->stat_while.condition = condition;
@@ -229,21 +229,21 @@ AST_Statement * ast_make_stat_while(AST_Expression * condition, AST_Statement * 
 }
 
 AST_Statement * ast_make_stat_break() {
-	AST_Statement * stat = malloc(sizeof(AST_Statement));
+	AST_Statement * stat = mem_alloc(sizeof(AST_Statement));
 	stat->type = AST_STATEMENT_BREAK;
 	
 	return stat;
 }
 
 AST_Statement * ast_make_stat_continue() {
-	AST_Statement * stat = malloc(sizeof(AST_Statement));
+	AST_Statement * stat = mem_alloc(sizeof(AST_Statement));
 	stat->type = AST_STATEMENT_CONTINUE;
 	
 	return stat;
 }
 
 AST_Statement * ast_make_stat_return(AST_Expression * expr) {
-	AST_Statement * stat = malloc(sizeof(AST_Statement));
+	AST_Statement * stat = mem_alloc(sizeof(AST_Statement));
 	stat->type = AST_STATEMENT_RETURN;
 
 	stat->stat_return.expr = expr;
@@ -262,7 +262,7 @@ static void print_indent(int indentation_level, char * string, int * string_offs
 }
 
 static void print_def_arg(AST_Def_Arg const * arg, char * string, int * string_offset, int string_size) {
-	char str_type[128];
+	char str_type[512];
 	type_to_string(arg->type, str_type, sizeof(str_type));
 
 	VSPRINTF("%s: %s", arg->name, str_type);
@@ -378,7 +378,9 @@ static void print_expression(AST_Expression const * expr, char * string, int * s
 		}
 
 		case AST_EXPRESSION_CALL_FUNC: {
-			VSPRINTF("%s(", expr->expr_call.function_name);
+			print_expression(expr->expr_call.expr_function, string, string_offset, string_size);
+
+			SPRINTF("(");
 
 			for (int i = 0; i < expr->expr_call.arg_count; i++) {
 				print_expression(expr->expr_call.args[i].expr, string, string_offset, string_size);
@@ -429,7 +431,7 @@ static void print_statement(AST_Statement const * stat, char * string, int * str
 			type_to_string(stat->stat_def_var.type, str_type, sizeof(str_type));
 
 			print_indent(indent, string, string_offset, string_size);
-			VSPRINTF("let %s: %s", stat->stat_def_var.name, str_type);
+			VSPRINTF("%s: %s", stat->stat_def_var.name, str_type);
 
 			if (stat->stat_def_var.assign) {
 				SPRINTF("; ");
@@ -573,12 +575,12 @@ static void ast_free_expression(AST_Expression * expr) {
 		}
 
 		case AST_EXPRESSION_CALL_FUNC: {
-			free(expr->expr_call.function_name);
+			ast_free_expression(expr->expr_call.expr_function);
 
 			for (int i = 0; i < expr->expr_call.arg_count; i++) {
 				ast_free_expression(expr->expr_call.args[i].expr);
 			}
-			free(expr->expr_call.args);
+			mem_free(expr->expr_call.args);
 
 			break;
 		}
@@ -612,18 +614,18 @@ void ast_free_statement(AST_Statement * stat) {
 		case AST_STATEMENT_EXPR: ast_free_expression(stat->stat_expr.expr); break;
 
 		case AST_STATEMENT_DEF_VAR: {
-			free(stat->stat_def_var.name);
+			mem_free(stat->stat_def_var.name);
 
 			break;
 		}
 
 		case AST_STATEMENT_DEF_FUNC: {
-			free(stat->stat_def_func.function_def->name);
+			mem_free(stat->stat_def_func.function_def->name);
 
 			for (int i = 0; i < stat->stat_def_func.function_def->arg_count; i++) {
-				free(stat->stat_def_func.function_def->args[i].name);
+				mem_free(stat->stat_def_func.function_def->args[i].name);
 			}
-			free(stat->stat_def_func.function_def->args);
+			mem_free(stat->stat_def_func.function_def->args);
 
 			ast_free_statement(stat->stat_def_func.body);
 
@@ -631,13 +633,13 @@ void ast_free_statement(AST_Statement * stat) {
 		}
 
 		case AST_STATEMENT_EXTERN: {
-			free(stat->stat_extern.function_def->name);
+			mem_free(stat->stat_extern.function_def->name);
 
 			break;
 		}
 
 		case AST_STATEMENT_EXPORT: {
-			free(stat->stat_export.name);
+			mem_free(stat->stat_export.name);
 
 			break;
 		}
@@ -668,10 +670,10 @@ void ast_free_statement(AST_Statement * stat) {
 			break;
 		}
 
-		default: error(ERROR_UNKNOWN);
+		default: error(ERROR_INTERNAL);
 	}
 
-	free(stat);
+	mem_free(stat);
 }
 
 Precedence get_precedence(AST_Expression const * expr) {
@@ -711,7 +713,7 @@ Precedence get_precedence(AST_Expression const * expr) {
 				case TOKEN_OPERATOR_LOGICAL_AND: return PRECEDENCE_LOGICAL_AND;
 				case TOKEN_OPERATOR_LOGICAL_OR:  return PRECEDENCE_LOGICAL_OR;
 
-				defaut: error(ERROR_UNKNOWN);
+				defaut: error(ERROR_INTERNAL);
 			}
 		}
 
