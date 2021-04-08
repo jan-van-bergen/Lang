@@ -1,0 +1,19 @@
+extern putc(c: char);
+extern print_num(num: int);
+
+func main(arg: char *) {
+	// Skip program name argument
+	while (*arg != ' ') arg++;
+	while (*arg == ' ') arg++;
+
+	last := arg;
+
+	while (*++arg != '\0') {
+		if (*arg != *last) {
+			print_num(arg - last);
+			putc(*last);
+
+			last = arg;
+		}
+	}
+}

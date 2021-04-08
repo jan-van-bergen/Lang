@@ -46,6 +46,9 @@ class col:
 test_cases = [                       
 	("Examples\\stdlib.lang", "/out:lib", 0, "", 1, ""), # should always be first
 
+	("Examples\\float_conv.lang",         "/lib:Examples\\stdlib.lib",                                0,             "",                       0, ""),
+	("Examples\\montecarlo.lang",         "/lib:Examples\\stdlib.lib",                                0,             "",                       3, ""),
+	("Examples\\rle.lang",                "/lib:Examples\\stdlib.lib",                                0,             "WWWWWWWWWWWWBWWWWWWWWWWWWBBBWWWWWWWWWWWWWWWWWWWWWWWWBWWWWWWWWWWWWWW", 0, "12W1B12W3B24W1B14W"),
 	("Examples\\func_ptr.lang",           "",                                                         0,             "",                       71, ""),
 	("Examples\\func_ptr2.lang",          "",                                                         0,             "",                        6, ""),
 	("Examples\\func_ptr3.lang",          "/lib:Examples\\stdlib.lib",                                0,             "",                        0, "Value is true\nWaarde is onwaar\n"),

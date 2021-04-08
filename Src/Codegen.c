@@ -12,6 +12,9 @@
 #include "Util.h"
 #include "Error.h"
 
+static char const * const_f32_to_u64_name = "__const_f32_to_u64";
+static char const * const_f64_to_u64_name = "__const_f64_to_u64";
+
 typedef struct Trace_Element {
 	enum Trace_Element_Type {
 		TRACE_EXPRESSION,
@@ -703,16 +706,60 @@ static Result codegen_expression_cast(Context * ctx, AST_Expression * expr) {
 	if (type_is_integral(type_old)) {
 		if (type_is_f32(type_new)) {
 			int reg = context_reg_request_float(ctx);
+			
+			if (type_is_u64(type_old)) {
+				int tmp = context_reg_request(ctx);
 
-			context_emit_code(ctx, "cvtsi2ss %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(result.reg, 8));
+				int label_cvt_unsigned = context_new_label(ctx);
+				int label_cvt_exit     = context_new_label(ctx);
+
+				context_emit_code(ctx, "test %s, %s\n", get_reg_name_scratch(result.reg, 8), get_reg_name_scratch(result.reg, 8));
+				context_emit_code(ctx, "js L_ctv_unsigned_%i\n", label_cvt_unsigned);
+				context_emit_code(ctx, "cvtsi2ss %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(result.reg, 8));
+				context_emit_code(ctx, "jmp L_ctv_exit_%i\n", label_cvt_exit);
+				context_emit_code(ctx, "L_ctv_unsigned_%i:\n", label_cvt_unsigned);
+				context_emit_code(ctx, "mov %s, %s\n", get_reg_name_scratch(tmp, 8), get_reg_name_scratch(result.reg, 8));
+				context_emit_code(ctx, "and %s, 1\n", get_reg_name_scratch(result.reg, 8));
+				context_emit_code(ctx, "shr %s, 1\n", get_reg_name_scratch(tmp, 8));
+				context_emit_code(ctx, "or %s, %s\n", get_reg_name_scratch(tmp, 8), get_reg_name_scratch(result.reg, 8));
+				context_emit_code(ctx, "cvtsi2ss %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(tmp, 8));
+				context_emit_code(ctx, "addss %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(reg, 8));
+				context_emit_code(ctx, "L_ctv_exit_%i:\n", label_cvt_exit);
+
+				context_reg_free(ctx, tmp);
+			} else {
+				context_emit_code(ctx, "cvtsi2sd %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(result.reg, 8));
+			}
 
 			context_reg_free(ctx, result.reg);
 			result.reg = reg;
 		} else if (type_is_f64(type_new)) {
 			int reg = context_reg_request_float(ctx);
 
-			context_emit_code(ctx, "cvtsi2sd %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(result.reg, 8));
-		
+			if (type_is_u64(type_old)) {
+				int tmp = context_reg_request(ctx);
+
+				int label_cvt_unsigned = context_new_label(ctx);
+				int label_cvt_exit     = context_new_label(ctx);
+
+				context_emit_code(ctx, "test %s, %s\n", get_reg_name_scratch(result.reg, 8), get_reg_name_scratch(result.reg, 8));
+				context_emit_code(ctx, "js L_cvt_unsigned_%i\n", label_cvt_unsigned);
+				context_emit_code(ctx, "cvtsi2sd %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(result.reg, 8));
+				context_emit_code(ctx, "jmp L_cvt_exit_%i\n", label_cvt_exit);
+				context_emit_code(ctx, "L_cvt_unsigned_%i:\n", label_cvt_unsigned);
+				context_emit_code(ctx, "mov %s, %s\n", get_reg_name_scratch(tmp, 8), get_reg_name_scratch(result.reg, 8));
+				context_emit_code(ctx, "and %s, 1\n", get_reg_name_scratch(result.reg, 8));
+				context_emit_code(ctx, "shr %s, 1\n", get_reg_name_scratch(tmp, 8));
+				context_emit_code(ctx, "or %s, %s\n", get_reg_name_scratch(tmp, 8), get_reg_name_scratch(result.reg, 8));
+				context_emit_code(ctx, "cvtsi2sd %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(tmp, 8));
+				context_emit_code(ctx, "addsd %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(reg, 8));
+				context_emit_code(ctx, "L_cvt_exit_%i:\n", label_cvt_exit);
+
+				context_reg_free(ctx, tmp);
+			} else {
+				context_emit_code(ctx, "cvtsi2sd %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(result.reg, 8));
+			}
+
 			context_reg_free(ctx, result.reg);
 			result.reg = reg;
 		}
@@ -720,8 +767,23 @@ static Result codegen_expression_cast(Context * ctx, AST_Expression * expr) {
 		if (type_is_integral(type_new)) {
 			int reg = context_reg_request(ctx);
 
-			context_emit_code(ctx, "cvttss2si %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(result.reg, 8));
-		
+			if (type_is_u64(type_new)) {
+				int label_cvt_unsigned = context_new_label(ctx);
+				int label_cvt_exit     = context_new_label(ctx);
+
+				context_emit_code(ctx, "comiss %s, DWORD [REL %s]\n", get_reg_name_scratch(result.reg, 8), const_f32_to_u64_name);
+				context_emit_code(ctx, "jnb L_cvt_unsigned_%i\n", label_cvt_unsigned);
+				context_emit_code(ctx, "cvttss2si %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(result.reg, 8));
+				context_emit_code(ctx, "jmp L_cvt_exit_%i\n", label_cvt_exit);
+				context_emit_code(ctx, "L_cvt_unsigned_%i:\n", label_cvt_unsigned);
+				context_emit_code(ctx, "subss %s, DWORD [REL %s]\n", get_reg_name_scratch(result.reg, 8), const_f32_to_u64_name);
+				context_emit_code(ctx, "cvttss2si %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(result.reg, 8));
+				context_emit_code(ctx, "btc %s, 63\n", get_reg_name_scratch(reg, 8));
+				context_emit_code(ctx, "L_cvt_exit_%i:\n", label_cvt_exit);			
+			} else {
+				context_emit_code(ctx, "cvttss2si %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(result.reg, 8));
+			}
+
 			context_reg_free(ctx, result.reg);
 			result.reg = reg;
 		} else if (type_is_f64(type_new)) {
@@ -731,8 +793,23 @@ static Result codegen_expression_cast(Context * ctx, AST_Expression * expr) {
 		if (type_is_integral(type_new)) {
 			int reg = context_reg_request(ctx);
 
-			context_emit_code(ctx, "cvttsd2si %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(result.reg, 8));
-		
+			if (type_is_u64(type_new)) {
+				int label_cvt_unsigned = context_new_label(ctx);
+				int label_cvt_exit     = context_new_label(ctx);
+
+				context_emit_code(ctx, "comisd %s, QWORD [REL %s]\n", get_reg_name_scratch(result.reg, 8), const_f64_to_u64_name);
+				context_emit_code(ctx, "jnb L_cvt_unsigned_%i\n", label_cvt_unsigned);
+				context_emit_code(ctx, "cvttsd2si %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(result.reg, 8));
+				context_emit_code(ctx, "jmp L_cvt_exit_%i\n", label_cvt_exit);
+				context_emit_code(ctx, "L_cvt_unsigned_%i:\n", label_cvt_unsigned);
+				context_emit_code(ctx, "subsd %s, QWORD [REL %s]\n", get_reg_name_scratch(result.reg, 8), const_f64_to_u64_name);
+				context_emit_code(ctx, "cvttsd2si %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(result.reg, 8));
+				context_emit_code(ctx, "btc %s, 63\n", get_reg_name_scratch(reg, 8));
+				context_emit_code(ctx, "L_cvt_exit_%i:\n", label_cvt_exit);			
+			} else {
+				context_emit_code(ctx, "cvttsd2si %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(result.reg, 8));
+			}
+
 			context_reg_free(ctx, result.reg);
 			result.reg = reg;
 		} else if (type_is_f32(type_new)) {
@@ -2057,6 +2134,9 @@ char const * codegen_program(AST_Statement const * program, bool needs_main) {
 	codegen_statement(&ctx, program);
 
 	context_emit_code(&ctx, "section .data\n");
+	context_emit_code(&ctx, "%s dq 0x5f000000 ; 2^63 as float\n",          const_f32_to_u64_name);
+	context_emit_code(&ctx, "%s dq 0x43e0000000000000 ; 2^63 as double\n", const_f64_to_u64_name);
+
 	for (int i = 0; i < ctx.data_seg_len; i++) {
 		context_emit_code(&ctx, "%s\n", ctx.data_seg_vals[i]);
 	}

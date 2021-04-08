@@ -20,6 +20,9 @@ export fsize;
 export fread;
 export fwrite;
 
+export rand_seed;
+export rand;
+
 extern GetProcessHeap() -> void *;
 extern HeapAlloc(heap: void *, flags: int, size: int) -> void *;
 extern HeapFree (heap: void *, flags: int, ptr: void *);
@@ -33,6 +36,8 @@ extern ReadFile (handle: void *, buffer: void *, bytes_to_read : int, bytes_read
 extern WriteFile(handle: void *, buffer: void *, bytes_to_write: int, bytes_written: int *, overlapped: void *) -> bool;
 
 extern CloseHandle(handle: void *);
+
+extern QueryPerformanceCounter(counter: u64 *) -> bool;
 
 extern ExitProcess(exit_code: int);
 
@@ -186,4 +191,30 @@ func fread(handle: void *, bytes: char *, num_bytes: int) -> bool {
 func fwrite(handle: void *, bytes: char *, num_bytes: int) -> bool {
 	num_bytes_written : int;
 	return WriteFile(handle, bytes, num_bytes, &num_bytes_written, null);
+}
+
+func rand_seed() -> u64 {
+	seed : u64;
+	success := QueryPerformanceCounter(&seed);
+	
+	if (!success) {
+		puts("Call to 'QueryPerformanceCounter' failed!\n");
+		exit(-1);
+	}
+	
+	// Wang hash
+	seed = (seed ^ 61) ^ (seed >> 16);
+	seed = seed * 9;
+	seed = seed ^ (seed >> 4);
+	seed = seed * 0x27d4eb2d;
+	seed = seed ^ (seed >> 15);
+	return seed;
+}
+
+func rand(seed: u64 *) -> u64 {
+	// Random XOR
+	*seed = *seed ^ (*seed << 13);
+	*seed = *seed ^ (*seed >> 17);
+	*seed = *seed ^ (*seed << 5);
+	return *seed;
 }

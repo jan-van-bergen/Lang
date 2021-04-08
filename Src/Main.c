@@ -20,7 +20,7 @@ bool match_arg(char const ** arg, char const * target) {
 }
 
 int main(int arg_count, char const * args[]) {
-	char const * filename = "Examples\\avl.lang";
+	char const * filename = "Examples\\montecarlo.lang";
 
 	Compiler_Config config;
 	config.output = COMPILER_OUTPUT_EXE;

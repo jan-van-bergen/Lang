@@ -1,0 +1,24 @@
+extern rand_seed() -> u64;
+extern rand(seed: u64 *) -> u64;
+
+// Estimate pi using Monte Carlo integration
+func main() -> int {
+	seed := rand_seed();
+	
+	NUM_ITERATIONS := 1000000;
+	num_valid := 0;
+	
+	i := 0;
+	while (i++ < NUM_ITERATIONS) {
+		x := (cast(double) rand(&seed)) / (cast(double) 0xffffffffffffffff);
+		y := (cast(double) rand(&seed)) / (cast(double) 0xffffffffffffffff);
+		
+		if (x*x + y*y <= 1.0) {
+			num_valid++;
+		}
+	}
+	
+	pi := 4.0 * (cast(double) num_valid) / cast(double) NUM_ITERATIONS;
+	
+	return cast(int) pi; // 3
+}
