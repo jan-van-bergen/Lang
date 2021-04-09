@@ -1,0 +1,16 @@
+extern assert(assertion: bool);
+extern memcpy(dst: void *, src: void *, size: int);
+
+func main() -> int {
+	bits : u32;
+	f    : f32;
+	
+	bits = 0x449a5000;
+	memcpy(&f, &bits, sizeof(float));
+	assert(f == 1234.5f);
+	
+	f = 1.0f;
+	memcpy(&bits, &f, sizeof(float));
+	
+	return bits;
+}

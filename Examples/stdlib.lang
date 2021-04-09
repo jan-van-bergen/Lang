@@ -1,7 +1,9 @@
 export malloc;
 export calloc;
 export free;
+
 export memset;
+export memcpy;
 
 export exit;
 export assert;
@@ -69,6 +71,13 @@ func memset(ptr: void *, value: u8, size: int) {
 	end := (cast(u8 *) ptr) + size;
 	while (cur < end) {
 		*cur++ = value;
+	}
+}
+
+func memcpy(dst: void *, src: void *, size: int) {
+	i := 0;
+	while (i++ < size) {
+		(cast(char *) dst)[i] = (cast(char *) src)[i];
 	}
 }
 

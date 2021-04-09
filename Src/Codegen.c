@@ -858,6 +858,7 @@ static void codegen_compare(Context * ctx, char const * cmp_inst, char const * s
 // Helper function used by relational operators
 static void codegen_relational(Context * ctx, char const * operator, Token_Type token_operator, Result * result_left, Result * result_right) {
 	if ((type_is_integral(result_left->type) && type_is_integral(result_right->type)) ||
+		(type_is_bool    (result_left->type) && type_is_bool    (result_right->type)) ||
 		(type_is_pointer (result_left->type) && type_is_pointer (result_right->type) && types_unifiable(result_left->type, result_right->type))
 	) {
 		char const * set_instr = NULL;
@@ -867,6 +868,8 @@ static void codegen_relational(Context * ctx, char const * operator, Token_Type 
 			case TOKEN_OPERATOR_LT_EQ: set_instr = "setle"; break;
 			case TOKEN_OPERATOR_GT:    set_instr = "setg";  break;
 			case TOKEN_OPERATOR_GT_EQ: set_instr = "setge"; break;
+			case TOKEN_OPERATOR_EQ:    set_instr = "sete";  break;
+			case TOKEN_OPERATOR_NE:    set_instr = "setne"; break;
 			default: error(ERROR_INTERNAL);
 		}
 
@@ -879,6 +882,8 @@ static void codegen_relational(Context * ctx, char const * operator, Token_Type 
 			case TOKEN_OPERATOR_LT_EQ: set_instr = "setbe"; break;
 			case TOKEN_OPERATOR_GT:    set_instr = "seta";  break;
 			case TOKEN_OPERATOR_GT_EQ: set_instr = "setae"; break;
+			case TOKEN_OPERATOR_EQ:    set_instr = "sete";  break;
+			case TOKEN_OPERATOR_NE:    set_instr = "setne"; break;
 			default: error(ERROR_INTERNAL);
 		}
 
@@ -895,7 +900,7 @@ static void codegen_relational(Context * ctx, char const * operator, Token_Type 
 			codegen_compare(ctx, "comisd", set_instr, result_left->reg, result_right->reg, reg);
 			result_left->reg = reg;
 		} else {
-			type_error(ctx, "Operator '%s' requires two integral, float, or pointer types", operator);
+			type_error(ctx, "Operator '%s' requires two integral, boolean, float, or pointer types", operator);
 		}
 	}
 
@@ -1176,29 +1181,8 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 		case TOKEN_OPERATOR_GT:    codegen_relational(ctx, ">",  TOKEN_OPERATOR_GT,    &result_left, &result_right); break;
 		case TOKEN_OPERATOR_GT_EQ: codegen_relational(ctx, ">=", TOKEN_OPERATOR_GT_EQ, &result_left, &result_right); break;
 
-		case TOKEN_OPERATOR_EQ: {
-			codegen_compare(ctx, "cmp", "sete", result_left.reg, result_right.reg, result_left.reg);
-			
-			if (!types_unifiable(result_left.type, result_right.type)) {
-				type_error(ctx, "Operator '==' requires equal types on both sides");
-			}
-			
-			result_left.type = make_type_bool();
-			
-			break;
-		}
-
-		case TOKEN_OPERATOR_NE: {
-			codegen_compare(ctx, "cmp", "setne", result_left.reg, result_right.reg, result_left.reg);
-			
-			if (!types_unifiable(result_left.type, result_right.type)) {
-				type_error(ctx, "Operator '!=' requires equal types on both sides");
-			}
-
-			result_left.type = make_type_bool();
-			
-			break;
-		}
+		case TOKEN_OPERATOR_EQ: codegen_relational(ctx, "==", TOKEN_OPERATOR_EQ, &result_left, &result_right); break;
+		case TOKEN_OPERATOR_NE: codegen_relational(ctx, "!=", TOKEN_OPERATOR_NE, &result_left, &result_right); break;
 
 		case TOKEN_OPERATOR_BITWISE_AND: {
 			context_emit_code(ctx, "and %s, %s\n", reg_name_left, reg_name_right);
