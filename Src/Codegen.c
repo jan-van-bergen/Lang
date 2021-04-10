@@ -427,7 +427,7 @@ static Result codegen_expression_const(Context * ctx, AST_Expression const * exp
 			sprintf_s(str_lit_name, sizeof(str_lit_name), "lit_str_%i", ctx->data_seg_len);
 
 			codegen_add_string_literal(ctx, str_lit_name, expr->expr_const.token.value_str);
-			context_emit_code(ctx, "lea %s, [REL %s]\n", get_reg_name_scratch(result.reg, 8), str_lit_name);
+			context_emit_code(ctx, "lea %s, [REL %s] ; \"%s\"\n", get_reg_name_scratch(result.reg, 8), str_lit_name, expr->expr_const.token.value_str);
 
 			break;
 		}
@@ -1772,6 +1772,25 @@ static void codegen_statement_def_func(Context * ctx, AST_Statement const * stat
 
 	context_emit_code(ctx, "push rbp ; save RBP\n");
 	context_emit_code(ctx, "mov rbp, rsp ; stack frame\n");
+	
+	Scope * scope_args = stat->stat_def_func.scope_args;
+
+	int arg_count = stat->stat_def_func.function_def->arg_count;
+
+	// Push first 4 arguments (if we have that many) that were passed in registers onto the stack
+	for (int i = 0; i < MIN(arg_count, 4); i++) {
+		Variable * var = scope_get_variable(scope_args, stat->stat_def_func.function_def->args[i].name);
+
+		char const * mov = "mov";
+		if (type_is_f32(var->type)) {
+			mov = "movss";
+		} else if (type_is_f64(var->type)) {
+			mov = "movsd";
+		}
+
+		int type_size = type_get_size(var->type, scope_args);
+		context_emit_code(ctx, "%s %s [rbp + %i], %s ; push arg %i \n", mov, get_word_name(type_size), var->offset, get_reg_name_call(i, type_size, type_is_float(var->type)), i);
+	}
 
 	// Reserve space on stack for local variables
 	Variable_Buffer * stack_frame = stat->stat_def_func.buffer_vars;
