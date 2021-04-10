@@ -1,0 +1,251 @@
+//////////////////////////////////////////////////////////////////////////////////////
+// Based on: https://www.opengl.org/archives/resources/code/samples/win32_tutorial/ //
+//////////////////////////////////////////////////////////////////////////////////////
+
+extern puts(str: char *);
+extern exit(code: int);
+
+extern GetLastError() -> u32;
+
+extern GetModuleHandleA(lpModuleName: char *) -> void *;
+
+struct WNDCLASSEXA {
+	struct_size : u32;
+	style       : u32;
+	wnd_proc    : (void *, u32, u64, u64) -> void;
+	cls_extra   : int;
+	wnd_extra   : int;
+	instance    : void *;
+	icon        : void *;
+	cursor      : void *;
+	bg          : void *;
+	menu_name   : char *;
+	class_name  : char *;
+	icon_small  : void *;
+}
+
+extern RegisterClassExA(lpWndClass: WNDCLASSEXA *) -> void *;
+
+extern CreateWindowExA(
+	ex_style    : u32,
+	class_name  : char *,
+	window_name : char *,
+	dw_style    : u32,
+	x           : u64,
+	y           : u64,
+	width       : u64,
+	height      : u64,
+	hwnd_parent : void *,
+	menu        : void *,
+	instance    : void *,
+	param       : void *
+) -> void *;
+extern ShowWindow(hWnd: void *, nCmdShow: int) -> bool;
+
+extern GetDC(hwnd: void *) -> void *;
+extern ReleaseDC(hdc: void *, hwnd: void *) -> int;
+
+struct PIXELFORMATDESCRIPTOR {
+	nSize:           u16;
+	nVersion:        u16;
+	dwFlags:         u32;
+	iPixelType:      u8;
+	cColorBits:      u8;
+	cRedBits:        u8;
+	cRedShift:       u8;
+	cGreenBits:      u8;
+	cGreenShift:     u8;
+	cBlueBits:       u8;
+	cBlueShift:      u8;
+	cAlphaBits:      u8;
+	cAlphaShift:     u8;
+	cAccumBits:      u8;
+	cAccumRedBits:   u8;
+	cAccumGreenBits: u8;
+	cAccumBlueBits:  u8;
+	cAccumAlphaBits: u8;
+	cDepthBits:      u8;
+	cStencilBits:    u8;
+	cAuxBuffers:     u8;
+	iLayerType:      u8;
+	bReserved:       u8;
+	dwLayerMask:     u32;
+	dwVisibleMask:   u32;
+	dwDamageMask:    u32;
+}
+
+extern ChoosePixelFormat(hdc: void *, pfd: PIXELFORMATDESCRIPTOR *) -> int;
+extern SetPixelFormat(hdc: void *, format: int, pfd: PIXELFORMATDESCRIPTOR *) -> bool;
+
+struct MSG {
+	hwnd     : void *;
+	message  : u32;
+	wParam   : u64;
+	lParam   : u64;
+	time     : u32;
+	ptx      : u32;
+	pty      : u32;
+	lPrivate : u32;
+}
+
+extern GetMessageA(msg: MSG *, hwnd: void *, msg_filter_min: u32, msg_filter_max: u32) -> bool;
+extern SendMessageA(hwnd: void *, msg: u32, wparam: u64, lparam: u64) -> int;
+extern PostMessageA(hwnd: void *, msg: u32, wparam: u64, lparam: u64) -> int;
+extern TranslateMessage(msg: MSG *) -> bool;
+extern DispatchMessageA(msg: MSG *) -> u32;
+
+extern PostQuitMessage(code: int);
+
+struct RECT {
+	left   : u32;
+	top    : u32;
+	right  : u32;
+	bottom : u32;
+}
+
+struct PAINTSTRUCT {
+	hdc        : void *;
+	erase      : bool;
+	rect       : RECT;
+	restore    : bool;
+	inc_update : bool;
+	reserved   : u8[32];
+}
+
+extern BeginPaint(hwnd: void *, paint: PAINTSTRUCT *) -> void *;
+extern EndPaint  (hwnd: void *, paint: PAINTSTRUCT *) -> void *;
+
+extern wglCreateContext(hdc: void *) -> void *;
+extern wglMakeCurrent(hdc: void *, hrc: void *) -> bool;
+
+extern glClear(mask: u32);
+extern glBegin(mode: u32);
+extern glEnd();
+extern glFlush();
+
+extern glViewport(x: int, y: int, w: int, h: int);
+
+extern glColor3f(r: f32, g: f32, b: f32);
+extern glVertex2f(x: f32, y: f32);
+
+CS_OWNDC := 0x0020;
+
+WS_OVERLAPPEDWINDOW := 0x00cf0000;
+WS_CLIPSIBLINGS     := 0x04000000;
+WS_CLIPCHILDREN     := 0x02000000;
+
+PFD_DRAW_TO_WINDOW := 0x00000004;
+PFD_SUPPORT_OPENGL := 0x00000020;
+
+SW_SHOWDEFAULT := 10;
+
+WM_CREATE  := 0x0001;
+WM_DESTROY := 0x0002;
+WM_SIZE    := 0x0005;
+WM_PAINT   := 0x000f;
+WM_CLOSE   := 0x0010;
+
+GL_COLOR_BUFFER_BIT := 0x00004000;
+GL_TRIANGLES        := 0x0004;
+
+func error(str: char *) {
+	if (str) puts(str);
+	exit(GetLastError());
+}
+
+func main() {
+	CLASS_NAME := "OpenGL";
+
+	instance := GetModuleHandleA(null);
+	if (instance == null) {
+		error("Failed to get module handle!\n");
+	}
+
+	// Register Window Class
+	wc: WNDCLASSEXA;
+	wc.struct_size = sizeof(WNDCLASSEXA);
+	wc.style       = CS_OWNDC;
+	wc.wnd_proc    = window_proc;
+	wc.instance    = instance;
+	wc.class_name  = CLASS_NAME;
+
+	atom := RegisterClassExA(&wc);
+	if (atom == null) {
+		error("Failed to register window class!\n");
+	}
+
+	// Create Window
+	hwnd := CreateWindowExA(
+		0,
+		CLASS_NAME,
+		"Hello Triangle!",
+		WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
+		0, 0, 512, 512,
+		null,     // Parent window    
+		null,     // Menu
+		instance, // Instance handle
+		null      // User data
+	);
+	if (hwnd == null) {
+		error("Failed to create window!\n");
+	}
+
+	hdc := GetDC(hwnd);
+
+	// Set up Pixel Format
+	pfd: PIXELFORMATDESCRIPTOR;
+	pfd.nSize      = cast(u16) sizeof(PIXELFORMATDESCRIPTOR);
+    pfd.nVersion   = cast(u16) 1;
+    pfd.dwFlags    = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL;
+    pfd.cColorBits = cast(u8) 32;
+
+    pf := ChoosePixelFormat(hdc, &pfd);
+	SetPixelFormat(hdc, pf, &pfd);
+
+	// Create GL context
+    hrc := wglCreateContext(hdc);
+    wglMakeCurrent(hdc, hrc);
+
+	ShowWindow(hwnd, SW_SHOWDEFAULT);
+	
+	msg: MSG;
+	while (GetMessageA(&msg, null, 0, 0)) {
+		TranslateMessage(&msg);
+		DispatchMessageA(&msg);
+	}
+
+	puts("done");
+}
+
+func window_proc(hwnd: void *, msg: u32, wparam: u64, lparam: u64) -> int {
+	if (msg == WM_PAINT) {
+		glClear(GL_COLOR_BUFFER_BIT);
+		glBegin(GL_TRIANGLES);
+		glColor3f(1.0f, 0.0f, 0.0f);
+		glVertex2f(0.0f,  1.0f);
+		glColor3f(0.0f, 1.0f, 0.0f);
+		glVertex2f(-1.0f, -1.0f);
+		glColor3f(0.0f, 0.0f, 1.0f);
+		glVertex2f(1.0f, -1.0f);
+		glEnd();
+		glFlush();
+
+		ps: PAINTSTRUCT;
+		BeginPaint(hwnd, &ps);
+		EndPaint  (hwnd, &ps);
+
+		return 0;
+	} else if (msg == WM_SIZE) {
+		glViewport(0, 0, lparam & 0xffff, lparam >> 16);
+		PostMessageA(hwnd, WM_PAINT, 0, 0);
+
+		return 0;
+	} else if (msg == WM_CLOSE) {
+		PostQuitMessage(0);
+
+		return 0;
+	}
+
+	extern DefWindowProcA(hwnd: void *, msg: u32, wparam: u64, lparam: u64) -> int;
+	return DefWindowProcA(hwnd, msg, wparam, lparam);
+}
