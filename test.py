@@ -49,6 +49,7 @@ test_cases = [
 #	("Examples\\gui.lang", "/lib:Examples\\stdlib.lib /lib:user32.lib /lib:gdi32.lib",                   0, "", 0, "done"),
 #	("Examples\\gl.lang",  "/lib:Examples\\stdlib.lib /lib:user32.lib /lib:gdi32.lib /lib:opengl32.lib", 0, "", 0, "done"),
 
+	("Examples\\levenshtein.lang",        "/lib:Examples\\stdlib.lib", 0,             "sitting kitten",          3, ""),
 	("Examples\\reinterp.lang",           "/lib:Examples\\stdlib.lib", 0,             "",               0x3f800000, ""),
 	("Examples\\float_conv.lang",         "/lib:Examples\\stdlib.lib", 0,             "",                        0, ""),
 	("Examples\\montecarlo.lang",         "/lib:Examples\\stdlib.lib", 0,             "",                        3, ""),

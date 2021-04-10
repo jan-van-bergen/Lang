@@ -1,0 +1,51 @@
+extern strlen(str: char *) -> int;
+extern puts  (str: char *);
+
+func min(a: int, b: int) -> int {
+	if (a < b) {
+		return a;
+	} else {
+		return b;
+	}
+}
+
+func levenshtein(a: char *, b: char *) -> int {
+	if (*a == '\0') return strlen(b);
+	if (*b == '\0') return strlen(a);
+	
+	if (*a == *b) return levenshtein(a + 1, b + 1);
+	
+	option_0 := levenshtein(a + 1, b);
+	option_1 := levenshtein(a,     b + 1);
+	option_2 := levenshtein(a + 1, b + 1);
+	
+	return 1 + min(option_0, min(option_1, option_2));
+}
+
+func main(arg: char *) -> int{
+	// Skip fist arg
+	while (*arg != ' ') arg++;
+	while (*arg == ' ') arg++;
+	
+	if (*arg == '\0') {
+		puts("No arguments provided!\n");
+		return 0;
+	}
+	
+	word_a := arg;
+	while (*arg != ' ') arg++;
+	
+	if (*arg == '\0') {
+		puts("Only one argument provided!\n");
+		return 0;
+	}
+	
+	*arg++ = '\0';
+	while (*arg == ' ') arg++;
+	
+	word_b := arg;
+	while (*arg != ' ') arg++;
+	*arg = '\0';
+	
+	return levenshtein(word_a, word_b);
+}
