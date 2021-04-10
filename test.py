@@ -99,7 +99,7 @@ test_cases = [
 	("Examples\\incdec.lang",             "",                                                         0,             "",                        2, ""),
 	("Examples\\file.lang",               "/lib:Examples\\stdlib.lib",                                0,             "",                        0, "test123"),
 	("Examples\\array.lang",              "",                                                         0,             "",                    85344, ""),
-	("Examples\\nested_calls.lang",       "",                                                         0,             "",                        2, ""),
+	("Examples\\nested_calls.lang",       "",                                                         0,             "",                       13, ""),
 	("Examples\\short_circuit.lang",      "",                                                         0,             "",                        0, ""),
 	("Examples\\float.lang",              "",                                                         0,             "",                      288, ""),
 	("Examples\\float2.lang",             "",                                                         0,             "",                        3, ""),

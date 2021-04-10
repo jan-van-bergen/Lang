@@ -1506,12 +1506,13 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 		type_error(ctx, "Incorrect number of arguments to function! Provided %i, needed %i", call_arg_count, arg_count);
 	}
 
-	bool pushed_regs_call   [4]                 = { false, false, false, false };
 	bool pushed_regs_scratch[SCRATCH_REG_COUNT] = { false, false, false, false, false, false, false };
+	int num_pushed_regs = 0;
 
 	for (int i = 0; i < SCRATCH_REG_COUNT; i++) {
 		if (ctx->reg_mask_scratch & (1 << i)) {
 			pushed_regs_scratch[i] = true;
+			num_pushed_regs++;
 
 			context_emit_code(ctx, "push %s ; preserve\n", get_reg_name_scratch(i, 8));
 		}
@@ -1527,16 +1528,6 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 		arg_offsets[i] = arg_size;
 
 		if (i < 4) {
-			if (context_call_reg_is_reserved(ctx, i)) {
-				// If the call registers is already in use (i.e. this is a nested
-				// function call), push the register on the stack to preserve it
-				pushed_regs_call[i] = true;
-
-				context_emit_code(ctx, "push %s ; preserve\n", get_reg_name_call(i, 8, type_is_float(arg_type)));
-			} else {
-				context_call_reg_reserve(ctx, i);
-			}
-
 			arg_size += 8;
 		} else {
 			int type_size  = type_get_size (arg_type, ctx->current_scope);
@@ -1552,6 +1543,8 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 	} else {
 		arg_size = (arg_size + 15) & ~15; // Round up to next multiple of 16 bytes to ensure stack alignment
 	}
+
+	if (num_pushed_regs & 1) arg_size += 8; // Pushed an uneven number of registers, add 8 to realign to multiple of 16
 
 	// Reserve stack space for arguments
 	context_emit_code(ctx, "sub rsp, %i ; reserve shadow space and %i arguments\n", arg_size, call_arg_count);
@@ -1580,18 +1573,27 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 			mov = "movsd";
 		}
 
-		if (i < 4) {
-			context_emit_code(ctx, "%s %s, %s ; arg %i\n", mov, get_reg_name_call(i, 8, type_is_float(result_arg.type)), get_reg_name_scratch(result_arg.reg, 8), i + 1);
-		} else {
-			int type_size = type_get_size(arg_type, ctx->current_scope);
-			char const * word = get_word_name(type_size);
+		int type_size = type_get_size(arg_type, ctx->current_scope);
+		char const * word = get_word_name(type_size);
 
-			context_emit_code(ctx, "%s %s [rsp + %i], %s ; arg %i\n", mov, word, arg_offsets[i], get_reg_name_scratch(result_arg.reg, type_size), i + 1);
-		}
+		context_emit_code(ctx, "%s %s [rsp + %i], %s ; arg %i\n", mov, word, arg_offsets[i], get_reg_name_scratch(result_arg.reg, type_size), i + 1);
 
 		context_reg_free(ctx, result_arg.reg);
 	}
 	
+	for (int i = 0; i < MIN(4, call_arg_count); i++) {
+		char const * mov = "mov";
+		if (type_is_f32(arg_types[i])) {
+			mov = "movss";
+		} else if (type_is_f64(arg_types[i])) {
+			mov = "movsd";
+		}
+
+		int type_size = type_get_size(arg_types[i], ctx->current_scope);
+
+		context_emit_code(ctx, "%s %s, %s [rsp + %i] ; arg %i via register\n", mov, get_reg_name_call(i, type_size, type_is_float(arg_types[i])), get_word_name(type_size), i * 8, i + 1);
+	}
+
 	Function_Def * function_def = NULL;
 
 	if (expr->expr_call.expr_function->type == AST_EXPRESSION_VAR) {
@@ -1613,13 +1615,9 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 
 	// Check if any registers were pushed before this call and need to be restored
 	for (int i = MIN(3, call_arg_count - 1); i >= 0; i--) {
-		if (pushed_regs_call[i]) {
-			context_emit_code(ctx, "pop %s ; restore\n", get_reg_name_call(i, 8, type_is_float(arg_types[i])));
-		} else {
-			context_call_reg_mem_free(ctx, i);
-		}
+		context_call_reg_mem_free(ctx, i);
 	}
-
+	
 	for (int i = SCRATCH_REG_COUNT - 1; i >= 0; i--) {
 		if (pushed_regs_scratch[i]) {
 			context_emit_code(ctx, "pop %s ; restore\n", get_reg_name_scratch(i, 8));
@@ -1775,25 +1773,6 @@ static void codegen_statement_def_func(Context * ctx, AST_Statement const * stat
 	context_emit_code(ctx, "push rbp ; save RBP\n");
 	context_emit_code(ctx, "mov rbp, rsp ; stack frame\n");
 
-	Scope * scope_args = stat->stat_def_func.scope_args;
-	
-	int arg_count = stat->stat_def_func.function_def->arg_count;
-
-	// Push first 4 arguments (if we have that many) that were passed in registers onto the stack
-	for (int i = 0; i < MIN(arg_count, 4); i++) {
-		Variable * var = scope_get_variable(scope_args, stat->stat_def_func.function_def->args[i].name);
-
-		char const * mov = "mov";
-		if (type_is_f32(var->type)) {
-			mov = "movss";
-		} else if (type_is_f64(var->type)) {
-			mov = "movsd";
-		}
-
-		int type_size = type_get_size(var->type, scope_args);
-		context_emit_code(ctx, "%s %s [rbp + %i], %s ; push arg %i \n", mov, get_word_name(type_size), var->offset, get_reg_name_call(i, type_size, type_is_float(var->type)), i);
-	}
-	
 	// Reserve space on stack for local variables
 	Variable_Buffer * stack_frame = stat->stat_def_func.buffer_vars;
 	
@@ -2043,15 +2022,18 @@ static void codegen_statement_program(Context * ctx, AST_Statement const * stat)
 
 			context_emit_code(ctx, "global _start\n");
 			context_emit_code(ctx, "_start:\n");
-			context_emit_code(ctx, "push rsp\n");
 			ctx->indent++;
+			context_emit_code(ctx, "sub rsp, 32 + 8\n");
 
 			if (needs_args) {
 				context_emit_code(ctx, "call GetCommandLineA\n");
+				context_emit_code(ctx, "mov [rsp], rax\n");
 				context_emit_code(ctx, "mov rcx, rax\n");
 			}
 
 			context_emit_code(ctx, "call main\n");
+			context_emit_code(ctx, "add rsp, 32\n");
+
 			context_emit_code(ctx, "mov ecx, eax\n");
 			context_emit_code(ctx, "call ExitProcess\n\n");
 			ctx->indent--;
