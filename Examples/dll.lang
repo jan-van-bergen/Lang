@@ -1,0 +1,10 @@
+export DllMain;
+export get_message;
+
+func DllMain() -> bool {
+	return true;
+}
+
+func get_message() -> char * {
+	return "Hello!";
+}

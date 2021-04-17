@@ -49,6 +49,7 @@ void compile_file(char const * filename, Compiler_Config const * config) {
 	char const * file_obj = replace_file_extension(filename, "obj");
 	char const * file_exe = replace_file_extension(filename, "exe");
 	char const * file_lib = replace_file_extension(filename, "lib");
+	char const * file_dll = replace_file_extension(filename, "dll");
 
 	FILE * file;
 	fopen_s(&file, file_asm, "wb");
@@ -65,43 +66,49 @@ void compile_file(char const * filename, Compiler_Config const * config) {
 
 	char const * lib_path = "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.18362.0\\um\\x64";
 	
-	char const cmd[1024];
+	char const cmd[1024] = { 0 };
 
 	// Assemble
 	sprintf_s(cmd, sizeof(cmd), "nasm -f win64 \"%s\" -o \"%s\" -g -Werror", file_asm, file_obj);
 	if (system(cmd) != EXIT_SUCCESS) error(ERROR_ASSEMBLER);
 
-	switch (config->output) {
-		case COMPILER_OUTPUT_LIB: {
-			// Make .lib
-			sprintf_s(cmd, sizeof(cmd), "lib %s /out:\"%s\" /nologo", file_obj, file_lib);
-			break;
-		}
+	int cmd_offset = 0;
 
+	switch (config->output) {
 		case COMPILER_OUTPUT_EXE: {
-			// Link
-			int cmd_offset = sprintf_s(cmd, sizeof(cmd), "link \"%s\" /out:\"%s\" /subsystem:console /entry:_start /debug /nologo /libpath:\"%s\" kernel32.lib",
+			cmd_offset = sprintf_s(cmd, sizeof(cmd), "link \"%s\" /out:\"%s\" /subsystem:console /entry:_start /debug /nologo /libpath:\"%s\" kernel32.lib",
 				file_obj,
 				file_exe,
 				lib_path
 			);
+			break;
+		}
+		
+		case COMPILER_OUTPUT_LIB: {
+			cmd_offset = sprintf_s(cmd, sizeof(cmd), "lib %s /out:\"%s\" /nologo /libpath:\"%s\"", file_obj, file_lib, lib_path);
+			break;
+		}
 
-			for (int i = 0; i < config->lib_count; i++) {
-				cmd_offset += sprintf_s(cmd + cmd_offset, sizeof(cmd) - cmd_offset, " \"%s\" ", config->libs[i]);
-			}
-
+		case COMPILER_OUTPUT_DLL: {
+			cmd_offset = sprintf_s(cmd, sizeof(cmd), "link /dll %s /out:\"%s\" /entry:DllMain /nologo /libpath:\"%s\" kernel32.lib", file_obj, file_dll, lib_path);
 			break;
 		}
 
 		default: error(ERROR_INTERNAL);
+	}
+	
+	for (int i = 0; i < config->lib_count; i++) {
+		cmd_offset += sprintf_s(cmd + cmd_offset, sizeof(cmd) - cmd_offset, " \"%s\" ", config->libs[i]);
 	}
 
 	if (system(cmd) != EXIT_SUCCESS) {
 		puts(cmd);	
 		error(ERROR_LINKER);
 	}
+
 	mem_free(file_asm);
 	mem_free(file_obj);
 	mem_free(file_exe);
 	mem_free(file_lib);
+	mem_free(file_dll);
 }

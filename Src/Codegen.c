@@ -162,7 +162,7 @@ static void context_emit_code(Context * ctx, char const * fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
 
-	char new_code[1024];
+	char new_code[1024] = { 0 };
 
 	// Add indentation based on current Context
 	char const * indent = "    ";
@@ -622,9 +622,10 @@ static Result codegen_expression_array_access(Context * ctx, AST_Expression * ex
 		type_error(ctx, "Operator '[]' requires right operand to be an integral type. Type was '%s'", str_type);
 	}
 	
-	Result result;
-	result.type = result_array.type->base;
-	result.reg  = result_array.reg;
+	Result result = {
+		.type = result_array.type->base,
+		.reg  = result_array.reg
+	};
 
 	// Dereference pointer, not needed if lhs is array
 	if (type_is_pointer(result_array.type)) {
@@ -1842,6 +1843,7 @@ static void codegen_statement_export(Context * ctx, AST_Statement const * stat) 
 	}
 
 	context_emit_code(ctx, "global %s\n", name);
+	context_emit_code(ctx, "export %s\n", name);
 }
 
 static void codegen_statement_if(Context * ctx, AST_Statement const * stat) {

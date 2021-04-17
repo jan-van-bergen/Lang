@@ -1,6 +1,6 @@
 import os
 
-clean_extensions = [".asm", ".exe", ".ilk", ".obj", "pdb", ".lib", ".ppm"]
+clean_extensions = [".asm", ".exe", ".ilk", ".obj", "pdb", ".lib", ".ppm", ".dll", ".exp"]
 
 num_files_removed = 0
 

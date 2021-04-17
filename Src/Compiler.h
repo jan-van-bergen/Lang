@@ -2,7 +2,8 @@
 
 typedef enum Compiler_Output {
 	COMPILER_OUTPUT_EXE,
-	COMPILER_OUTPUT_LIB
+	COMPILER_OUTPUT_LIB,
+	COMPILER_OUTPUT_DLL
 } Compiler_Output;
 
 typedef struct Compiler_Config {

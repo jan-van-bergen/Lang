@@ -22,9 +22,10 @@ bool match_arg(char const ** arg, char const * target) {
 int main(int arg_count, char const * args[]) {
 	char const * filename = "Examples\\montecarlo.lang";
 
-	Compiler_Config config;
-	config.output = COMPILER_OUTPUT_EXE;
-	config.lib_count = 0;
+	Compiler_Config config = {
+		.output    = COMPILER_OUTPUT_EXE,
+		.lib_count = 0
+	};
 
 	// Parse args
 	if (arg_count > 1) {
@@ -40,6 +41,8 @@ int main(int arg_count, char const * args[]) {
 					config.output = COMPILER_OUTPUT_EXE;
 				} else if (strncmp(*arg, "lib", 3) == 0) {
 					config.output = COMPILER_OUTPUT_LIB;
+				} else if (strncmp(*arg, "dll", 3) == 0) {
+					config.output = COMPILER_OUTPUT_DLL;
 				} else {
 					printf("WARNING: Invalid output type '%s' provided. Only 'exe' and 'lib' are valid\n", *arg);
 				}

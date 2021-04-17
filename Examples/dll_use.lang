@@ -1,0 +1,30 @@
+extern LoadLibraryA(name: char *) -> void *;
+extern FreeLibrary(module: void *) -> bool;
+
+extern GetLastError() -> int;
+
+extern GetProcAddress(module: void *, proc_name: char *) -> void *;
+
+extern puts(str: char *);
+
+func main() -> int {
+	module := LoadLibraryA("dll.dll");
+	if (module == null) {
+		puts("Failed to load dll!\n");
+		return GetLastError();
+	}
+	
+	proc := GetProcAddress(module, "get_message");
+	if (proc == null) {
+		puts("Failed to load procedure!\n");
+		return GetLastError();
+	}
+	
+	get_message := cast(() -> char *) proc;
+	
+	msg := get_message();
+	puts(msg);
+	
+	success := FreeLibrary(module);
+	return cast(int) !success;
+}
