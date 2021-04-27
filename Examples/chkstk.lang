@@ -1,0 +1,4 @@
+func main() -> int {
+	large_buffer: u8[524288]; // Large array allocated on the stack
+	return 4096;
+}

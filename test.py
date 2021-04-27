@@ -49,6 +49,7 @@ test_cases = [
 #	("Examples\\gui.lang", "/lib:Examples\\stdlib.lib /lib:user32.lib /lib:gdi32.lib",                   0, "", 0, "done"),
 #	("Examples\\gl.lang",  "/lib:Examples\\stdlib.lib /lib:user32.lib /lib:gdi32.lib /lib:opengl32.lib", 0, "", 0, "done"),
 
+	("Examples\\chkstk.lang",             "",                          0,             "",                     4096, ""),
 	("Examples\\dll.lang",                "/out:dll",                  0,             "",                        1, ""),
 	("Examples\\dll_use.lang",            "/lib:Examples\\stdlib.lib", 0,             "",                        0, "Hello!"),
 	("Examples\\levenshtein.lang",        "/lib:Examples\\stdlib.lib", 0,             "sitting kitten",          3, ""),

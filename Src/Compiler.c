@@ -76,7 +76,7 @@ void compile_file(char const * filename, Compiler_Config const * config) {
 
 	switch (config->output) {
 		case COMPILER_OUTPUT_EXE: {
-			cmd_offset = sprintf_s(cmd, sizeof(cmd), "link \"%s\" /out:\"%s\" /subsystem:console /entry:_start /debug /nologo /libpath:\"%s\" kernel32.lib",
+			cmd_offset = sprintf_s(cmd, sizeof(cmd), "link \"%s\" /out:\"%s\" /subsystem:console /entry:__start /debug /nologo /libpath:\"%s\" kernel32.lib",
 				file_obj,
 				file_exe,
 				lib_path

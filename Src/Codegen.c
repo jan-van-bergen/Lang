@@ -1802,8 +1802,10 @@ static void codegen_statement_def_func(Context * ctx, AST_Statement const * stat
 		stack_frame->vars[i].offset -= stack_frame_size_aligned;
 	}
 
-	if (stack_frame->vars_len > 0) {  
-		context_emit_code(ctx, "sub rsp, %i ; reserve stack space for %i locals\n", stack_frame_size_aligned, stack_frame->vars_len);
+	if (stack_frame->vars_len > 0) {
+		context_emit_code(ctx, "mov rax, %i\n", stack_frame_size_aligned);
+		context_emit_code(ctx, "call __chkstk\n");
+		context_emit_code(ctx, "sub rsp, rax ; reserve stack space for %i locals\n", stack_frame->vars_len);
 	}
 
 	context_emit_code(ctx, "\n");
@@ -2023,6 +2025,31 @@ static void codegen_statement_program(Context * ctx, AST_Statement const * stat)
 
 	Function_Def * main_def = scope_lookup_function_def(ctx->current_scope, "main");
 	
+	context_emit_code(ctx, "__chkstk: ; touch stack at page size offsets (4096 bytes) to ensure pages are commited\n");
+	ctx->indent++;
+	context_emit_code(ctx, "sub rsp, 16\n");
+	context_emit_code(ctx, "mov QWORD [rsp], r10\n");
+	context_emit_code(ctx, "mov QWORD [rsp + 8], r11\n");
+	context_emit_code(ctx, "xor r11, r11\n");
+	context_emit_code(ctx, "lea r10, [rsp + 24]\n");
+	context_emit_code(ctx, "sub r10, rax\n");
+	context_emit_code(ctx, "cmovb r10, r11\n");
+	context_emit_code(ctx, "mov r11, QWORD gs:[16]\n");
+	context_emit_code(ctx, "cmp r10, r11\n");
+	context_emit_code(ctx, "jae done\n");
+	context_emit_code(ctx, "and r10w, 0F000h\n\n");
+	context_emit_code(ctx, "commit_page:\n");
+	context_emit_code(ctx, "lea r11, [r11 - 4096]\n");
+	context_emit_code(ctx, "mov BYTE [r11], 0\n");
+	context_emit_code(ctx, "cmp r10, r11\n");
+	context_emit_code(ctx, "jne commit_page\n\n");
+	context_emit_code(ctx, "done:\n");
+	context_emit_code(ctx, "mov r10, QWORD [rsp]\n");
+	context_emit_code(ctx, "mov r11, QWORD [rsp+8]\n");
+	context_emit_code(ctx, "add rsp, 16\n");
+	context_emit_code(ctx, "ret\n\n");
+	ctx->indent--;
+
 	if (main_def) {
 		if (ctx->needs_main) {
 			bool main_valid = false;
@@ -2041,8 +2068,8 @@ static void codegen_statement_program(Context * ctx, AST_Statement const * stat)
 				type_error(ctx, "Entry point 'main' has invalid arguments!\nShould have either 0 arguments or 1 (char *)\n");
 			}
 
-			context_emit_code(ctx, "global _start\n");
-			context_emit_code(ctx, "_start:\n");
+			context_emit_code(ctx, "global __start\n");
+			context_emit_code(ctx, "__start:\n");
 			ctx->indent++;
 			context_emit_code(ctx, "sub rsp, 32 + 8\n");
 
