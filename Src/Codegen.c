@@ -864,13 +864,15 @@ static void codegen_relational(Context * ctx, char const * operator, Token_Type 
 	) {
 		char const * set_instr = NULL;
 
+		bool both_signed = type_is_integral_signed(result_left->type) && type_is_integral_signed(result_right->type);
+
 		switch (token_operator)	{
-			case TOKEN_OPERATOR_LT:    set_instr = "setl";  break;
-			case TOKEN_OPERATOR_LT_EQ: set_instr = "setle"; break;
-			case TOKEN_OPERATOR_GT:    set_instr = "setg";  break;
-			case TOKEN_OPERATOR_GT_EQ: set_instr = "setge"; break;
-			case TOKEN_OPERATOR_EQ:    set_instr = "sete";  break;
-			case TOKEN_OPERATOR_NE:    set_instr = "setne"; break;
+			case TOKEN_OPERATOR_LT:    if (both_signed) set_instr = "setl";  else set_instr = "setb";  break;
+			case TOKEN_OPERATOR_LT_EQ: if (both_signed) set_instr = "setle"; else set_instr = "setbe"; break;
+			case TOKEN_OPERATOR_GT:    if (both_signed) set_instr = "setg";  else set_instr = "seta";  break;
+			case TOKEN_OPERATOR_GT_EQ: if (both_signed) set_instr = "setge"; else set_instr = "setae"; break;
+			case TOKEN_OPERATOR_EQ: set_instr = "sete";  break;
+			case TOKEN_OPERATOR_NE: set_instr = "setne"; break;
 			default: error(ERROR_INTERNAL);
 		}
 

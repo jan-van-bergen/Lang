@@ -404,7 +404,9 @@ Type const * type_infer(AST_Expression const * expr, Scope const * scope) {
 					} else {
 						unsigned long long value = expr->expr_const.token.value_int;
 
-						if (value <= UINT_MAX) {
+						if (value <= INT_MAX) {
+							return make_type_i32();
+						} else if (value <= UINT_MAX) {
 							return make_type_u32();
 						} else {
 							return make_type_u64();

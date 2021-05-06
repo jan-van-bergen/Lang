@@ -1,0 +1,59 @@
+extern puts(str: char *);
+extern putc(c: char);
+
+func main(arg: char *) {
+	// Skip first argument
+	while (*arg != ' ') arg++;
+	while (*arg == ' ') arg++;
+	
+	num: int;	
+	while (*arg != ' ' && *arg != '\0') {
+		if (*arg >= '0' && *arg <= '9') {
+			num = num * 10 + (*arg - '0');
+		} else {
+			puts("ERROR: Non-numerical character in input!\n");
+		}
+		arg++;
+	}
+	
+	struct Numeral {
+		digit: char;
+		value: int;
+	}
+	
+	numerals: Numeral[7];
+	numerals[0].digit = 'I';
+	numerals[0].value = 1;
+	numerals[1].digit = 'V';
+	numerals[1].value = 5;
+	numerals[2].digit = 'X';
+	numerals[2].value = 10;
+	numerals[3].digit = 'L';
+	numerals[3].value = 50;
+	numerals[4].digit = 'C';
+	numerals[4].value = 100;
+	numerals[5].digit = 'D';
+	numerals[5].value = 500;
+	numerals[6].digit = 'M';
+	numerals[6].value = 1000;
+	
+	idx := 6;
+	while (idx >= 0) {
+		if (idx == 0 || idx == 6 || num != (numerals[idx + 1].value - numerals[idx - 1].value)) {
+			div := num / numerals[idx].value;
+			mod := num % numerals[idx].value;
+			if (div == 4) {
+				putc(numerals[idx].digit);
+				putc(numerals[idx + 1].digit);
+			} else if (div == 9) {
+				putc(numerals[idx].digit);
+				putc(numerals[idx + 2].digit);
+			} else while (div > 0) {
+				putc(numerals[idx].digit);
+				div = div - 1;
+			}
+			num = mod;
+		}
+		idx--;
+	}
+}
