@@ -1,0 +1,29 @@
+extern puts(str: char *);
+
+stack_names: char *[3];
+
+func move(from: int, to: int) {
+	puts(stack_names[from]);
+	puts(" -> ");
+	puts(stack_names[to]);
+	puts("\n");
+}
+
+func hanoi(n: int, from: int, to: int, aux: int) {
+	if (n == 1) {
+		move(from, to);
+		return;
+	}
+	hanoi(n - 1, from, aux, to);
+	move(from, to);
+	hanoi(n - 1, aux, to, from);
+}
+
+func main() {
+	stack_names[0] = "A";
+	stack_names[1] = "B";
+	stack_names[2] = "C";
+
+	n := 3;
+	hanoi(n, 0, 2, 1);
+}

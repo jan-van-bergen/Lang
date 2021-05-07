@@ -323,17 +323,18 @@ static void codegen_add_global(Context * ctx, Variable * var, bool sign, unsigne
 	int    global_size = var_name_len + 5 + 32;
 	char * global = mem_alloc(global_size);
 
-	if (type_is_struct(var->type)) {
+	if (type_is_struct(var->type) || type_is_array(var->type)) {
 		if (value != 0) {
-			type_error(ctx, ctx, "Cannot initialize global struct variable '%s' with value '%llu'", var->name, value);
+			type_error(ctx, ctx, "Cannot initialize global aggregate '%s' with value '%llu'", var->name, value);
 		}
 
-		// Fill struct with 0 quad words
+		// Fill aggregate with 0 quad words
 		sprintf_s(global, global_size, "%s dq 0", var->name);
 
-		int struct_size = type_get_size(var->type, ctx->current_scope) / 8;
+		int size = type_get_size(var->type, ctx->current_scope);
+		int size_in_qwords = (size+7) / 8;
 
-		for (int i = 1; i < struct_size; i++) {
+		for (int i = 1; i < size_in_qwords; i++) {
 			strcat_s(global, global_size, ", 0");
 		}
 	} else if (sign) {
