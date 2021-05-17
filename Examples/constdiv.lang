@@ -1,0 +1,55 @@
+extern assert(pred: bool);
+extern rand(seed: u64 *) -> u64;
+
+func div1(x: int) -> int { return x / 1; }
+func div2(x: int) -> int { return x / 2; }
+func div3(x: int) -> int { return x / 3; }
+func div4(x: int) -> int { return x / 4; }
+func div5(x: int) -> int { return x / 5; }
+func div6(x: int) -> int { return x / 6; }
+func div7(x: int) -> int { return x / 7; }
+func div8(x: int) -> int { return x / 8; }
+func div823764(x: int) -> int { return x / 823764; }
+func div289734643(x: int) -> int { return x / 289734643; }
+
+const_1 := 1;
+const_2 := 2;
+const_3 := 3;
+const_4 := 4;
+const_5 := 5;
+const_6 := 6;
+const_7 := 7;
+const_8 := 8;
+const_823764 := 823764;
+const_289734643 := 289734643;
+
+func test(x: int) {
+	// Check if the opetimized version is the same as a normal division
+	assert(div1(x) == x / const_1);
+	assert(div2(x) == x / const_2);
+	assert(div3(x) == x / const_3);
+	assert(div4(x) == x / const_4);
+	assert(div5(x) == x / const_5);
+	assert(div6(x) == x / const_6);
+	assert(div7(x) == x / const_7);
+	assert(div8(x) == x / const_8);
+	assert(div823764(x) == x / const_823764);
+	assert(div289734643(x) == x / const_289734643);
+}
+
+func main() -> int {
+	test(+100);
+	test(-100);
+
+	// Check a million random numbers
+	seed: u64 = 0x13371337;
+	
+	i := 0;
+	while (i++ < 1000000) {
+		x := cast(int) rand(&seed);
+		test(x);
+	}
+	
+	x := -1293439872;
+	return x / 23934234;
+}

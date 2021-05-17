@@ -5,9 +5,12 @@
 #include <limits.h>
 
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdbool.h>
+
+#include "Code_Emitter.h"
 
 #include "Util.h"
 #include "Error.h"
@@ -15,650 +18,217 @@
 static char const * const_f32_to_u64_name = "__const_f32_to_u64";
 static char const * const_f64_to_u64_name = "__const_f64_to_u64";
 
-typedef struct Trace_Element {
-	enum Trace_Element_Type {
-		TRACE_EXPRESSION,
-		TRACE_STATEMENT
-	} type;
+static Result codegen_expression(Code_Emitter * emit, AST_Expression const * expr);
+static void   codegen_statement (Code_Emitter * emit, AST_Statement  const * stat);
 
-	union {
-		AST_Expression * expr;
-		AST_Statement  * stat;
-	};
-} Trace_Element;
-
-#define MAX_TRACE 64
-
-
-#define SCRATCH_REG_COUNT       7
-#define SCRATCH_REG_COUNT_FLOAT 8
-
-typedef enum Context_Flags {
-	CTX_FLAG_VAR_BY_ADDRESS = 1
-} Context_Flags;
-
-typedef struct Context {
-	bool needs_main;
-	bool emit_debug_lines;
-
-	int reg_mask_scratch; // Scratch registers currently in use
-	int reg_mask_call;    // Call    registers currently in use
-
-	int indent;
-
-	int label;
-	int current_loop_label;
-
-	unsigned flags;
-
-	char const * current_function_name;
-	Scope      * current_scope;
-
-	char * code;
-	int    code_len;
-	int    code_cap;
-
-	char const ** data_seg_vals;
-	int           data_seg_len;
-	int           data_seg_cap;
-
-	int           trace_stack_size;
-	Trace_Element trace_stack[MAX_TRACE];
-} Context;
-
-static void context_init(Context * ctx) {
-	ctx->needs_main       = true;
-	ctx->emit_debug_lines = true;
-
-	ctx->reg_mask_scratch = 0;
-	ctx->reg_mask_call    = 0;
-
-	ctx->indent = 0;
-
-	ctx->label = 0;
-	ctx->current_loop_label = -1;
-
-	ctx->flags = 0;
-
-	ctx->current_function_name = NULL;
-	ctx->current_scope         = NULL;
-
-	ctx->code_len = 0;
-	ctx->code_cap = 512;
-	ctx->code     = mem_alloc(ctx->code_cap);
-
-	ctx->data_seg_len  = 0;
-	ctx->data_seg_cap  = 16;
-	ctx->data_seg_vals = mem_alloc(ctx->data_seg_cap * sizeof(char const *));
-
-	ctx->trace_stack_size = 0;
-}
-
-static int context_reg_request(Context * ctx) {
-	for (int i = 0; i < SCRATCH_REG_COUNT; i++) {
-		if ((ctx->reg_mask_scratch & (1 << i)) == 0) {
-			ctx->reg_mask_scratch |= (1 << i);
-
-			return i;
-		}
-	}
-
-	printf("ERROR: Out of registers!");
-	error(ERROR_CODEGEN);
-}
-
-static int context_reg_request_float(Context * ctx) {
-	for (int i = SCRATCH_REG_COUNT; i < SCRATCH_REG_COUNT + SCRATCH_REG_COUNT_FLOAT; i++) {
-		if ((ctx->reg_mask_scratch & (1 << i)) == 0) {
-			ctx->reg_mask_scratch |= (1 << i);
-
-			return i;
-		}
-	}
-
-	printf("ERROR: Out of XMM registers!");
-	error(ERROR_CODEGEN);
-}
-
-static void context_reg_free(Context * ctx, int reg) {
-	if (reg == -1) return;
-
-	assert(ctx->reg_mask_scratch & (1 << reg));
-
-	ctx->reg_mask_scratch &= ~(1 << reg);
-}
-
-static void context_call_reg_reserve(Context * ctx, int reg) {
-	assert(reg >= 0 && reg < 4);
-
-	ctx->reg_mask_call |= (1 << reg);
-}
-
-static bool context_call_reg_is_reserved(Context * ctx, int reg) {
-	assert(reg >= 0 && reg < 4);
-
-	return ctx->reg_mask_call & (1 << reg);
-}
-
-static void context_call_reg_mem_free(Context * ctx, int reg) {
-	assert(reg >= 0 && reg < 4);
-
-	ctx->reg_mask_call &= ~(1 << reg);
-}
-
-static int context_new_label(Context * ctx) {
-	return ctx->label++;
-}
-
-static void context_flag_set(Context * ctx, Context_Flags flag) {
-	ctx->flags |= flag;
-}
-
-static void context_flag_unset(Context * ctx, Context_Flags flag) {
-	ctx->flags &= ~flag;
-}
-
-static void context_emit_code(Context * ctx, char const * fmt, ...) {
-	va_list args;
-	va_start(args, fmt);
-
-	char new_code[1024] = { 0 };
-
-	// Add indentation based on current Context
-	char const * indent = "    ";
-	int          indent_len = strlen(indent);
-
-	for (int i = 0; i < ctx->indent; i++) {
-		memcpy(new_code + i * indent_len, indent, indent_len);
-	}
-	
-	// Format code
-	vsprintf_s(new_code + ctx->indent * indent_len, sizeof(new_code) - ctx->indent * indent_len, fmt, args);
-	
-	va_end(args);
-	
-	// Resize code buffer if necessary
-	int new_code_len = strlen(new_code);
-
-	int new_length = ctx->code_len + new_code_len;
-	if (new_length >= ctx->code_cap) {
-		ctx->code_cap *= 2;
-		ctx->code = mem_realloc(ctx->code, ctx->code_cap);
-	}
-
-	// Append formatted code
-	memcpy(ctx->code + ctx->code_len, new_code, new_code_len + 1);
-	ctx->code_len = new_length;
-}
-
-static void context_add_data_seg(Context * ctx, char const * data) {
-	if (ctx->data_seg_len == ctx->data_seg_cap) {
-		ctx->data_seg_cap *= 2;
-		ctx->data_seg_vals = mem_realloc(ctx->data_seg_vals, ctx->data_seg_cap * sizeof(char const *));
-	}
-
-	ctx->data_seg_vals[ctx->data_seg_len++] = data;
-}
-
-static void context_trace_push_expr(Context * ctx, AST_Expression * expr) {
-	if (ctx->trace_stack_size == MAX_TRACE) error(ERROR_CODEGEN);
-
-	Trace_Element * trace_elem = ctx->trace_stack + ctx->trace_stack_size++;
-	trace_elem->type = TRACE_EXPRESSION;
-	trace_elem->expr = expr;
-}
-
-static void context_trace_push_stat(Context * ctx, AST_Statement * stat) {
-	if (ctx->trace_stack_size == MAX_TRACE) error(ERROR_CODEGEN);
-
-	Trace_Element * trace_elem = ctx->trace_stack + ctx->trace_stack_size++;
-	trace_elem->type = TRACE_STATEMENT;
-	trace_elem->stat = stat;
-}
-
-static void context_trace_pop(Context * ctx) {
-	assert(ctx->trace_stack_size > 0);
-	ctx->trace_stack_size--;
-}
-
-static void print_stack_trace(Context * ctx) {
-	for (int i = 0; i < ctx->trace_stack_size; i++) {
-		char str[8 * 1024];
-
-		Trace_Element * trace_elem = ctx->trace_stack + i;
-		if (trace_elem->type == TRACE_EXPRESSION) {
-			puts("In expression:");
-			ast_print_expression(trace_elem->expr, str, sizeof(str));
-		} else {
-			puts("In statement:");
-			ast_print_statement(trace_elem->stat, str, sizeof(str));
-		}
-
-		puts(str);
-		puts("");
-	}
-}
-
-static NO_RETURN void type_error(Context * ctx, char const * msg, ...) {
-	print_stack_trace(ctx);
-
-	va_list args;
-	va_start(args, msg);
-
-	char str_error[512];
-	vsprintf_s(str_error, sizeof(str_error), msg, args);
-
-	printf("TYPE ERROR: %s\n", str_error);
-
-	va_end(args);
-	
-	error(ERROR_TYPECHECK);
-}
-
-static char const * get_reg_name_scratch(int reg_index, int size) {
-	static char const * reg_names_8bit [SCRATCH_REG_COUNT] = {  "bl", "r10b", "r11b", "r12b", "r13b", "r14b", "r15b" };
-	static char const * reg_names_16bit[SCRATCH_REG_COUNT] = {  "bx", "r10w", "r11w", "r12w", "r13w", "r14w", "r15w" };
-	static char const * reg_names_32bit[SCRATCH_REG_COUNT] = { "ebx", "r10d", "r11d", "r12d", "r13d", "r14d", "r15d" };
-	static char const * reg_names_64bit[SCRATCH_REG_COUNT] = { "rbx", "r10",  "r11",  "r12",  "r13",  "r14",  "r15"  };
-
-	static char const * reg_names_float[SCRATCH_REG_COUNT_FLOAT] = { "xmm4", "xmm5", "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11" };
-
-	if (reg_index < SCRATCH_REG_COUNT) {
-		switch (size) {
-			case 1: return reg_names_8bit [reg_index];
-			case 2: return reg_names_16bit[reg_index];
-			case 4: return reg_names_32bit[reg_index];
-			case 8: return reg_names_64bit[reg_index];
-
-			default: error(ERROR_CODEGEN);
-		}
-	} else {
-		return reg_names_float[reg_index - SCRATCH_REG_COUNT];
-	}
-}
-
-static char const * get_reg_name_call(int reg_index, int type_size, bool is_float) {
-	static char const * reg_names_8bit [4] = {  "cl",  "dl", "r8b", "r9b" };
-	static char const * reg_names_16bit[4] = {  "cx",  "dx", "r8w", "r9w" };
-	static char const * reg_names_32bit[4] = { "ecx", "edx", "r8d", "r9d" };
-	static char const * reg_names_64bit[4] = { "rcx", "rdx", "r8",  "r9"  }; 
-
-	static char const * reg_names_float[4] = { "xmm0", "xmm1", "xmm2", "xmm3" };
-
-	if (is_float) {
-		return reg_names_float[reg_index];
-	} else {
-		switch (type_size) {
-			case 1: return reg_names_8bit [reg_index];
-			case 2: return reg_names_16bit[reg_index];
-			case 4: return reg_names_32bit[reg_index];
-			case 8: return reg_names_64bit[reg_index];
-
-			default: error(ERROR_CODEGEN);
-		}
-	}
-}
-
-static char const * get_word_name(int size) {
-	switch (size) {
-		case 1:  return "BYTE";
-		case 2:  return "WORD";
-		case 4:  return "DWORD";
-		default: return "QWORD";
-	}
-}
-
-static void variable_get_address(Variable const * var, char * address, int address_size) {
-	if (var->is_global) {
-		sprintf_s(address, address_size, "REL %s", var->name); // Globals by name
-	} else {
-		sprintf_s(address, address_size, "rbp + %i", var->offset); // Locals / Arguments relative to stack frame pointer
-	}
-}
-
-// Adds global variable to data segment
-static void codegen_add_global(Context * ctx, Variable * var, bool sign, unsigned long long value) {
-	int var_name_len = strlen(var->name);
-
-	int    global_size = var_name_len + 5 + 32;
-	char * global = mem_alloc(global_size);
-
-	if (type_is_struct(var->type) || type_is_array(var->type)) {
-		if (value != 0) {
-			type_error(ctx, ctx, "Cannot initialize global aggregate '%s' with value '%llu'", var->name, value);
-		}
-
-		// Fill aggregate with 0 quad words
-		sprintf_s(global, global_size, "%s dq 0", var->name);
-
-		int size = type_get_size(var->type, ctx->current_scope);
-		int size_in_qwords = (size+7) / 8;
-
-		for (int i = 1; i < size_in_qwords; i++) {
-			strcat_s(global, global_size, ", 0");
-		}
-	} else if (sign) {
-		sprintf_s(global, global_size, "%s dq %lld", var->name, value);
-	} else {
-		sprintf_s(global, global_size, "%s dq %llu", var->name, value);
-	}
-
-	context_add_data_seg(ctx, global);
-}
-
-// Adds float literal to data segment
-static void codegen_add_float_literal(Context * ctx, char const * flt_name, char const * flt_lit) {
-	int flt_name_len = strlen(flt_name);
-	int flt_lit_len  = strlen(flt_lit);
-
-	int    str_lit_len = flt_name_len + 4 + flt_lit_len + 1;
-	char * str_lit = mem_alloc(str_lit_len);
-	sprintf_s(str_lit, str_lit_len, "%s dq %s", flt_name, flt_lit);
-
-	context_add_data_seg(ctx, str_lit);
-}
-
-// Adds string literal to data segment
-static void codegen_add_string_literal(Context * ctx, char const * str_name, char const * str_lit) {
-	int str_name_len = strlen(str_name);
-	int str_lit_len  = strlen(str_lit);
-
-	int    str_lit_cpy_size = str_name_len + 6 + str_lit_len * 9 + 5;
-	char * str_lit_cpy      = mem_alloc(str_lit_cpy_size);
-
-	int idx = sprintf_s(str_lit_cpy, str_lit_cpy_size, "%s db ", str_name);
-
-	str_lit_cpy[idx++] = '\"';
-
-	char const * curr = str_lit;
-	while (*curr) {
-		if (*curr == '\\') {
-			char escaped = *(curr + 1);
-
-			switch (escaped) {
-				case '0':  strcpy_s(str_lit_cpy + idx, str_lit_cpy_size - idx, "\", 0, \"");   idx += 7; break;
-				case 'r':  strcpy_s(str_lit_cpy + idx, str_lit_cpy_size - idx, "\", 0Dh, \""); idx += 9; break;
-				case 'n':  strcpy_s(str_lit_cpy + idx, str_lit_cpy_size - idx, "\", 0Ah, \""); idx += 9; break;
-				case 't':  strcpy_s(str_lit_cpy + idx, str_lit_cpy_size - idx, "\", 09h, \""); idx += 9; break;
-
-				case '\\': str_lit_cpy[idx++] = '\\'; break;
-
-				default: {
-					printf("ERROR: Invalid escape char '%c'!\n", escaped);
-					error(ERROR_CODEGEN);
-				}
-			}
-
-			curr += 2;
-		} else {	
-			str_lit_cpy[idx++] = *curr;
-
-			curr++;
-		}
-	}
-	
-	str_lit_cpy[idx++] = '\"';
-	str_lit_cpy[idx++] = '\0';
-
-	strcat_s(str_lit_cpy, str_lit_cpy_size, ", 0");
-
-	context_add_data_seg(ctx, str_lit_cpy);
-}
-
-// Result of an AST_Expression
-typedef struct Result {
-	int          reg;
-	Type const * type;
-} Result;
-
-static Result codegen_expression(Context * ctx, AST_Expression const * expr);
-static void   codegen_statement (Context * ctx, AST_Statement  const * stat);
-
-static Result codegen_expression_const(Context * ctx, AST_Expression const * expr) {
+static Result codegen_expression_const(Code_Emitter * emit, AST_Expression const * expr) {
 	assert(expr->type == AST_EXPRESSION_CONST);
 
-	Result result;
-	result.reg  = context_reg_request(ctx);
-	result.type = type_infer(expr, ctx->current_scope);
+	Type const * type = type_infer(expr, emit->current_scope);
 
 	Token_Type literal_type = expr->expr_const.token.type;
 	switch (literal_type) {
 		case TOKEN_LITERAL_STRING: {
 			char str_lit_name[128];
-			sprintf_s(str_lit_name, sizeof(str_lit_name), "lit_str_%i", ctx->data_seg_len);
+			sprintf_s(str_lit_name, sizeof(str_lit_name), "lit_str_%i", emit->data_seg_len);
 
-			codegen_add_string_literal(ctx, str_lit_name, expr->expr_const.token.value_str);
-			context_emit_code(ctx, "lea %s, [REL %s] ; \"%s\"\n", get_reg_name_scratch(result.reg, 8), str_lit_name, expr->expr_const.token.value_str);
+			Result result = result_make_reg(type, register_alloc(emit));
 
-			break;
+			emit_string_literal(emit, str_lit_name, expr->expr_const.token.value_str);
+			emit_asm(emit, "lea %s, [REL %s] ; \"%s\"\n", get_reg_name(result.reg, 8), str_lit_name, expr->expr_const.token.value_str);
+
+			return result;
 		}
 
-		case TOKEN_LITERAL_INT:
-		case TOKEN_LITERAL_CHAR: {
-			unsigned long long value = expr->expr_const.token.value_int;
-
+		case TOKEN_LITERAL_BOOL:
+		case TOKEN_LITERAL_CHAR: 
+		case TOKEN_LITERAL_INT: {
 			if (expr->expr_const.token.sign) {
-				context_emit_code(ctx, "mov %s, %lld\n", get_reg_name_scratch(result.reg, 8), value);
+				int64_t value = expr->expr_const.token.value_int;
+				Result result_imm = result_make_i64(type, value);
+				if (value > INT_MIN && value <= INT_MAX) {
+					// Value fits in imm32, return as immediate
+					return result_imm;
+				} else {
+					// Value does not fit in imm32, move to register
+					Result result_reg = result_make_reg(type, register_alloc(emit));
+					emit_mov(emit, &result_reg, &result_imm);
+					return result_reg;
+				}
 			} else {
-				context_emit_code(ctx, "mov %s, %llu\n", get_reg_name_scratch(result.reg, 8), value);
+				uint64_t value = expr->expr_const.token.value_int;
+				Result result_imm = result_make_u64(type, value);
+				if (value <= UINT_MAX) {
+					// Value fits in imm32, return as immediate
+					return result_imm;
+				} else {
+					// Value does not fit in imm32, move to register
+					Result result_reg = result_make_reg(type, register_alloc(emit));
+					emit_mov(emit, &result_reg, &result_imm);
+					return result_reg;
+				}
 			}
-
-			break;
 		}
 
 		case TOKEN_LITERAL_F32: {
-			context_reg_free(ctx, result.reg);
-			result.reg = context_reg_request_float(ctx);
-			
+			Result result = result_make_reg(type, register_alloc_float(emit));
+
 			char str_lit_name[128];
-			sprintf_s(str_lit_name, sizeof(str_lit_name), "lit_flt_%i", ctx->data_seg_len);
+			sprintf_s(str_lit_name, sizeof(str_lit_name), "lit_flt_%i", emit->data_seg_len);
 
 			unsigned flt; memcpy(&flt, &expr->expr_const.token.value_float, 4);
 
 			char str_lit_flt[64];
 			sprintf_s(str_lit_flt, sizeof(str_lit_flt), "0%xh ; %ff", flt, expr->expr_const.token.value_float);
 
-			codegen_add_float_literal(ctx, str_lit_name, str_lit_flt);
-			context_emit_code(ctx, "movss %s, DWORD [REL %s]\n", get_reg_name_scratch(result.reg, 8), str_lit_name);
+			emit_float_literal(emit, str_lit_name, str_lit_flt);
+			emit_asm(emit, "movss %s, DWORD [REL %s]\n", get_reg_name(result.reg, 8), str_lit_name);
 
-			break;
+			return result;
 		}
-
 		case TOKEN_LITERAL_F64: {
-			context_reg_free(ctx, result.reg);
-			result.reg = context_reg_request_float(ctx);
-			
+			Result result = result_make_reg(type, register_alloc_float(emit));
+
 			char str_lit_name[128];
-			sprintf_s(str_lit_name, sizeof(str_lit_name), "lit_flt_%i", ctx->data_seg_len);
+			sprintf_s(str_lit_name, sizeof(str_lit_name), "lit_flt_%i", emit->data_seg_len);
 
 			unsigned long long dbl; memcpy(&dbl, &expr->expr_const.token.value_double, 8);
 
 			char str_lit_dbl[64];
 			sprintf_s(str_lit_dbl, sizeof(str_lit_dbl), "%llxh ; %f", dbl, expr->expr_const.token.value_double);
 
-			codegen_add_float_literal(ctx, str_lit_name, str_lit_dbl);
-			context_emit_code(ctx, "movsd %s, QWORD [REL %s]\n", get_reg_name_scratch(result.reg, 8), str_lit_name);
-
-			break;
-		}
-
-		case TOKEN_LITERAL_BOOL: {
-			context_emit_code(ctx, "mov %s, %i\n", get_reg_name_scratch(result.reg, 8), expr->expr_const.token.value_int);
-			break;
-		}
-
-		case TOKEN_KEYWORD_NULL: {
-			context_emit_code(ctx, "mov %s, 0\n", get_reg_name_scratch(result.reg, 8));
-			break;
-		}
-
-		default: error(ERROR_INTERNAL);
-	}
-
-	return result;
-}
-
-// Helper function that dereferences a pointer at a given address 'var_address' into a given register 'reg'
-static int codegen_deref_address(Context * ctx, int reg, Type const * type, char const * var_address) {
-	int type_size = type_get_size(type, ctx->current_scope);
-
-	int reg_out  = reg;
-	int reg_size = 8;
-
-	// Select correct mov instruction based on Type
-	char const * mov = "mov";
-
-	if (type_is_f32(type)) {
-		reg_out = context_reg_request_float(ctx);
-
-		mov = "movss";
-	} else if (type_is_f64(type)) {
-		reg_out = context_reg_request_float(ctx);
-
-		mov = "movsd";
-	} else if (type_size < 8) {
-		if (type_is_integral_signed(type)) {
-			mov = "movsx"; // Signed extend
-		} else if (type_size < 4) {
-			mov = "movzx"; // Zero extend
-		} else {
-			reg_size = 4; // 32bit movs will automatically zero extend the highest 32 bits
-		}
-	}
-
-	context_emit_code(ctx, "%s %s, %s [%s]\n", mov, get_reg_name_scratch(reg_out, reg_size), get_word_name(type_size), var_address);
-	
-	if (reg_out != reg) context_reg_free(ctx, reg);
-
-	return reg_out;
-}
-
-static Result codegen_expression_var(Context * ctx, AST_Expression const * expr) {
-	assert(expr->type == AST_EXPRESSION_VAR);
-
-	char     const * var_name = expr->expr_var.name;
-	Variable const * var = scope_get_variable(ctx->current_scope, var_name);
-
-	char var_address[32];
-	variable_get_address(var, var_address, sizeof(var_address));
-
-	bool by_address = ctx->flags & CTX_FLAG_VAR_BY_ADDRESS;
-
-	Result result;
-	if (type_is_float(var->type) && !by_address) {
-		result.reg = context_reg_request_float(ctx);
-	} else {
-		result.reg = context_reg_request(ctx);
-	}
-	result.type = var->type;
-
-	bool is_global_char_ptr =
-		var->is_global &&
-		type_is_pointer(var->type) &&
-		type_is_u8(var->type->base);
-
-	if (type_is_function(var->type)) {
-		Function_Def * function_def = scope_get_function_def(ctx->current_scope, var_name);
-
-		if (function_def) {
-			context_emit_code(ctx, "lea %s, [REL %s] ; get address of function '%s'\n", get_reg_name_scratch(result.reg, 8), var_name, var_name);
+			emit_float_literal(emit, str_lit_name, str_lit_dbl);
+			emit_asm(emit, "movsd %s, QWORD [REL %s]\n", get_reg_name(result.reg, 8), str_lit_name);
 
 			return result;
 		}
+
+		case TOKEN_KEYWORD_NULL: return result_make_u64(type, 0);
+	}
+	error(ERROR_INTERNAL);
+}
+
+static Result codegen_expression_var(Code_Emitter * emit, AST_Expression const * expr) {
+	assert(expr->type == AST_EXPRESSION_VAR);
+
+	char     const * var_name = expr->expr_var.name;
+	Variable const * var = scope_get_variable(emit->current_scope, var_name);
+
+	bool by_address = flag_is_set(emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+	
+	bool is_global_function = false;
+	if (type_is_function(var->type)) {
+		Function_Def * function_def = scope_get_function_def(emit->current_scope, var_name);
+		is_global_function = function_def != NULL;
 	}
 
-	if (by_address || is_global_char_ptr || type_is_array(var->type) || type_is_struct(var->type) || type_is_function(var->type)) {
-		context_emit_code(ctx, "lea %s, QWORD [%s] ; get address of '%s'\n", get_reg_name_scratch(result.reg, 8), var_address, var_name);
+	Result result;
+	if (var->is_global || is_global_function) {
+		result = result_make_global(var->type, var->name);
 	} else {
-		result.reg = codegen_deref_address(ctx, result.reg, result.type, var_address);
+		result = result_make_sib(var->type, RBP, 0, 0, var->offset);
+	}
+
+	bool is_global_ptr_to_data_segment =
+		var->is_global &&
+		type_is_pointer(var->type) &&
+		(type_is_u8(var->type->base) || type_is_float(var->type->base));
+
+	if (by_address || is_global_ptr_to_data_segment || type_is_array(var->type) || type_is_struct(var->type) || type_is_function(var->type)) {
+		result.by_address = true;
+	}
+
+	if (type_is_float(var->type)) {
+		result_ensure_in_register(emit, &result);
 	}
 
 	return result;
 }
 
-static Result codegen_expression_array_access(Context * ctx, AST_Expression * expr) {
+static Result codegen_expression_array_access(Code_Emitter * emit, AST_Expression * expr) {
 	assert(expr->type == AST_EXPRESSION_ARRAY_ACCESS);
 
-	bool var_by_address = ctx->flags & CTX_FLAG_VAR_BY_ADDRESS; 
+	bool return_by_address = emit->flags & CTX_FLAG_VAR_BY_ADDRESS; 
 	
 	AST_Expression * expr_array = expr->expr_array_access.expr_array;
 	AST_Expression * expr_index = expr->expr_array_access.expr_index;
 
 	Result result_array, result_index;
 
-	// Traverse tallest subtree first
-	if (expr_array->height >= expr_index->height) {
-		// Evaluate lhs by address
-		context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS);
-		result_array = codegen_expression(ctx, expr_array);
-		context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
+	bool array_by_address = type_is_array(type_infer(expr_array, emit->current_scope));
+	flag_unset(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
 
-		context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
-		result_index = codegen_expression(ctx, expr_index);
+	// Traverse tallest subtree first
+	if (expr_array->height > expr_index->height) {
+		if (array_by_address) flag_set(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+		result_array = codegen_expression(emit, expr_array);
+		if (array_by_address) flag_unset(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+
+		result_index = codegen_expression(emit, expr_index);
 	} else {
-		context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
-		result_index = codegen_expression(ctx, expr_index);
+		result_index = codegen_expression(emit, expr_index);
 		
-		// Evaluate lhs by address
-		context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS);
-		result_array = codegen_expression(ctx, expr_array);
-		context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
+		if (array_by_address) flag_set(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+		result_array = codegen_expression(emit, expr_array);
+		if (array_by_address) flag_unset(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
 	}
 
 	if (!type_is_pointer(result_array.type) && !type_is_array(result_array.type)) {
 		char str_type[128];
 		type_to_string(result_array.type, str_type, sizeof(str_type));
 
-		type_error(ctx, "Operator '[]' requires left operand to be a pointer or an array. Type was '%s'", str_type);
+		type_error(emit, "Operator '[]' requires left operand to be a pointer or an array. Type was '%s'", str_type);
 	}
 
 	if (type_is_void_pointer(result_array.type)) {
-		type_error(ctx, "Operator '[]' cannot dereference 'void *'");
+		type_error(emit, "Operator '[]' cannot dereference 'void *'");
 	}
 
 	if (!type_is_integral(result_index.type)) {
 		char str_type[128];
 		type_to_string(result_index.type, str_type, sizeof(str_type));
 
-		type_error(ctx, "Operator '[]' requires right operand to be an integral type. Type was '%s'", str_type);
+		type_error(emit, "Operator '[]' requires right operand to be an integral type. Type was '%s'", str_type);
 	}
 	
-	Result result = {
-		.type = result_array.type->base,
-		.reg  = result_array.reg
-	};
-
-	// Dereference pointer, not needed if lhs is array
-	if (type_is_pointer(result_array.type)) {
-		codegen_deref_address(ctx, result_array.reg, result_array.type, get_reg_name_scratch(result_array.reg, 8));
+	// We don't want a pointer to the pointer, we want the pointer itself
+	if (result_is_indirect(&result_array) && type_is_pointer(result_array.type)) {
+		result_array.by_address = false;
+		result_array = result_deref(emit, &result_array, true);
 	}
 
-	context_emit_code(ctx, "imul %s, %i\n", get_reg_name_scratch(result_index.reg, 8), type_get_size(result.type, ctx->current_scope));
-	context_emit_code(ctx, "add %s, %s\n",  get_reg_name_scratch(result_array.reg, 8), get_reg_name_scratch(result_index.reg, 8));
+	Result result_size = result_make_u64(make_type_u64(), type_get_size(result_array.type->base, emit->current_scope));
+	emit_mul(emit, &result_index, &result_size);
+	emit_add(emit, &result_array, &result_index);
 	
+	result_free(emit, &result_size);
+
+	result_array.type = result_array.type->base;
+
 	// Check if we need to return by address or value
-	if (var_by_address) {
-		context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS);
+	if (return_by_address) {
+		flag_set(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
 	} else {
 		// Only dereference primitives, structs and arrays are always returned by address
-		if (type_is_primitive(result.type)) {
-			result.reg = codegen_deref_address(ctx, result.reg, result.type, get_reg_name_scratch(result.reg, 8));
+		if (type_is_primitive(result_array.type)) {
+			result_array.by_address = false;
+			result_array = result_deref(emit, &result_array, true);
 		}
 	}
-
-	context_reg_free(ctx, result_index.reg);
-
-	return result;
+	
+	result_free(emit, &result_index);
+	
+	return result_array;
 }
 
-static Result codegen_expression_struct_member(Context * ctx, AST_Expression * expr) {
+static Result codegen_expression_struct_member(Code_Emitter * emit, AST_Expression * expr) {
 	assert(expr->type == AST_EXPRESSION_STRUCT_MEMBER);
 
-	bool var_by_address = ctx->flags & CTX_FLAG_VAR_BY_ADDRESS; 
+	bool var_by_address = flag_is_set(emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
 
 	// Evaluate LHS by address
-	context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS);
-	Result result = codegen_expression(ctx, expr->expr_struct_member.expr);
+	flag_set(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+	Result result = codegen_expression(emit, expr->expr_struct_member.expr);
 
 	char const * struct_name = NULL;
 
@@ -667,155 +237,220 @@ static Result codegen_expression_struct_member(Context * ctx, AST_Expression * e
 	} else if (type_is_pointer(result.type) && type_is_struct(result.type->base)) {
 		struct_name = result.type->base->struct_name;
 
-		codegen_deref_address(ctx, result.reg, result.type, get_reg_name_scratch(result.reg, 8));
+		result.by_address = false;
+		result = result_deref(emit, &result, true);
 	} else {
 		char str_type[128];
 		type_to_string(result.type, str_type, sizeof(str_type));
 
-		type_error(ctx, "Operator '.' requires left operand to be a struct or pointer to struct. Type was '%s'", str_type);
+		type_error(emit, "Operator '.' requires left operand to be a struct or pointer to struct. Type was '%s'", str_type);
 	}
 
 	// Lookup the struct member by name
-	Struct_Def * struct_def = scope_get_struct_def(ctx->current_scope, struct_name);
-	Variable   * var_member = scope_get_variable(struct_def->member_scope, expr->expr_struct_member.member_name);
+	Struct_Def const * struct_def = scope_get_struct_def(emit->current_scope, struct_name);
+	Variable   const * var_member = scope_get_variable(struct_def->member_scope, expr->expr_struct_member.member_name);
 
 	// Take the address of the struct and add the offset of the member
-	context_emit_code(ctx, "add %s, %i ; member offset '%s'\n", get_reg_name_scratch(result.reg, 8), var_member->offset, var_member->name);
-	
+	Result result_offset = result_make_u64(make_type_u64(), var_member->offset);
+	emit_add(emit, &result, &result_offset);
+	result_free(emit, &result_offset);
+
 	result.type = var_member->type;
 
 	// Check if we need to return by value
 	if (!var_by_address) {
-		context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
+		flag_unset(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
 
 		// Only dereference primitives, structs and arrays are always returned by address
 		if (type_is_primitive(result.type)) {
-			result.reg = codegen_deref_address(ctx, result.reg, result.type, get_reg_name_scratch(result.reg, 8));
+			result.by_address = false;
+			result = result_deref(emit, &result, true);
 		}
 	}
 
 	return result;
 }
 
-static Result codegen_expression_cast(Context * ctx, AST_Expression * expr) {
+static Result codegen_expression_cast(Code_Emitter * emit, AST_Expression * expr) {
 	assert(expr->type == AST_EXPRESSION_CAST);
 
-	Result result = codegen_expression(ctx, expr->expr_cast.expr);
+	Result result = codegen_expression(emit, expr->expr_cast.expr);
 
 	Type const * type_old = result.type;
 	Type const * type_new = expr->expr_cast.new_type;
 
+	if (result.form == RESULT_IMMEDIATE) {
+		if (type_is_integral(type_old)) {
+			if (type_is_integral(type_new) || type_is_bool(type_new) || type_is_pointer(type_new)) {
+				// Integral -> integral
+				return result_make_u64(type_new, result.u64);
+			} else if (type_is_f32(type_new)) {
+				// Integral -> float
+				if (type_is_integral_signed(type_old)) {
+					return result_make_f32(type_new, (float)result.i64);
+				} else {
+					return result_make_f32(type_new, (float)result.u64);
+				}
+			} else if (type_is_f64(type_new)) {
+				// Integral -> double
+				if (type_is_integral_signed(type_old)) {
+					return result_make_f64(type_new, (double)result.i64);
+				} else {
+					return result_make_f64(type_new, (double)result.u64);
+				}
+			}
+		} else if (type_is_f32(type_old)) {
+			if (type_is_integral_signed(type_new)) {
+				// Float -> signed integral
+				return result_make_i64(type_new, result.f32);
+			} else if (type_is_integral_unsigned(type_new) || type_is_bool(type_new)) {
+				// Float -> unsigned integral
+				return result_make_u64(type_new, result.f32);
+			} else if (type_is_f32(type_new)) {
+				// Float -> float
+				return result;
+			} else if (type_is_f64(type_new)) {
+				// Float -> double
+				return result_make_f64(type_new, (double)result.f32);
+			}
+		} else if (type_is_f64(type_old)) {
+			if (type_is_integral_signed(type_new)) {
+				// Double -> signed integral
+				return result_make_i64(type_new, result.f64);
+			} else if (type_is_integral_unsigned(type_new) || type_is_bool(type_new)) {
+				// Double -> unsigned integral
+				return result_make_u64(type_new, result.f64);
+			} else if (type_is_f32(type_new)) {
+				// Double -> float
+				return result_make_f32(type_new, (float)result.f64);
+			} else if (type_is_f64(type_new)) {
+				// Double -> double
+				return result;
+			}
+		}
+		error(ERROR_INTERNAL);
+	}
+
+	if (!type_is_pointer(type_old)) {
+		result_ensure_in_register(emit, &result);
+	}
+
 	if (type_is_integral(type_old)) {
 		if (type_is_f32(type_new)) {
-			int reg = context_reg_request_float(ctx);
+			int reg = register_alloc_float(emit);
 			
 			if (type_is_u64(type_old)) {
-				int tmp = context_reg_request(ctx);
+				if (result.form == RESULT_IMMEDIATE) {
+					return result_make_f32(type_new, (float)result.u64);
+				}
 
-				int label_cvt_unsigned = context_new_label(ctx);
-				int label_cvt_exit     = context_new_label(ctx);
+				int tmp = register_alloc(emit);
 
-				context_emit_code(ctx, "test %s, %s\n", get_reg_name_scratch(result.reg, 8), get_reg_name_scratch(result.reg, 8));
-				context_emit_code(ctx, "js L_ctv_unsigned_%i\n", label_cvt_unsigned);
-				context_emit_code(ctx, "cvtsi2ss %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(result.reg, 8));
-				context_emit_code(ctx, "jmp L_ctv_exit_%i\n", label_cvt_exit);
-				context_emit_code(ctx, "L_ctv_unsigned_%i:\n", label_cvt_unsigned);
-				context_emit_code(ctx, "mov %s, %s\n", get_reg_name_scratch(tmp, 8), get_reg_name_scratch(result.reg, 8));
-				context_emit_code(ctx, "and %s, 1\n", get_reg_name_scratch(result.reg, 8));
-				context_emit_code(ctx, "shr %s, 1\n", get_reg_name_scratch(tmp, 8));
-				context_emit_code(ctx, "or %s, %s\n", get_reg_name_scratch(tmp, 8), get_reg_name_scratch(result.reg, 8));
-				context_emit_code(ctx, "cvtsi2ss %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(tmp, 8));
-				context_emit_code(ctx, "addss %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(reg, 8));
-				context_emit_code(ctx, "L_ctv_exit_%i:\n", label_cvt_exit);
+				int label_cvt_unsigned = get_new_label(emit);
+				int label_cvt_exit     = get_new_label(emit);
 
-				context_reg_free(ctx, tmp);
+				assert(result.form == RESULT_REGISTER);
+				emit_asm(emit, "test %s, %s\n", get_reg_name(result.reg, 8), get_reg_name(result.reg, 8));
+				emit_asm(emit, "js L_ctv_unsigned_%i\n", label_cvt_unsigned);
+				emit_asm(emit, "cvtsi2ss %s, %s\n", get_reg_name(reg, 8), get_reg_name(result.reg, 8));
+				emit_asm(emit, "jmp L_ctv_exit_%i\n", label_cvt_exit);
+				emit_asm(emit, "L_ctv_unsigned_%i:\n", label_cvt_unsigned);
+				emit_asm(emit, "mov %s, %s\n", get_reg_name(tmp, 8), get_reg_name(result.reg, 8));
+				emit_asm(emit, "and %s, 1\n", get_reg_name(result.reg, 8));
+				emit_asm(emit, "shr %s, 1\n", get_reg_name(tmp, 8));
+				emit_asm(emit, "or %s, %s\n", get_reg_name(tmp, 8), get_reg_name(result.reg, 8));
+				emit_asm(emit, "cvtsi2ss %s, %s\n", get_reg_name(reg, 8), get_reg_name(tmp, 8));
+				emit_asm(emit, "addss %s, %s\n", get_reg_name(reg, 8), get_reg_name(reg, 8));
+				emit_asm(emit, "L_ctv_exit_%i:\n", label_cvt_exit);
+
+				register_free(emit, tmp);
 			} else {
-				context_emit_code(ctx, "cvtsi2sd %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(result.reg, 8));
+				emit_asm(emit, "cvtsi2sd %s, %s\n", get_reg_name(reg, 8), get_reg_name(result.reg, 8));
 			}
 
-			context_reg_free(ctx, result.reg);
+			result_free(emit, &result);
 			result.reg = reg;
 		} else if (type_is_f64(type_new)) {
-			int reg = context_reg_request_float(ctx);
+			int reg = register_alloc_float(emit);
 
 			if (type_is_u64(type_old)) {
-				int tmp = context_reg_request(ctx);
+				int tmp = register_alloc(emit);
 
-				int label_cvt_unsigned = context_new_label(ctx);
-				int label_cvt_exit     = context_new_label(ctx);
+				int label_cvt_unsigned = get_new_label(emit);
+				int label_cvt_exit     = get_new_label(emit);
+				
+				emit_asm(emit, "test %s, %s\n", get_reg_name(result.reg, 8), get_reg_name(result.reg, 8));
+				emit_asm(emit, "js L_cvt_unsigned_%i\n", label_cvt_unsigned);
+				emit_asm(emit, "cvtsi2sd %s, %s\n", get_reg_name(reg, 8), get_reg_name(result.reg, 8));
+				emit_asm(emit, "jmp L_cvt_exit_%i\n", label_cvt_exit);
+				emit_asm(emit, "L_cvt_unsigned_%i:\n", label_cvt_unsigned);
+				emit_asm(emit, "mov %s, %s\n", get_reg_name(tmp, 8), get_reg_name(result.reg, 8));
+				emit_asm(emit, "and %s, 1\n", get_reg_name(result.reg, 8));
+				emit_asm(emit, "shr %s, 1\n", get_reg_name(tmp, 8));
+				emit_asm(emit, "or %s, %s\n", get_reg_name(tmp, 8), get_reg_name(result.reg, 8));
+				emit_asm(emit, "cvtsi2sd %s, %s\n", get_reg_name(reg, 8), get_reg_name(tmp, 8));
+				emit_asm(emit, "addsd %s, %s\n", get_reg_name(reg, 8), get_reg_name(reg, 8));
+				emit_asm(emit, "L_cvt_exit_%i:\n", label_cvt_exit);
 
-				context_emit_code(ctx, "test %s, %s\n", get_reg_name_scratch(result.reg, 8), get_reg_name_scratch(result.reg, 8));
-				context_emit_code(ctx, "js L_cvt_unsigned_%i\n", label_cvt_unsigned);
-				context_emit_code(ctx, "cvtsi2sd %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(result.reg, 8));
-				context_emit_code(ctx, "jmp L_cvt_exit_%i\n", label_cvt_exit);
-				context_emit_code(ctx, "L_cvt_unsigned_%i:\n", label_cvt_unsigned);
-				context_emit_code(ctx, "mov %s, %s\n", get_reg_name_scratch(tmp, 8), get_reg_name_scratch(result.reg, 8));
-				context_emit_code(ctx, "and %s, 1\n", get_reg_name_scratch(result.reg, 8));
-				context_emit_code(ctx, "shr %s, 1\n", get_reg_name_scratch(tmp, 8));
-				context_emit_code(ctx, "or %s, %s\n", get_reg_name_scratch(tmp, 8), get_reg_name_scratch(result.reg, 8));
-				context_emit_code(ctx, "cvtsi2sd %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(tmp, 8));
-				context_emit_code(ctx, "addsd %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(reg, 8));
-				context_emit_code(ctx, "L_cvt_exit_%i:\n", label_cvt_exit);
-
-				context_reg_free(ctx, tmp);
+				register_free(emit, tmp);
 			} else {
-				context_emit_code(ctx, "cvtsi2sd %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(result.reg, 8));
+				emit_asm(emit, "cvtsi2sd %s, %s\n", get_reg_name(reg, 8), get_reg_name(result.reg, 8));
 			}
 
-			context_reg_free(ctx, result.reg);
+			register_free(emit, result.reg);
 			result.reg = reg;
 		}
 	} else if (type_is_f32(type_old)) {
 		if (type_is_integral(type_new)) {
-			int reg = context_reg_request(ctx);
+			int reg = register_alloc(emit);
 
 			if (type_is_u64(type_new)) {
-				int label_cvt_unsigned = context_new_label(ctx);
-				int label_cvt_exit     = context_new_label(ctx);
-
-				context_emit_code(ctx, "comiss %s, DWORD [REL %s]\n", get_reg_name_scratch(result.reg, 8), const_f32_to_u64_name);
-				context_emit_code(ctx, "jnb L_cvt_unsigned_%i\n", label_cvt_unsigned);
-				context_emit_code(ctx, "cvttss2si %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(result.reg, 8));
-				context_emit_code(ctx, "jmp L_cvt_exit_%i\n", label_cvt_exit);
-				context_emit_code(ctx, "L_cvt_unsigned_%i:\n", label_cvt_unsigned);
-				context_emit_code(ctx, "subss %s, DWORD [REL %s]\n", get_reg_name_scratch(result.reg, 8), const_f32_to_u64_name);
-				context_emit_code(ctx, "cvttss2si %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(result.reg, 8));
-				context_emit_code(ctx, "btc %s, 63\n", get_reg_name_scratch(reg, 8));
-				context_emit_code(ctx, "L_cvt_exit_%i:\n", label_cvt_exit);			
+				int label_cvt_unsigned = get_new_label(emit);
+				int label_cvt_exit     = get_new_label(emit);
+				
+				emit_asm(emit, "comiss %s, DWORD [REL %s]\n", get_reg_name(result.reg, 8), const_f32_to_u64_name);
+				emit_asm(emit, "jnb L_cvt_unsigned_%i\n", label_cvt_unsigned);
+				emit_asm(emit, "cvttss2si %s, %s\n", get_reg_name(reg, 8), get_reg_name(result.reg, 8));
+				emit_asm(emit, "jmp L_cvt_exit_%i\n", label_cvt_exit);
+				emit_asm(emit, "L_cvt_unsigned_%i:\n", label_cvt_unsigned);
+				emit_asm(emit, "subss %s, DWORD [REL %s]\n", get_reg_name(result.reg, 8), const_f32_to_u64_name);
+				emit_asm(emit, "cvttss2si %s, %s\n", get_reg_name(reg, 8), get_reg_name(result.reg, 8));
+				emit_asm(emit, "btc %s, 63\n", get_reg_name(reg, 8));
+				emit_asm(emit, "L_cvt_exit_%i:\n", label_cvt_exit);			
 			} else {
-				context_emit_code(ctx, "cvttss2si %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(result.reg, 8));
+				emit_asm(emit, "cvttss2si %s, %s\n", get_reg_name(reg, 8), get_reg_name(result.reg, 8));
 			}
 
-			context_reg_free(ctx, result.reg);
+			register_free(emit, result.reg);
 			result.reg = reg;
 		} else if (type_is_f64(type_new)) {
-			context_emit_code(ctx, "cvtss2sd %s, %s\n", get_reg_name_scratch(result.reg, 8), get_reg_name_scratch(result.reg, 8));
+			emit_asm(emit, "cvtss2sd %s, %s\n", get_reg_name(result.reg, 8), get_reg_name(result.reg, 8));
 		}
 	} else if (type_is_f64(type_old)) {
 		if (type_is_integral(type_new)) {
-			int reg = context_reg_request(ctx);
+			int reg = register_alloc(emit);
 
 			if (type_is_u64(type_new)) {
-				int label_cvt_unsigned = context_new_label(ctx);
-				int label_cvt_exit     = context_new_label(ctx);
-
-				context_emit_code(ctx, "comisd %s, QWORD [REL %s]\n", get_reg_name_scratch(result.reg, 8), const_f64_to_u64_name);
-				context_emit_code(ctx, "jnb L_cvt_unsigned_%i\n", label_cvt_unsigned);
-				context_emit_code(ctx, "cvttsd2si %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(result.reg, 8));
-				context_emit_code(ctx, "jmp L_cvt_exit_%i\n", label_cvt_exit);
-				context_emit_code(ctx, "L_cvt_unsigned_%i:\n", label_cvt_unsigned);
-				context_emit_code(ctx, "subsd %s, QWORD [REL %s]\n", get_reg_name_scratch(result.reg, 8), const_f64_to_u64_name);
-				context_emit_code(ctx, "cvttsd2si %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(result.reg, 8));
-				context_emit_code(ctx, "btc %s, 63\n", get_reg_name_scratch(reg, 8));
-				context_emit_code(ctx, "L_cvt_exit_%i:\n", label_cvt_exit);			
+				int label_cvt_unsigned = get_new_label(emit);
+				int label_cvt_exit     = get_new_label(emit);
+				
+				emit_asm(emit, "comisd %s, QWORD [REL %s]\n", get_reg_name(result.reg, 8), const_f64_to_u64_name);
+				emit_asm(emit, "jnb L_cvt_unsigned_%i\n", label_cvt_unsigned);
+				emit_asm(emit, "cvttsd2si %s, %s\n", get_reg_name(reg, 8), get_reg_name(result.reg, 8));
+				emit_asm(emit, "jmp L_cvt_exit_%i\n", label_cvt_exit);
+				emit_asm(emit, "L_cvt_unsigned_%i:\n", label_cvt_unsigned);
+				emit_asm(emit, "subsd %s, QWORD [REL %s]\n", get_reg_name(result.reg, 8), const_f64_to_u64_name);
+				emit_asm(emit, "cvttsd2si %s, %s\n", get_reg_name(reg, 8), get_reg_name(result.reg, 8));
+				emit_asm(emit, "btc %s, 63\n", get_reg_name(reg, 8));
+				emit_asm(emit, "L_cvt_exit_%i:\n", label_cvt_exit);			
 			} else {
-				context_emit_code(ctx, "cvttsd2si %s, %s\n", get_reg_name_scratch(reg, 8), get_reg_name_scratch(result.reg, 8));
+				emit_asm(emit, "cvttsd2si %s, %s\n", get_reg_name(reg, 8), get_reg_name(result.reg, 8));
 			}
 
-			context_reg_free(ctx, result.reg);
+			result_free(emit, &result);
 			result.reg = reg;
 		} else if (type_is_f32(type_new)) {
-			context_emit_code(ctx, "cvtsd2ss %s, %s\n", get_reg_name_scratch(result.reg, 8), get_reg_name_scratch(result.reg, 8));
+			emit_asm(emit, "cvtsd2ss %s, %s\n", get_reg_name(result.reg, 8), get_reg_name(result.reg, 8));
 		}
 	}
 
@@ -824,94 +459,101 @@ static Result codegen_expression_cast(Context * ctx, AST_Expression * expr) {
 	return result;
 }
 
-static Result codegen_expression_sizeof(Context * ctx, AST_Expression * expr) {
+static Result codegen_expression_sizeof(Code_Emitter * emit, AST_Expression * expr) {
 	assert(expr->type == AST_EXPRESSION_SIZEOF);
 
 	Type const * type = expr->expr_sizeof.type;
-
-	Result result;
-	result.reg  = context_reg_request(ctx);
-	result.type = make_type_u32();
-
-	int size = type_get_size(type, ctx->current_scope);
-
-	char str_type[128];
-	type_to_string(type, str_type, sizeof(str_type));
-
-	context_emit_code(ctx, "mov %s, %i ; sizeof '%s'\n", get_reg_name_scratch(result.reg, 8), size, str_type);
-
-	return result;
+	int size = type_get_size(type, emit->current_scope);
+	
+	return result_make_u64(make_type_u32(), size);
 }
 
 // Helper function used by relational and equality operators
-static void codegen_compare(Context * ctx, char const * cmp_inst, char const * set_inst, int reg_left, int reg_right, int reg_result) {
-	char const * reg_name_left  = get_reg_name_scratch(reg_left,  8);
-	char const * reg_name_right = get_reg_name_scratch(reg_right, 8);
+static Result codegen_compare(Code_Emitter * emit, char const * cmp_inst, Token_Type token_operator, Result * result_left, Result * result_right) {
+	if (result_left->form == RESULT_IMMEDIATE && result_right->form == RESULT_IMMEDIATE) {
+		bool compare_result = false;
 
-	char const * reg_name_result_full = get_reg_name_scratch(reg_result, 8);
-	char const * reg_name_result_byte = get_reg_name_scratch(reg_result, 1);
+		if (type_is_f32(result_left->type)) {
+			switch (token_operator) {
+				case TOKEN_OPERATOR_LT:    compare_result = result_left->f32 <  result_right->f32; break;
+				case TOKEN_OPERATOR_LT_EQ: compare_result = result_left->f32 <= result_right->f32; break;
+				case TOKEN_OPERATOR_GT:    compare_result = result_left->f32 >  result_right->f32; break;
+				case TOKEN_OPERATOR_GT_EQ: compare_result = result_left->f32 >= result_right->f32; break;
+				case TOKEN_OPERATOR_EQ:    compare_result = result_left->f32 == result_right->f32; break;
+				case TOKEN_OPERATOR_NE:    compare_result = result_left->f32 != result_right->f32; break;
+				default: error(ERROR_INTERNAL);
+			}
+		} else if (type_is_f64(result_left->type)) {
+			switch (token_operator) {
+				case TOKEN_OPERATOR_LT:    compare_result = result_left->f64 <  result_right->f64; break;
+				case TOKEN_OPERATOR_LT_EQ: compare_result = result_left->f64 <= result_right->f64; break;
+				case TOKEN_OPERATOR_GT:    compare_result = result_left->f64 >  result_right->f64; break;
+				case TOKEN_OPERATOR_GT_EQ: compare_result = result_left->f64 >= result_right->f64; break;
+				case TOKEN_OPERATOR_EQ:    compare_result = result_left->f64 == result_right->f64; break;
+				case TOKEN_OPERATOR_NE:    compare_result = result_left->f64 != result_right->f64; break;
+				default: error(ERROR_INTERNAL);
+			}
+		} else if (type_is_integral_signed(result_left->type) && type_is_integral_signed(result_right->type)) {
+			switch (token_operator) {
+				case TOKEN_OPERATOR_LT:    compare_result = result_left->i64 <  result_right->i64; break;
+				case TOKEN_OPERATOR_LT_EQ: compare_result = result_left->i64 <= result_right->i64; break;
+				case TOKEN_OPERATOR_GT:    compare_result = result_left->i64 >  result_right->i64; break;
+				case TOKEN_OPERATOR_GT_EQ: compare_result = result_left->i64 >= result_right->i64; break;
+				case TOKEN_OPERATOR_EQ:    compare_result = result_left->i64 == result_right->i64; break;
+				case TOKEN_OPERATOR_NE:    compare_result = result_left->i64 != result_right->i64; break;
+				default: error(ERROR_INTERNAL);
+			}
+		} else {
+			switch (token_operator) {
+				case TOKEN_OPERATOR_LT:    compare_result = result_left->u64 <  result_right->u64; break;
+				case TOKEN_OPERATOR_LT_EQ: compare_result = result_left->u64 <= result_right->u64; break;
+				case TOKEN_OPERATOR_GT:    compare_result = result_left->u64 >  result_right->u64; break;
+				case TOKEN_OPERATOR_GT_EQ: compare_result = result_left->u64 >= result_right->u64; break;
+				case TOKEN_OPERATOR_EQ:    compare_result = result_left->u64 == result_right->u64; break;
+				case TOKEN_OPERATOR_NE:    compare_result = result_left->u64 != result_right->u64; break;
+				default: error(ERROR_INTERNAL);
+			}
+		}
 
-	context_emit_code(ctx, "%s %s, %s\n", cmp_inst, reg_name_left, reg_name_right);
-	context_emit_code(ctx, "%s %s\n",     set_inst, reg_name_result_byte);
-	context_emit_code(ctx, "and %s, 1\n",    reg_name_result_byte);
-	context_emit_code(ctx, "movzx %s, %s\n", reg_name_result_full, reg_name_result_byte);
+		return result_make_u64(make_type_bool(), compare_result);
+	}
+	
+	result_ensure_in_register(emit, result_left);
+
+	int type_size = MAX(
+		type_get_size(result_left ->type, emit->current_scope),
+		type_get_size(result_right->type, emit->current_scope)
+	);
+
+	char str_result_left [RESULT_STR_BUF_SIZE]; result_to_str_sized(str_result_left, sizeof(str_result_left),  result_left,  type_size);
+	char str_result_right[RESULT_STR_BUF_SIZE]; result_to_str_sized(str_result_right,sizeof(str_result_right), result_right, type_size);
+	emit_asm(emit, "%s %s, %s\n", cmp_inst, str_result_left, str_result_right);
+
+	return result_make_cmp(make_type_bool(), get_condition_code(token_operator, result_left, result_right));
 }
 
 // Helper function used by relational operators
-static void codegen_relational(Context * ctx, char const * operator, Token_Type token_operator, Result * result_left, Result * result_right) {
+static void codegen_relational(Code_Emitter * emit, char const * operator, Token_Type token_operator, Result * result_left, Result * result_right) {
+	Result result;
+
 	if ((type_is_integral(result_left->type) && type_is_integral(result_right->type)) ||
 		(type_is_bool    (result_left->type) && type_is_bool    (result_right->type)) ||
 		(type_is_pointer (result_left->type) && type_is_pointer (result_right->type) && types_unifiable(result_left->type, result_right->type))
 	) {
-		char const * set_instr = NULL;
-
-		bool both_signed = type_is_integral_signed(result_left->type) && type_is_integral_signed(result_right->type);
-
-		switch (token_operator)	{
-			case TOKEN_OPERATOR_LT:    if (both_signed) set_instr = "setl";  else set_instr = "setb";  break;
-			case TOKEN_OPERATOR_LT_EQ: if (both_signed) set_instr = "setle"; else set_instr = "setbe"; break;
-			case TOKEN_OPERATOR_GT:    if (both_signed) set_instr = "setg";  else set_instr = "seta";  break;
-			case TOKEN_OPERATOR_GT_EQ: if (both_signed) set_instr = "setge"; else set_instr = "setae"; break;
-			case TOKEN_OPERATOR_EQ: set_instr = "sete";  break;
-			case TOKEN_OPERATOR_NE: set_instr = "setne"; break;
-			default: error(ERROR_INTERNAL);
-		}
-
-		codegen_compare(ctx, "cmp", set_instr, result_left->reg, result_right->reg, result_left->reg);
+		result = codegen_compare(emit, "cmp", token_operator, result_left, result_right);
+	} else if (type_is_f32(result_left->type) && type_is_f32(result_right->type)) {
+		result = codegen_compare(emit, "comiss", token_operator, result_left, result_right);
+	} else if (type_is_f64(result_left->type) && type_is_f64(result_right->type)) {
+		result = codegen_compare(emit, "comisd", token_operator, result_left, result_right);
 	} else {
-		char const * set_instr = NULL;
-
-		switch (token_operator)	{
-			case TOKEN_OPERATOR_LT:    set_instr = "setb";  break;
-			case TOKEN_OPERATOR_LT_EQ: set_instr = "setbe"; break;
-			case TOKEN_OPERATOR_GT:    set_instr = "seta";  break;
-			case TOKEN_OPERATOR_GT_EQ: set_instr = "setae"; break;
-			case TOKEN_OPERATOR_EQ:    set_instr = "sete";  break;
-			case TOKEN_OPERATOR_NE:    set_instr = "setne"; break;
-			default: error(ERROR_INTERNAL);
-		}
-
-		if (type_is_f32(result_left->type) && type_is_f32(result_right->type)) {
-			context_reg_free(ctx, result_left->reg);
-			int reg = context_reg_request(ctx);
-
-			codegen_compare(ctx, "comiss", set_instr, result_left->reg, result_right->reg, reg);
-			result_left->reg = reg;
-		} else if (type_is_f64(result_left->type) && type_is_f64(result_right->type)) {
-			context_reg_free(ctx, result_left->reg);
-			int reg = context_reg_request(ctx);
-
-			codegen_compare(ctx, "comisd", set_instr, result_left->reg, result_right->reg, reg);
-			result_left->reg = reg;
-		} else {
-			type_error(ctx, "Operator '%s' requires two integral, boolean, float, or pointer types", operator);
-		}
+		type_error(emit, "Operator '%s' requires two integral, boolean, float, or pointer types", operator);
 	}
 
-	result_left->type = make_type_bool();
+	result_free(emit, result_left);
+	*result_left = result;
 }
 
-static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * expr) {
+static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression const * expr) {
 	assert(expr->type == AST_EXPRESSION_OPERATOR_BIN);
 
 	Token_Type operator = expr->expr_op_bin.token.type;
@@ -924,315 +566,305 @@ static Result codegen_expression_op_bin(Context * ctx, AST_Expression const * ex
 	// Assignment operator is handled separately, because it needs the lhs by address
 	if (operator == TOKEN_ASSIGN) {
 		// Traverse tallest subtree first
-		if (expr_left->height >= expr_right->height) {
+		if (expr_left->height > expr_right->height) {
 			// Evaluate lhs by address
-			context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS);
-			result_left  = codegen_expression(ctx, expr_left);
-			context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
+			flag_set(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+			result_left  = codegen_expression(emit, expr_left);
+			flag_unset(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
 
-			result_right = codegen_expression(ctx, expr_right);
+			result_right = codegen_expression(emit, expr_right);
 		} else {
-			result_right = codegen_expression(ctx, expr_right);
+			result_right = codegen_expression(emit, expr_right);
 
 			// Evaluate lhs by address
-			context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS);
-			result_left = codegen_expression(ctx, expr_left);
-			context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
+			flag_set(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+			result_left = codegen_expression(emit, expr_left);
+			flag_unset(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
 		}
 
 		if (type_is_void(result_right.type)) {
-			type_error(ctx, "Cannot assign with a right hand side of void type!");
+			type_error(emit, "Cannot assign with a right hand side of void type!");
 		}
 
-		int type_size_left  = type_get_size(result_left .type, ctx->current_scope);
-		int type_size_right = type_get_size(result_right.type, ctx->current_scope);
+		int type_size_left  = type_get_size(result_left .type, emit->current_scope);
+		int type_size_right = type_get_size(result_right.type, emit->current_scope);
 
 		if (!types_unifiable(result_left.type, result_right.type)) {
 			char str_type_left [128]; type_to_string(result_left .type, str_type_left,  sizeof(str_type_left));
 			char str_type_right[128]; type_to_string(result_right.type, str_type_right, sizeof(str_type_right));
 
-			type_error(ctx, "Cannot assign instance of type '%s' a value of type '%s'", str_type_left, str_type_right);
+			type_error(emit, "Cannot assign instance of type '%s' a value of type '%s'", str_type_left, str_type_right);
 		} else if (type_is_primitive(result_left .type) && type_is_primitive(result_right.type) && type_size_right > type_size_left) {
 			char str_type_left [128]; type_to_string(result_left .type, str_type_left,  sizeof(str_type_left));
 			char str_type_right[128]; type_to_string(result_right.type, str_type_right, sizeof(str_type_right));
 
-			type_error(ctx, "Implicit narrowing conversion from type '%s' to '%s' is not allowed. Explicit cast required", str_type_right, str_type_left);
+			type_error(emit, "Implicit narrowing conversion from type '%s' to '%s' is not allowed. Explicit cast required", str_type_right, str_type_left);
 		}
 
 		if (type_is_struct(result_left.type) && type_is_struct(result_right.type)) {
-			int struct_size = type_get_size(result_left.type, ctx->current_scope);
+			int struct_size = type_get_size(result_left.type, emit->current_scope);
+			
+			Result result_rdi = result_make_reg(result_left .type, RDI);
+			Result result_rsi = result_make_reg(result_right.type, RSI);
+			Result result_rcx = result_make_reg(make_type_u64(), RCX);
+			Result result_len = result_make_u64(make_type_u64(), struct_size);
 
-			context_emit_code(ctx, "mov rdi, %s\n", get_reg_name_scratch(result_left .reg, 8));
-			context_emit_code(ctx, "mov rsi, %s\n", get_reg_name_scratch(result_right.reg, 8));
-			context_emit_code(ctx, "mov ecx, %i\n", struct_size);
-			context_emit_code(ctx, "rep movsb\n");			
+			emit_mov(emit, &result_rdi, &result_left);
+			emit_mov(emit, &result_rsi, &result_right);
+			emit_mov(emit, &result_rcx, &result_len);
+			emit_asm(emit, "rep movsb\n");
+
+			result_free(emit, &result_len);
 		} else {
-			// Select appropriate mov instruction
-			char const * mov = "mov";
-			if (type_is_f32(result_right.type)) {
-				mov = "movss";
-			} else if (type_is_f64(result_right.type)) {
-				mov = "movsd";
-			}
-
-			context_emit_code(ctx, "%s %s [%s], %s\n", mov, get_word_name(type_size_left), get_reg_name_scratch(result_left.reg, 8), get_reg_name_scratch(result_right.reg, type_size_left));
+			emit_mov_indirect(emit, &result_left, &result_right);
 		}
 
-		context_reg_free(ctx, result_right.reg);
+		result_free(emit, &result_right);
 
-		result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
+		result_left.type = types_unify(result_left.type, result_right.type, emit->current_scope);
 
 		return result_left;
 	}
 	
 	// Handle operators that require short-circuit evaluation separately
 	if (operator == TOKEN_OPERATOR_LOGICAL_AND) {
-		int label = context_new_label(ctx);
+		int label = get_new_label(emit);
 
-		result_left = codegen_expression(ctx, expr_left);
-		char const * reg_name_left = get_reg_name_scratch(result_left.reg, 8);
+		result_left = codegen_expression(emit, expr_left);
 
-		context_emit_code(ctx, "test %s, %s\n", reg_name_left, reg_name_left);
-		context_emit_code(ctx, "je L_land_false_%i ; short circuit '&&'\n", label);
-		
-		result_right = codegen_expression(ctx, expr_right);
-		char const * reg_name_right = get_reg_name_scratch(result_right.reg, 8);
-
-		context_emit_code(ctx, "test %s, %s\n", reg_name_right, reg_name_right);
-		context_emit_code(ctx, "je L_land_false_%i\n", label);
-		context_emit_code(ctx, "mov %s, 1\n",   reg_name_left);
-		context_emit_code(ctx, "jmp L_land_exit_%i\n", label);
-		context_emit_code(ctx, "L_land_false_%i:\n", label);
-		context_emit_code(ctx, "mov %s, 0\n",   reg_name_left);
-		context_emit_code(ctx, "L_land_exit_%i:\n",  label);
-	
-		if (!type_is_bool(result_left.type) || !type_is_bool(result_right.type)) {
-			type_error(ctx, "Operator '&&' requires two boolean operands");
+		if (result_left.form == RESULT_IMMEDIATE) {
+			if (result_left.u64 == 0) {
+				return result_left;
+			} else if (result_left.u64 == 1) {
+				return codegen_expression(emit, expr_right);
+			} else {
+				error(ERROR_CODEGEN);
+			}
 		}
 		
-		context_reg_free(ctx, result_right.reg);
+		Condition_Code cc_left = condition_code_invert(result_get_condition_code(emit, &result_left));
+		emit_asm(emit, "j%s L_land_false_%i ; short circuit '&&'\n", condition_code_to_str(cc_left), label);	
+		result_free(emit, &result_left);
 
-		return result_left;
+		result_right = codegen_expression(emit, expr_right);
+
+		Condition_Code cc_right = condition_code_invert(result_get_condition_code(emit, &result_right));		
+		result_free(emit, &result_right);
+
+		Result result_0   = result_make_u64(make_type_bool(), 0);
+		Result result_1   = result_make_u64(make_type_bool(), 1);
+		Result result_out = result_make_reg(make_type_bool(), register_alloc(emit));
+
+		emit_asm(emit, "j%s L_land_false_%i\n", condition_code_to_str(cc_right), label);
+		emit_mov(emit, &result_out, &result_1);
+		emit_asm(emit, "jmp L_land_exit_%i\n", label);
+		emit_asm(emit, "L_land_false_%i:\n", label);
+		emit_mov(emit, &result_out, &result_0);
+		emit_asm(emit, "L_land_exit_%i:\n",  label);
+		
+		result_free(emit, &result_0);
+		result_free(emit, &result_1);
+
+		if (!type_is_bool(result_left.type) || !type_is_bool(result_right.type)) {
+			type_error(emit, "Operator '&&' requires two boolean operands");
+		}
+		
+		return result_out;
 	} else if (operator == TOKEN_OPERATOR_LOGICAL_OR) {
-		int label = context_new_label(ctx);
+		int label = get_new_label(emit);
 		
-		result_left = codegen_expression(ctx, expr_left);
-		char const * reg_name_left = get_reg_name_scratch(result_left.reg, 8);
+		result_left = codegen_expression(emit, expr_left);
+		
+		if (result_left.form == RESULT_IMMEDIATE) {
+			if (result_left.u64 == 1) {
+				return result_left;
+			} else if (result_left.u64 == 0) {
+				return codegen_expression(emit, expr_right);
+			} else {
+				error(ERROR_CODEGEN);
+			}
+		}
 
-		context_emit_code(ctx, "test %s, %s\n", reg_name_left, reg_name_left);
-		context_emit_code(ctx, "jne L_lor_true_%i ; short circuit '||'\n", label);
+		Condition_Code cc_left = result_get_condition_code(emit, &result_left);
+		emit_asm(emit, "j%s L_lor_true_%i ; short circuit '||'\n", condition_code_to_str(cc_left), label);
+		result_free(emit, &result_left);
+		
+		result_right = codegen_expression(emit, expr_right);
 
-		result_right = codegen_expression(ctx, expr_right);
-		char const * reg_name_right = get_reg_name_scratch(result_right.reg, 8);
+		Condition_Code cc_right = result_get_condition_code(emit, &result_right);
+		result_free(emit, &result_right);
+		
+		Result result_0   = result_make_u64(make_type_bool(), 0);
+		Result result_1   = result_make_u64(make_type_bool(), 1);
+		Result result_out = result_make_reg(make_type_bool(), register_alloc(emit));
 
-		context_emit_code(ctx, "test %s, %s\n", reg_name_right, reg_name_right);
-		context_emit_code(ctx, "jne L_lor_true_%i\n", label);
-		context_emit_code(ctx, "mov %s, 0\n",   reg_name_left);
-		context_emit_code(ctx, "jmp L_lor_exit_%i\n", label);
-		context_emit_code(ctx, "L_lor_true_%i:\n", label);
-		context_emit_code(ctx, "mov %s, 1\n",   reg_name_left);
-		context_emit_code(ctx, "L_lor_exit_%i:\n",  label);
-			
+		emit_asm(emit, "j%s L_lor_true_%i\n", condition_code_to_str(cc_right), label);
+		emit_mov(emit, &result_out, &result_0);
+		emit_asm(emit, "jmp L_lor_exit_%i\n", label);
+		emit_asm(emit, "L_lor_true_%i:\n", label);
+		emit_mov(emit, &result_out, &result_1);
+		emit_asm(emit, "L_lor_exit_%i:\n",  label);
+		
+		result_free(emit, &result_0);
+		result_free(emit, &result_1);
+
 		if (!type_is_bool(result_left.type) || !type_is_bool(result_right.type)) {
-			type_error(ctx, "Operator '||' requires two boolean operands");
+			type_error(emit, "Operator '||' requires two boolean operands");
 		}
 		
-		context_reg_free(ctx, result_right.reg);
-
-		return result_left;
+		return result_out;
 	}
 
 	// Traverse tallest subtree first
-	if (expr_left->height >= expr_right->height) {
-		result_left  = codegen_expression(ctx, expr_left);
-		result_right = codegen_expression(ctx, expr_right);
+	if (expr_left->height > expr_right->height) {
+		result_left  = codegen_expression(emit, expr_left);
+		result_right = codegen_expression(emit, expr_right);
 	} else {
-		result_right = codegen_expression(ctx, expr_right);
-		result_left  = codegen_expression(ctx, expr_left);
+		result_right = codegen_expression(emit, expr_right);
+		result_left  = codegen_expression(emit, expr_left);
 	}
-
-	char const * reg_name_left  = get_reg_name_scratch(result_left .reg, 8);
-	char const * reg_name_right = get_reg_name_scratch(result_right.reg, 8);
 
 	// Emit correct instructions based on operator type
 	switch (operator) {
 		case TOKEN_OPERATOR_MULTIPLY: {
 			if (type_is_integral(result_left.type) && type_is_integral(result_right.type)) {
-				context_emit_code(ctx, "imul %s, %s\n", reg_name_left, reg_name_right);
-
-				result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
+				result_left.type = types_unify(result_left.type, result_right.type, emit->current_scope);
 			} else if (type_is_f32(result_left.type) && type_is_f32(result_right.type)) {
-				context_emit_code(ctx, "mulss %s, %s\n", reg_name_left, reg_name_right);
+				
 			} else if (type_is_f64(result_left.type) && type_is_f64(result_right.type)) {
-				context_emit_code(ctx, "mulsd %s, %s\n", reg_name_left, reg_name_right);
+				
 			} else {
-				type_error(ctx, "Operator '*' only works with integral or float types");
+				type_error(emit, "Operator '*' only works with integral or float types");
 			}
-
+			emit_mul(emit, &result_left, &result_right);
 			break;
 		}
 
 		case TOKEN_OPERATOR_DIVIDE: {
 			if (type_is_integral(result_left.type) && type_is_integral(result_right.type)) {
-				context_emit_code(ctx, "mov rax, %s\n", reg_name_left);
-				context_emit_code(ctx, "cqo\n");
-				context_emit_code(ctx, "idiv %s\n",     reg_name_right);
-				context_emit_code(ctx, "mov %s, rax\n", reg_name_left);
-
-				result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
+				result_left.type = types_unify(result_left.type, result_right.type, emit->current_scope);
 			} else if (type_is_f32(result_left.type) && type_is_f32(result_right.type)) {
-				context_emit_code(ctx, "divss %s, %s\n", reg_name_left, reg_name_right);
+				
 			} else if (type_is_f64(result_left.type) && type_is_f64(result_right.type)) {
-				context_emit_code(ctx, "divsd %s, %s\n", reg_name_left, reg_name_right);
+				
 			} else {
-				type_error(ctx, "Operator '/' only works with integral or float types");
+				type_error(emit, "Operator '/' only works with integral or float types");
 			}
-
+			emit_div(emit, &result_left, &result_right);
 			break;
 		}
 
 		case TOKEN_OPERATOR_MODULO: {
-			context_emit_code(ctx, "mov rax, %s\n", reg_name_left);
-			context_emit_code(ctx, "cqo\n");
-			context_emit_code(ctx, "idiv %s\n",     reg_name_right);
-			context_emit_code(ctx, "mov %s, rdx\n", reg_name_left); // RDX contains remainder after division
-
 			if (type_is_integral(result_left.type) && type_is_integral(result_right.type)) {
-				result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
+				result_left.type = types_unify(result_left.type, result_right.type, emit->current_scope);
 			} else {
-				type_error(ctx, "Operator '%' only works with integral types");
+				type_error(emit, "Operator '%' only works with integral types");
 			}
-
+			emit_mod(emit, &result_left, &result_right);
 			break;
 		}
 
 		case TOKEN_OPERATOR_PLUS: {		
 			if (type_is_arithmetic(result_left.type) && type_is_arithmetic(result_right.type)) { // arithmetic + arithmetic --> arithmetic
-				result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
+				result_left.type = types_unify(result_left.type, result_right.type, emit->current_scope);
 			} else if (type_is_pointer(result_left.type) && type_is_integral(result_right.type)) { // pointer + integral --> pointer
-				context_emit_code(ctx, "imul %s, %i\n", reg_name_right, type_get_size(result_left.type->base, ctx->current_scope));
+				Result result_size = result_make_u64(make_type_u64(), type_get_size(result_left.type->base, emit->current_scope));
+				emit_mul(emit, &result_right, &result_size);
+				result_free(emit, &result_size);
 			} else if (type_is_array(result_left.type) && type_is_integral(result_right.type)) { // array + integral --> pointer
 				result_left.type = make_type_pointer(result_left.type->base);
 			} else {
-				type_error(ctx, "Left of operator '+' must be integral, float, array, or pointer type, right must be integral or float type!");
+				type_error(emit, "Left of operator '+' must be integral, float, array, or pointer type, right must be integral or float type!");
 			}
 
-			char const * add = "add";
-			if (type_is_f32(result_left.type)) {
-				add = "addss";
-			} else if (type_is_f64(result_left.type)) {
-				add = "addsd";
-			}
-			context_emit_code(ctx, "%s %s, %s\n", add, reg_name_left, reg_name_right);
-
+			emit_add(emit, &result_left, &result_right);
 			break;
 		}
 
 		case TOKEN_OPERATOR_MINUS: {
 			if (type_is_arithmetic(result_left.type) && type_is_arithmetic(result_right.type)) { // arithmetic - arithmetic --> arithmetic
-				result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
+				result_left.type = types_unify(result_left.type, result_right.type, emit->current_scope);
 			} else if (type_is_pointer(result_left.type) && type_is_integral(result_right.type)) { // pointer - integral --> pointer
-				context_emit_code(ctx, "imul %s, %i\n", reg_name_right, type_get_size(result_left.type->base, ctx->current_scope));
+				Result result_size = result_make_u64(make_type_u64(), type_get_size(result_left.type->base, emit->current_scope));
+				emit_mul(emit, &result_right, &result_size);
+				result_free(emit, &result_size);
 			} else if (type_is_pointer(result_left.type) && type_is_pointer(result_right.type) && types_unifiable(result_left.type, result_right.type)) { // pointer - pointer --> integral
 				result_left.type = make_type_i64();
 			} else {
-				type_error(ctx, "Operator '-' cannot cannot have integral type on the left and pointer type on the right");
+				type_error(emit, "Operator '-' cannot cannot have integral type on the left and pointer type on the right");
 			}
-			
-			char const * sub = "sub";
-			if (type_is_f32(result_left.type)) {
-				sub = "subss";
-			} else if (type_is_f64(result_left.type)) {
-				sub = "subsd";
-			}
-			context_emit_code(ctx, "%s %s, %s\n", sub, reg_name_left, reg_name_right);
 
+			emit_sub(emit, &result_left, &result_right);
 			break;
 		}
 
 		case TOKEN_OPERATOR_SHIFT_LEFT: {
-			context_emit_code(ctx, "mov rcx, %s\n", reg_name_right);
-			context_emit_code(ctx, "shl %s, cl\n",  reg_name_left);
-
 			if (!type_is_integral(result_left.type) || !type_is_integral(result_right.type)) {
-				type_error(ctx, "Operator '<<' requires two operands of integral type");
+				type_error(emit, "Operator '<<' requires two operands of integral type");
 			}
+			result_left.type = types_unify(result_left.type, result_right.type, emit->current_scope);
 
-			result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
-
+			emit_shift_left(emit, &result_left, &result_right);
 			break;
 		}
 
 		case TOKEN_OPERATOR_SHIFT_RIGHT: {
-			context_emit_code(ctx, "mov rcx, %s\n", reg_name_right);
-			if (type_is_integral_signed(result_left.type)) {
-				context_emit_code(ctx, "sar %s, cl\n", reg_name_left);
-			} else if (type_is_integral_unsigned(result_left.type)) {
-				context_emit_code(ctx, "shr %s, cl\n", reg_name_left);
-			}
-
 			if (!type_is_integral(result_left.type) || !type_is_integral(result_right.type)) {
-				type_error(ctx, "Operator '>>' requires two operands of integral type");
+				type_error(emit, "Operator '>>' requires two operands of integral type");
 			}
+			result_left.type = types_unify(result_left.type, result_right.type, emit->current_scope);
 
-			result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
-
+			emit_shift_right(emit, &result_left, &result_right);
 			break;
 		}
 
-		case TOKEN_OPERATOR_LT:    codegen_relational(ctx, "<",  TOKEN_OPERATOR_LT,    &result_left, &result_right); break;
-		case TOKEN_OPERATOR_LT_EQ: codegen_relational(ctx, "<=", TOKEN_OPERATOR_LT_EQ, &result_left, &result_right); break;
-		case TOKEN_OPERATOR_GT:    codegen_relational(ctx, ">",  TOKEN_OPERATOR_GT,    &result_left, &result_right); break;
-		case TOKEN_OPERATOR_GT_EQ: codegen_relational(ctx, ">=", TOKEN_OPERATOR_GT_EQ, &result_left, &result_right); break;
+		case TOKEN_OPERATOR_LT:    codegen_relational(emit, "<",  TOKEN_OPERATOR_LT,    &result_left, &result_right); break;
+		case TOKEN_OPERATOR_LT_EQ: codegen_relational(emit, "<=", TOKEN_OPERATOR_LT_EQ, &result_left, &result_right); break;
+		case TOKEN_OPERATOR_GT:    codegen_relational(emit, ">",  TOKEN_OPERATOR_GT,    &result_left, &result_right); break;
+		case TOKEN_OPERATOR_GT_EQ: codegen_relational(emit, ">=", TOKEN_OPERATOR_GT_EQ, &result_left, &result_right); break;
 
-		case TOKEN_OPERATOR_EQ: codegen_relational(ctx, "==", TOKEN_OPERATOR_EQ, &result_left, &result_right); break;
-		case TOKEN_OPERATOR_NE: codegen_relational(ctx, "!=", TOKEN_OPERATOR_NE, &result_left, &result_right); break;
+		case TOKEN_OPERATOR_EQ: codegen_relational(emit, "==", TOKEN_OPERATOR_EQ, &result_left, &result_right); break;
+		case TOKEN_OPERATOR_NE: codegen_relational(emit, "!=", TOKEN_OPERATOR_NE, &result_left, &result_right); break;
 
 		case TOKEN_OPERATOR_BITWISE_AND: {
-			context_emit_code(ctx, "and %s, %s\n", reg_name_left, reg_name_right);
-
 			if (!type_is_integral(result_left.type) || !type_is_integral(result_right.type)) {
-				type_error(ctx, "Operator '&' requires two operands of integral type");
+				type_error(emit, "Operator '&' requires two operands of integral type");
 			}
+			result_left.type = types_unify(result_left.type, result_right.type, emit->current_scope);
 
-			result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
-
+			emit_and(emit, &result_left, &result_right);
 			break;
 		}
 
 		case TOKEN_OPERATOR_BITWISE_XOR: {
-			context_emit_code(ctx, "xor %s, %s\n", reg_name_left, reg_name_right);
-
 			if (!type_is_integral(result_left.type) || !type_is_integral(result_right.type)) {
-				type_error(ctx, "Operator '^' requires two operands of integral type");
+				type_error(emit, "Operator '^' requires two operands of integral type");
 			}
-
-			result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
-
+			result_left.type = types_unify(result_left.type, result_right.type, emit->current_scope);
+			
+			emit_xor(emit, &result_left, &result_right);
 			break;
 		}
 
 		case TOKEN_OPERATOR_BITWISE_OR: {
-			context_emit_code(ctx, "or %s, %s\n", reg_name_left, reg_name_right);
-
 			if (!type_is_integral(result_left.type) || !type_is_integral(result_right.type)) {
-				type_error(ctx, "Operator '|' requires two operands of integral type");
+				type_error(emit, "Operator '|' requires two operands of integral type");
 			}
-
-			result_left.type = types_unify(result_left.type, result_right.type, ctx->current_scope);
-
+			result_left.type = types_unify(result_left.type, result_right.type, emit->current_scope);
+			
+			emit_or(emit, &result_left, &result_right);
 			break;
 		}
 
 		default: error(ERROR_INTERNAL);
 	}
 
-	context_reg_free(ctx, result_right.reg);
+	result_free(emit, &result_right);
 
 	return result_left;
 }
 
-static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * expr) {
+static Result codegen_expression_op_pre(Code_Emitter * emit, AST_Expression const * expr) {
 	assert(expr->type == AST_EXPRESSION_OPERATOR_PRE);
 
 	AST_Expression * operand  = expr->expr_op_pre.expr;
@@ -1246,101 +878,107 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 			operand->type != AST_EXPRESSION_ARRAY_ACCESS && 
 			operand->type != AST_EXPRESSION_STRUCT_MEMBER
 		) {
-			type_error(ctx, "Operator '&' can only take address of a variable or struct member");
+			type_error(emit, "Operator '&' can only take address of a variable or struct member");
 		}
 
-		bool by_address = ctx->flags & CTX_FLAG_VAR_BY_ADDRESS;
-		context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS);
+		bool by_address = flag_is_set(emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+		flag_set(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
 
-		result = codegen_expression(ctx, operand);
+		result = codegen_expression(emit, operand);
 		result.type = make_type_pointer(result.type);
 
-		if (!by_address) context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
+		if (!by_address) flag_unset(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
 
 		return result;
 	} else if (operator == TOKEN_OPERATOR_MULTIPLY) {
-		bool by_address = ctx->flags & CTX_FLAG_VAR_BY_ADDRESS;
+		bool by_address = flag_is_set(emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
 
-		context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS); // Unset temporarily
+		flag_unset(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS); // Unset temporarily
 
-		result = codegen_expression(ctx, operand);
+		result = codegen_expression(emit, operand);
 		
 		if (!type_is_pointer(result.type)) {
 			char str_type[128];
 			type_to_string(result.type, str_type, sizeof(str_type));
 
-			type_error(ctx, "Cannot dereference non-pointer type '%s'", str_type);
+			type_error(emit, "Cannot dereference non-pointer type '%s'", str_type);
 		} else if (type_is_void_pointer(result.type)) {
-			type_error(ctx, "Cannot dereference 'void *'");
+			type_error(emit, "Cannot dereference 'void *'");
 		}
-
+		
+		result_ensure_in_register(emit, &result);
 		result.type = result.type->base; // Remove 1 level of indirection
 
 		if (by_address) {
-			context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS); // Reset if this flag was previously set
+			flag_set(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS); // Reset if this flag was previously set
 		} else {
-			result.reg = codegen_deref_address(ctx, result.reg, result.type, get_reg_name_scratch(result.reg, 8));
+			result.by_address = false;
+			result = result_deref(emit, &result, true);
 		}
-
+		
 		return result;
 	}
 
 	bool by_address = false;
 	
 	if (operator == TOKEN_OPERATOR_INC || operator == TOKEN_OPERATOR_DEC) {
-		by_address = ctx->flags & CTX_FLAG_VAR_BY_ADDRESS;
-		context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS);
+		by_address = flag_is_set(emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+		flag_set(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
 	}
 	
-	result = codegen_expression(ctx, operand);
+	result = codegen_expression(emit, operand);
 
-	if (!by_address) context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
-
-	char const * reg_name = get_reg_name_scratch(result.reg, 8);
+	if (!by_address) flag_unset(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
 
 	switch (operator) {
 		case TOKEN_OPERATOR_INC: {
-			int type_size = type_get_size(result.type, ctx->current_scope);
-
-			int reg_address = context_reg_request(ctx);
-
-			context_emit_code(ctx, "mov %s, %s\n", get_reg_name_scratch(reg_address, 8), get_reg_name_scratch(result.reg, 8));
+			Result result_address = result_make_reg(result.type, register_alloc(emit));
+			emit_mov(emit,&result_address, &result);
 			
-			result.reg = codegen_deref_address(ctx, result.reg, result.type, get_reg_name_scratch(result.reg, 8));
+			result.by_address = false;
+			result = result_deref(emit, &result, false);
 
+			int increase;
 			if (type_is_integral(result.type)) {
-				context_emit_code(ctx, "inc %s\n", get_reg_name_scratch(result.reg, 8));
+				increase = 1;
 			} else if (type_is_pointer(result.type)) {
-				context_emit_code(ctx, "add %s, %i\n", get_reg_name_scratch(result.reg, 8), type_get_size(result.type->base, ctx->current_scope));
+				increase = type_get_size(result.type->base, emit->current_scope);
 			} else {
-				type_error(ctx, "Operator '++' requires operand of integral or pointer type");
+				type_error(emit, "Operator '++' requires operand of integral or pointer type");
 			}
-			context_emit_code(ctx, "mov %s [%s], %s\n", get_word_name(type_size), get_reg_name_scratch(reg_address, 8), get_reg_name_scratch(result.reg, type_size));
+			Result result_inc = result_make_u64(result.type, increase);
+			emit_add(emit, &result, &result_inc);
+			result_free(emit, &result_inc);
 
-			context_reg_free(ctx, reg_address);
+			emit_mov_indirect(emit, &result_address, &result);
+
+			result_free(emit, &result_address);
 
 			break;
 		}
 
 		case TOKEN_OPERATOR_DEC: {
-			int type_size = type_get_size(result.type, ctx->current_scope);
-
-			int reg_address = context_reg_request(ctx);
-
-			context_emit_code(ctx, "mov %s, %s\n", get_reg_name_scratch(reg_address, 8), get_reg_name_scratch(result.reg, 8));
+			Result result_address = result_make_reg(result.type, register_alloc(emit));
+			emit_mov(emit,&result_address, &result);
 			
-			result.reg = codegen_deref_address(ctx, result.reg, result.type, get_reg_name_scratch(result.reg, 8));
+			result.by_address = false;
+			result = result_deref(emit, &result, false);
 
+			int decrease;
 			if (type_is_integral(result.type)) {
-				context_emit_code(ctx, "dec %s\n", get_reg_name_scratch(result.reg, 8));
+				decrease = 1;
 			} else if (type_is_pointer(result.type)) {
-				context_emit_code(ctx, "sub %s, %i\n", get_reg_name_scratch(result.reg, 8), type_get_size(result.type->base, ctx->current_scope));
+				decrease = type_get_size(result.type->base, emit->current_scope);
 			} else {
-				type_error(ctx, "Operator '--' requires operand of integral or pointer type");
+				type_error(emit, "Operator '--' requires operand of integral or pointer type");
 			}
-			context_emit_code(ctx, "mov %s [%s], %s\n", get_word_name(type_size), get_reg_name_scratch(reg_address, 8), get_reg_name_scratch(result.reg, type_size));
+			Result result_dec = result_make_i64(result.type, -decrease);
+			emit_add(emit, &result, &result_dec);
+			result_free(emit, &result_dec);
 
-			context_reg_free(ctx, reg_address);
+			emit_mov_indirect(emit, &result_address, &result);
+
+			result_free(emit, &result_address);
 
 			break;
 		}
@@ -1349,50 +987,43 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 			// Unary plus is a no-op, no code is emitted
 
 			if (!type_is_arithmetic(result.type)) {
-				type_error(ctx, "Operator '+' requires operand of integral or float type");
+				type_error(emit, "Operator '+' requires operand of integral or float type");
 			}
 
 			break;
 		}
 		case TOKEN_OPERATOR_MINUS: {
-			if (type_is_float(result.type)) {
-				int          tmp_reg = context_reg_request(ctx);
-				char const * tmp_reg_name = get_reg_name_scratch(tmp_reg, 8);
-
-				context_emit_code(ctx, "movd eax, %s\n",        reg_name);
-				context_emit_code(ctx, "xor eax, 2147483648\n");
-				context_emit_code(ctx, "movd %s, eax\n",        reg_name);
-
-				context_reg_free(ctx, tmp_reg);
-			} else {
-				context_emit_code(ctx, "neg %s\n", reg_name);
-			}
+			emit_neg(emit, &result);
 
 			if (!type_is_arithmetic(result.type)) {
-				type_error(ctx, "Operator '-' requires operand of integral or float type");
+				type_error(emit, "Operator '-' requires operand of integral or float type");
 			}
 			
 			break;
 		}
 
 		case TOKEN_OPERATOR_BITWISE_NOT: {
-			context_emit_code(ctx, "not %s\n", reg_name);
+			emit_not(emit, &result);
 
 			if (!type_is_integral(result.type)) {
-				type_error(ctx, "Operator '~' requires operand of integral type");
+				type_error(emit, "Operator '~' requires operand of integral type");
 			}
 
 			break;
 		}
 
 		case TOKEN_OPERATOR_LOGICAL_NOT: {
-			int label = context_new_label(ctx);
+			Result result_one     = result_make_i64(result.type,  1);
+			Result result_neg_one = result_make_i64(result.type, -1);
 
-			context_emit_code(ctx, "xor %s, -1\n", reg_name);
-			context_emit_code(ctx, "and %s, 1\n",  reg_name);
+			emit_xor(emit, &result, &result_neg_one);
+			emit_and(emit, &result, &result_one);
+
+			result_free(emit, &result_one);
+			result_free(emit, &result_neg_one);
 
 			if (!type_is_bool(result.type)) {
-				type_error(ctx, "Operator '!' requires operand of boolean type");
+				type_error(emit, "Operator '!' requires operand of boolean type");
 			}
 
 			break;
@@ -1404,82 +1035,96 @@ static Result codegen_expression_op_pre(Context * ctx, AST_Expression const * ex
 	return result;
 }
 
-static Result codegen_expression_op_post(Context * ctx, AST_Expression const * expr) {
+static Result codegen_expression_op_post(Code_Emitter * emit, AST_Expression const * expr) {
 	assert(expr->type == AST_EXPRESSION_OPERATOR_POST);
 
 	AST_Expression * operand  = expr->expr_op_pre.expr;
 	Token_Type       operator = expr->expr_op_pre.token.type;
 
-	bool by_address = ctx->flags & CTX_FLAG_VAR_BY_ADDRESS;
+	bool by_address = flag_is_set(emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
 
 	// Evaluate operand by address
-	context_flag_set(ctx, CTX_FLAG_VAR_BY_ADDRESS);
-	Result result = codegen_expression(ctx, operand);
+	flag_set(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+	Result result = codegen_expression(emit, operand);
 
-	if (!by_address) context_flag_unset(ctx, CTX_FLAG_VAR_BY_ADDRESS);
-
-	char const * reg_name = get_reg_name_scratch(result.reg, 8);
+	if (!by_address) flag_unset(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
 
 	switch (operator) {
 		case TOKEN_OPERATOR_INC: {
-			int type_size = type_get_size(result.type, ctx->current_scope);
-
-			int reg_address = context_reg_request(ctx);
-			int reg_value   = context_reg_request(ctx);
-
-			context_emit_code(ctx, "mov %s, %s\n", get_reg_name_scratch(reg_address, 8), get_reg_name_scratch(result.reg, 8));
+			Result result_address;
+			Result result_value = result_make_reg(result.type, register_alloc(emit));
 			
-			result.reg = codegen_deref_address(ctx, result.reg, result.type, get_reg_name_scratch(result.reg, 8));
-
-			context_emit_code(ctx, "mov %s, %s\n", get_reg_name_scratch(reg_value, 8), get_reg_name_scratch(result.reg, 8));
-			
-			if (type_is_integral(result.type)) {
-				context_emit_code(ctx, "inc %s\n", get_reg_name_scratch(reg_value, 8));
-			} else if (type_is_pointer(result.type)) {
-				context_emit_code(ctx, "add %s, %i\n", get_reg_name_scratch(reg_value, 8), type_get_size(result.type->base, ctx->current_scope));
+			if (result_is_indirect(&result)) {
+				result_address = result_make_reg(result.type, register_alloc(emit));
+				emit_lea(emit, &result_address, &result);
 			} else {
-				type_error(ctx, "Operator '++' requires operand of integral or pointer type");
+				result_address = result;
 			}
 
-			context_emit_code(ctx, "mov %s [%s], %s\n", get_word_name(type_size), get_reg_name_scratch(reg_address, 8), get_reg_name_scratch(reg_value, type_size));
+			result.by_address = false;
+			result = result_deref(emit, &result_address, false);
 
-			context_reg_free(ctx, reg_address);
-			context_reg_free(ctx, reg_value);
+			int increase;
+
+			if (type_is_integral(result.type)) {
+				increase = 1;
+			} else if (type_is_pointer(result.type)) {
+				increase = type_get_size(result.type->base, emit->current_scope);
+			} else {
+				type_error(emit, "Operator '++' requires operand of integral or pointer type");
+			}
+
+			// Increase using effective address
+			Result result_inc = result_make_sib(result.type, result.reg, 0, 0, increase);
+			emit_lea(emit, &result_value, &result_inc);
+			result_free(emit, &result_inc);
+
+			emit_mov_indirect(emit, &result_address, &result_value);
+
+			result_free(emit, &result_value);
 
 			if (!type_is_integral(result.type) && !type_is_pointer(result.type)) {
-				type_error(ctx, "Operator '++' requires operand of integral or pointer type");
+				type_error(emit, "Operator '++' requires operand of integral or pointer type");
 			}
 
 			break;
 		}
 
 		case TOKEN_OPERATOR_DEC: {
-			int type_size = type_get_size(result.type, ctx->current_scope);
-
-			int reg_address = context_reg_request(ctx);
-			int reg_value   = context_reg_request(ctx);
-
-			context_emit_code(ctx, "mov %s, %s\n", get_reg_name_scratch(reg_address, 8), get_reg_name_scratch(result.reg, 8));
+			Result result_address;
+			Result result_value = result_make_reg(result.type, register_alloc(emit));
 			
-			result.reg = codegen_deref_address(ctx, result.reg, result.type, get_reg_name_scratch(result.reg, 8));
-
-			context_emit_code(ctx, "mov %s, %s\n", get_reg_name_scratch(reg_value, 8), get_reg_name_scratch(result.reg, 8));
-			
-			if (type_is_integral(result.type)) {
-				context_emit_code(ctx, "dec %s\n", get_reg_name_scratch(reg_value, 8));
-			} else if (type_is_pointer(result.type)) {
-				context_emit_code(ctx, "sub %s, %i\n", get_reg_name_scratch(reg_value, 8), type_get_size(result.type->base, ctx->current_scope));
+			if (result_is_indirect(&result)) {
+				result_address = result_make_reg(result.type, register_alloc(emit));
+				emit_lea(emit, &result_address, &result);
 			} else {
-				type_error(ctx, "Operator '--' requires operand of integral or pointer type");
+				result_address = result;
 			}
 
-			context_emit_code(ctx, "mov %s [%s], %s\n", get_word_name(type_size), get_reg_name_scratch(reg_address, 8), get_reg_name_scratch(reg_value, type_size));
+			result.by_address = false;
+			result = result_deref(emit, &result_address, false);
 
-			context_reg_free(ctx, reg_address);
-			context_reg_free(ctx, reg_value);
+			int decrease;
+
+			if (type_is_integral(result.type)) {
+				decrease = 1;
+			} else if (type_is_pointer(result.type)) {
+				decrease = type_get_size(result.type->base, emit->current_scope);
+			} else {
+				type_error(emit, "Operator '--' requires operand of integral or pointer type");
+			}
+
+			// Decrease using effective address
+			Result result_inc = result_make_sib(result.type, result.reg, 0, 0, -decrease);
+			emit_lea(emit, &result_value, &result_inc);
+			result_free(emit, &result_inc);
+
+			emit_mov_indirect(emit, &result_address, &result_value);
+
+			result_free(emit, &result_value);
 
 			if (!type_is_integral(result.type) && !type_is_pointer(result.type)) {
-				type_error(ctx, "Operator '--' requires operand of integral or pointer type");
+				type_error(emit, "Operator '--' requires operand of integral or pointer type");
 			}
 
 			break;
@@ -1491,13 +1136,13 @@ static Result codegen_expression_op_post(Context * ctx, AST_Expression const * e
 	return result;
 }
 
-static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr) {
+static Result codegen_expression_call_func(Code_Emitter * emit, AST_Expression * expr) {
 	assert(expr->type == AST_EXPRESSION_CALL_FUNC);
 	
-	Type const * function_type = type_infer(expr->expr_call.expr_function, ctx->current_scope); // @HACK, @FIXME
+	Type const * function_type = type_infer(expr->expr_call.expr_function, emit->current_scope);
 	
 	if (!type_is_function(function_type)) {
-		type_error(ctx, "ERROR: Attempting to perform function call on non-function expression!");
+		type_error(emit, "ERROR: Attempting to perform function call on non-function expression!");
 	}
 
 	Type const ** arg_types   = function_type->function.args;
@@ -1507,18 +1152,28 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 	int call_arg_count = expr->expr_call.arg_count;
 	
 	if (call_arg_count != arg_count) {
-		type_error(ctx, "Incorrect number of arguments to function! Provided %i, needed %i", call_arg_count, arg_count);
+		type_error(emit, "Incorrect number of arguments to function! Provided %i, needed %i", call_arg_count, arg_count);
 	}
 
-	bool pushed_regs_scratch[SCRATCH_REG_COUNT] = { false, false, false, false, false, false, false };
+	// https://docs.microsoft.com/en-us/cpp/build/x64-calling-convention?view=msvc-160
+	static Register const volatile_registers[] = { RAX, RBX, RCX, RDX, R8, R9, R10, R11, XMM0, XMM1, XMM2, XMM3, XMM4, XMM5 };
+
+	bool pushed_regs[ARRAY_COUNT(volatile_registers)] = { false };
 	int num_pushed_regs = 0;
 
-	for (int i = 0; i < SCRATCH_REG_COUNT; i++) {
-		if (ctx->reg_mask_scratch & (1 << i)) {
-			pushed_regs_scratch[i] = true;
+	// Preserve volatile registers if needed
+	for (int i = 0; i < ARRAY_COUNT(volatile_registers); i++) {
+		Register reg = volatile_registers[i];
+		if (register_is_reserved(emit, reg)) {
+			pushed_regs[i] = true;
 			num_pushed_regs++;
 
-			context_emit_code(ctx, "push %s ; preserve\n", get_reg_name_scratch(i, 8));
+			if (register_is_float(reg)) {
+				emit_asm(emit, "sub rsp, 8 ; preserve XMM\n");
+				emit_asm(emit, "movsd QWORD [rsp], %s\n", get_reg_name(reg, 8));
+			} else {
+				emit_asm(emit, "push %s ; preserve\n", get_reg_name(reg, 8));
+			}
 		}
 	}
 
@@ -1534,8 +1189,8 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 		if (i < 4) {
 			arg_size += 8;
 		} else {
-			int type_size  = type_get_size (arg_type, ctx->current_scope);
-			int type_align = type_get_align(arg_type, ctx->current_scope);
+			int type_size  = type_get_size (arg_type, emit->current_scope);
+			int type_align = type_get_align(arg_type, emit->current_scope);
 
 			align(&arg_size, type_align);
 			arg_size += type_size;
@@ -1551,170 +1206,152 @@ static Result codegen_expression_call_func(Context * ctx, AST_Expression * expr)
 	if (num_pushed_regs & 1) arg_size += 8; // Pushed an uneven number of registers, add 8 to realign to multiple of 16
 
 	// Reserve stack space for arguments
-	context_emit_code(ctx, "sub rsp, %i ; reserve shadow space and %i arguments\n", arg_size, call_arg_count);
+	emit_asm(emit, "sub rsp, %i ; reserve shadow space and %i arguments\n", arg_size, call_arg_count);
 
 	// Evaluate arguments and put them into the right register / stack address
-	// The first 4 arguments go in registers, the rest spills onto the stack
+	// The first 4 arguments go in registers, the rest spill onto the stack
 	for (int i = 0; i < call_arg_count; i++) {
-		Result result_arg = codegen_expression(ctx, expr->expr_call.args[i].expr);
+		Result result_arg = codegen_expression(emit, expr->expr_call.args[i].expr);
 
 		Type const * arg_type = arg_types[i];
 
 		if (!types_unifiable(result_arg.type, arg_type)) {
-			char str_type_given   [128];
-			char str_type_expected[128];
+			char str_type_given   [128]; type_to_string(result_arg.type, str_type_given,    sizeof(str_type_given));
+			char str_type_expected[128]; type_to_string(arg_type,        str_type_expected, sizeof(str_type_expected));
 
-			type_to_string(result_arg.type, str_type_given,    sizeof(str_type_given));
-			type_to_string(arg_type,        str_type_expected, sizeof(str_type_expected));
-
-			type_error(ctx, "Argument %i in function call has incorrect type. Given type: '%s', expected type: '%s'", i + 1, str_type_given, str_type_expected);
+			type_error(emit, "Argument %i in function call has incorrect type. Given type: '%s', expected type: '%s'", i + 1, str_type_given, str_type_expected);
 		}
+		result_arg.type = arg_type;
 
-		char const * mov = "mov";
-		if (type_is_f32(result_arg.type)) {
-			mov = "movss";
-		} else if (type_is_f64(result_arg.type)) {
-			mov = "movsd";
-		}
+		Result result_rsp = result_make_sib(arg_type, RSP, 0, 0, arg_offsets[i]);
+		emit_mov(emit, &result_rsp, &result_arg);
 
-		int type_size = type_get_size(arg_type, ctx->current_scope);
-		char const * word = get_word_name(type_size);
-
-		context_emit_code(ctx, "%s %s [rsp + %i], %s ; arg %i\n", mov, word, arg_offsets[i], get_reg_name_scratch(result_arg.reg, type_size), i + 1);
-
-		context_reg_free(ctx, result_arg.reg);
+		result_free(emit, &result_rsp);
+		result_free(emit, &result_arg);
 	}
 	
 	for (int i = 0; i < MIN(4, call_arg_count); i++) {
-		char const * mov = "mov";
-		if (type_is_f32(arg_types[i])) {
-			mov = "movss";
-		} else if (type_is_f64(arg_types[i])) {
-			mov = "movsd";
-		}
+		Result result_reg = result_make_reg(arg_types[i], get_call_register(i, type_is_float(arg_types[i])));
+		Result result_rsp = result_make_sib(arg_types[i], RSP, 0, 0, arg_offsets[i]);
 
-		int type_size = type_get_size(arg_types[i], ctx->current_scope);
-
-		context_emit_code(ctx, "%s %s, %s [rsp + %i] ; arg %i via register\n", mov, get_reg_name_call(i, type_size, type_is_float(arg_types[i])), get_word_name(type_size), i * 8, i + 1);
+		emit_mov(emit, &result_reg, &result_rsp);
 	}
 
 	Function_Def * function_def = NULL;
 
 	if (expr->expr_call.expr_function->type == AST_EXPRESSION_VAR) {
 		char const * var_name = expr->expr_call.expr_function->expr_var.name;
-		function_def = scope_get_function_def(ctx->current_scope, var_name);
+		function_def = scope_get_function_def(emit->current_scope, var_name);
 	}
 
 	bool is_function_ptr = function_def == NULL;
 
 	if (is_function_ptr) {
-		Result result_function = codegen_expression(ctx, expr->expr_call.expr_function);
-		context_emit_code(ctx, "call [%s]\n", get_reg_name_scratch(result_function.reg, 8));
-		context_reg_free(ctx, result_function.reg);
+		Result result_function = codegen_expression(emit, expr->expr_call.expr_function);
+		result_ensure_in_register(emit, &result_function);
+		emit_asm(emit, "call [%s]\n", get_reg_name(result_function.reg, 8));
+		register_free(emit, result_function.reg);
 	} else {
-		context_emit_code(ctx, "call %s\n", function_def->name);
+		emit_asm(emit, "call %s\n", function_def->name);
 	}
 
-	context_emit_code(ctx, "add rsp, %i ; pop arguments\n", arg_size);
+	emit_asm(emit, "add rsp, %i ; pop arguments\n", arg_size);
 
-	// Check if any registers were pushed before this call and need to be restored
-	for (int i = MIN(3, call_arg_count - 1); i >= 0; i--) {
-		context_call_reg_mem_free(ctx, i);
-	}
-	
-	for (int i = SCRATCH_REG_COUNT - 1; i >= 0; i--) {
-		if (pushed_regs_scratch[i]) {
-			context_emit_code(ctx, "pop %s ; restore\n", get_reg_name_scratch(i, 8));
+	// Restore volatile registers
+	if (num_pushed_regs > 0) {
+		for (int i = ARRAY_COUNT(volatile_registers) - 1; i >= 0; i--) {
+			if (pushed_regs[i]) {
+				Register reg = volatile_registers[i];
+				if (register_is_float(reg)) {
+					emit_asm(emit, "movsd %s, QWORD [rsp] ; restore XMM\n", get_reg_name(reg, 8));
+					emit_asm(emit, "add rsp, 8\n");
+				} else {
+					emit_asm(emit, "pop %s ; restore\n", get_reg_name(reg, 8));
+				}
+			}
 		}
 	}
 
-	Result result;
-	result.type = return_type;
+	if (!type_is_void(return_type)) {
+		Register reg = type_is_float(return_type) ? XMM0 : RAX;
+		Result result_rax = result_make_reg(return_type, reg);
 
-	if (type_is_float(result.type)) {
-		result.reg = context_reg_request_float(ctx);
+		Result result = result_make_reg(return_type, type_is_float(return_type) ? register_alloc_float(emit) : register_alloc(emit));
+		emit_mov(emit, &result, &result_rax);
 
-		if (type_is_f32(result.type)) {
-			context_emit_code(ctx, "movss %s, xmm0 ; get return value (f32)\n", get_reg_name_scratch(result.reg, 8));
-		} else {
-			context_emit_code(ctx, "movsd %s, xmm0 ; get return value (f64)\n", get_reg_name_scratch(result.reg, 8));
-		}
-	} else {
-		result.reg = context_reg_request(ctx);
-
-		context_emit_code(ctx, "mov %s, rax ; get return value\n", get_reg_name_scratch(result.reg, 8));
+		return result;
 	}
 
-	return result;
+	return result_make_u64(return_type, 0);
 }
 
-static Result codegen_expression(Context * ctx, AST_Expression const * expr) {
+static Result codegen_expression(Code_Emitter * emit, AST_Expression const * expr) {
 	assert(expr->height >= 0);
 
-	context_trace_push_expr(ctx, expr);
+	emit_trace_push_expr(emit, expr);
 
 	Result result;
 	switch (expr->type) {
-		case AST_EXPRESSION_CONST: result = codegen_expression_const(ctx, expr); break;
-		case AST_EXPRESSION_VAR:   result = codegen_expression_var  (ctx, expr); break;
+		case AST_EXPRESSION_CONST: result = codegen_expression_const(emit, expr); break;
+		case AST_EXPRESSION_VAR:   result = codegen_expression_var  (emit, expr); break;
 
-		case AST_EXPRESSION_ARRAY_ACCESS:  result = codegen_expression_array_access (ctx, expr); break;
-		case AST_EXPRESSION_STRUCT_MEMBER: result = codegen_expression_struct_member(ctx, expr); break;
+		case AST_EXPRESSION_ARRAY_ACCESS:  result = codegen_expression_array_access (emit, expr); break;
+		case AST_EXPRESSION_STRUCT_MEMBER: result = codegen_expression_struct_member(emit, expr); break;
 		
-		case AST_EXPRESSION_CAST:   result = codegen_expression_cast  (ctx, expr); break;
-		case AST_EXPRESSION_SIZEOF: result = codegen_expression_sizeof(ctx, expr); break;
+		case AST_EXPRESSION_CAST:   result = codegen_expression_cast  (emit, expr); break;
+		case AST_EXPRESSION_SIZEOF: result = codegen_expression_sizeof(emit, expr); break;
 
-		case AST_EXPRESSION_OPERATOR_BIN:  result = codegen_expression_op_bin (ctx, expr); break;
-		case AST_EXPRESSION_OPERATOR_PRE:  result = codegen_expression_op_pre (ctx, expr); break;
-		case AST_EXPRESSION_OPERATOR_POST: result = codegen_expression_op_post(ctx, expr); break;
+		case AST_EXPRESSION_OPERATOR_BIN:  result = codegen_expression_op_bin (emit, expr); break;
+		case AST_EXPRESSION_OPERATOR_PRE:  result = codegen_expression_op_pre (emit, expr); break;
+		case AST_EXPRESSION_OPERATOR_POST: result = codegen_expression_op_post(emit, expr); break;
 
-		case AST_EXPRESSION_CALL_FUNC: result = codegen_expression_call_func(ctx, expr); break;
+		case AST_EXPRESSION_CALL_FUNC: result = codegen_expression_call_func(emit, expr); break;
 
 		default: error(ERROR_CODEGEN);
 	}
 	
-	context_trace_pop(ctx);
+	emit_trace_pop(emit);
 
 	return result;
 }
 
-static void codegen_statement_statements(Context * ctx, AST_Statement const * stat) {
+static void codegen_statement_statements(Code_Emitter * emit, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENTS);
 
-	if (stat->stat_stats.head) codegen_statement(ctx, stat->stat_stats.head);
-	if (stat->stat_stats.cons) codegen_statement(ctx, stat->stat_stats.cons);
+	if (stat->stat_stats.head) codegen_statement(emit, stat->stat_stats.head);
+	if (stat->stat_stats.cons) codegen_statement(emit, stat->stat_stats.cons);
 }
 
-static void codegen_statement_expression(Context * ctx, AST_Statement const * stat) {
+static void codegen_statement_expression(Code_Emitter * emit, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_EXPR);
 
-	if (ctx->emit_debug_lines) {
+	if (emit->emit_debug_lines) {
 		char str[1024];
 		ast_print_expression(stat->stat_expr.expr, str, sizeof(str));
-		context_emit_code(ctx, "; %s\n", str);
+		emit_asm(emit, "; %s\n", str);
 	}
 
-	Result result = codegen_expression(ctx, stat->stat_expr.expr);
-	context_reg_free(ctx, result.reg);
+	Result result = codegen_expression(emit, stat->stat_expr.expr);
+	result_free(emit, &result);
 }
 
-static void codegen_statement_def_var(Context * ctx, AST_Statement const * stat) {
+static void codegen_statement_def_var(Code_Emitter * emit, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_DEF_VAR);
 	
-	if (ctx->emit_debug_lines) {
+	if (emit->emit_debug_lines) {
 		char str[1024];
 		ast_print_statement(stat, str, sizeof(str));
-		context_emit_code(ctx, "; %s", str);
+		emit_asm(emit, "; %s", str);
 	}
 
 	char const * var_name = stat->stat_def_var.name;
 	
-	Variable const * var = scope_get_variable(ctx->current_scope, var_name);
+	Variable const * var = scope_get_variable(emit->current_scope, var_name);
 
-	if (scope_is_global(ctx->current_scope)) {
+	if (scope_is_global(emit->current_scope)) {
 		if (stat->stat_def_var.assign) {
-			AST_Expression const * literal      = stat->stat_def_var.assign->expr_op_bin.expr_right;
-			Token_Type             literal_type = literal->expr_const.token.type;
+			AST_Expression const * literal = stat->stat_def_var.assign->expr_op_bin.expr_right;
+			Token_Type literal_type = literal->expr_const.token.type;
 			
 			if (literal->type != AST_EXPRESSION_CONST) {
 				printf("ERROR: Globals can only be initialized to constant values! Variable name: '%s'", var_name); 
@@ -1724,58 +1361,54 @@ static void codegen_statement_def_var(Context * ctx, AST_Statement const * stat)
 			switch (literal_type) {
 				case TOKEN_LITERAL_INT: 
 				case TOKEN_LITERAL_BOOL: {
-					codegen_add_global(ctx, var, literal->expr_const.token.sign, literal->expr_const.token.value_int);
-
+					emit_global(emit, var, literal->expr_const.token.sign, literal->expr_const.token.value_int);
 					break;
 				}
-
 				case TOKEN_LITERAL_STRING: {
-					codegen_add_string_literal(ctx, var_name, literal->expr_const.token.value_str);
-
+					emit_string_literal(emit, var_name, literal->expr_const.token.value_str);
 					break;
 				}
-
 				default: error(ERROR_CODEGEN);
 			}
 		} else {
-			codegen_add_global(ctx, var, false, 0);
+			emit_global(emit, var, false, 0);
 		}
 	} else {
-		char var_address[32];
-		variable_get_address(var, var_address, sizeof(var_address));
-
-		int type_size = type_get_size(var->type, ctx->current_scope);
-
 		if (stat->stat_def_var.assign) {
-			Result result = codegen_expression(ctx, stat->stat_def_var.assign);
-
-			context_reg_free(ctx, result.reg);
+			Result result = codegen_expression(emit, stat->stat_def_var.assign);
+			result_free(emit, &result);
 		} else {
-			if (type_is_struct(var->type) || type_is_array(var->type)) {
-				int aggregate_size = type_get_size(var->type, ctx->current_scope);
+			Result result_var_address = variable_get_address(var);
+			
+			int type_size = type_get_size(var->type, emit->current_scope);
 
-				context_emit_code(ctx, "lea rdi, QWORD [%s] ; zero initialize '%s'\n", var_address, var_name);
-				context_emit_code(ctx, "xor rax, rax\n");
-				context_emit_code(ctx, "mov ecx, %i\n", aggregate_size);
-				context_emit_code(ctx, "rep stosb\n");
+			if (type_is_struct(var->type) || type_is_array(var->type)) {
+				char var_address[RESULT_STR_BUF_SIZE]; result_to_str(var_address, sizeof(var_address), &result_var_address);
+
+				emit_asm(emit, "lea rdi, %s ; zero initialize '%s'\n", var_address, var_name);
+				emit_asm(emit, "xor rax, rax\n");
+				emit_asm(emit, "mov ecx, %i\n", type_size);
+				emit_asm(emit, "rep stosb\n");
 			} else {
-				context_emit_code(ctx, "mov %s [%s], 0 ; zero initialize '%s'\n", get_word_name(type_size), var_address, var_name);
+				char var_address[RESULT_STR_BUF_SIZE]; result_to_str_sized(var_address, sizeof(var_address), &result_var_address, type_size);
+
+				emit_asm(emit, "mov %s, 0 ; zero initialize '%s'\n", var_address, var_name);
 			}
 		}
 	}
 }
 
-static void codegen_statement_def_func(Context * ctx, AST_Statement const * stat) {
+static void codegen_statement_def_func(Code_Emitter * emit, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_DEF_FUNC);
 
 	char const * function_name = stat->stat_def_func.function_def->name;
-	ctx->current_function_name = function_name;
+	emit->current_function_name = function_name;
 
-	context_emit_code(ctx, "%s:\n", function_name);
-	ctx->indent++;
+	emit_asm(emit, "%s:\n", function_name);
+	emit->indent++;
 
-	context_emit_code(ctx, "push rbp ; save RBP\n");
-	context_emit_code(ctx, "mov rbp, rsp ; stack frame\n");
+	emit_asm(emit, "push rbp ; save RBP\n");
+	emit_asm(emit, "mov rbp, rsp ; stack frame\n");
 	
 	Scope * scope_args = stat->stat_def_func.scope_args;
 
@@ -1793,7 +1426,9 @@ static void codegen_statement_def_func(Context * ctx, AST_Statement const * stat
 		}
 
 		int type_size = type_get_size(var->type, scope_args);
-		context_emit_code(ctx, "%s %s [rbp + %i], %s ; push arg %i \n", mov, get_word_name(type_size), var->offset, get_reg_name_call(i, type_size, type_is_float(var->type)), i);
+		Register reg = get_call_register(i, type_is_float(var->type));
+
+		emit_asm(emit, "%s %s [rbp + %i], %s ; push arg %i\n", mov, get_word_name(type_size), var->offset, get_reg_name(reg, type_size), i);
 	}
 
 	// Reserve space on stack for local variables
@@ -1806,338 +1441,352 @@ static void codegen_statement_def_func(Context * ctx, AST_Statement const * stat
 	}
 
 	if (stack_frame->vars_len > 0) {
-		context_emit_code(ctx, "mov rax, %i\n", stack_frame_size_aligned);
-		context_emit_code(ctx, "call __chkstk\n");
-		context_emit_code(ctx, "sub rsp, rax ; reserve stack space for %i locals\n", stack_frame->vars_len);
+		emit_asm(emit, "mov rax, %i\n", stack_frame_size_aligned);
+		emit_asm(emit, "call __chkstk\n");
+		emit_asm(emit, "sub rsp, rax ; reserve stack space for %i locals\n", stack_frame->vars_len);
 	}
 
-	context_emit_code(ctx, "\n");
+	emit_asm(emit, "\n");
 
 	// Function body
-	codegen_statement(ctx, stat->stat_def_func.body);
+	codegen_statement(emit, stat->stat_def_func.body);
 
-	context_emit_code(ctx, "xor rax, rax ; Default return value 0\n");
-	context_emit_code(ctx, "L_function_%s_exit:\n", stat->stat_def_func.function_def->name);
-	context_emit_code(ctx, "mov rsp, rbp\n");
-	context_emit_code(ctx, "pop rbp\n");
-	context_emit_code(ctx, "ret\n");
-	context_emit_code(ctx, "\n");
+	emit_asm(emit, "xor rax, rax ; Default return value 0\n");
+	emit_asm(emit, "L_function_%s_exit:\n", stat->stat_def_func.function_def->name);
+	emit_asm(emit, "mov rsp, rbp\n");
+	emit_asm(emit, "pop rbp\n");
+	emit_asm(emit, "ret\n");
+	emit_asm(emit, "\n");
 	
-	ctx->current_scope = ctx->current_scope->prev;
-	ctx->current_function_name = NULL;
+	emit->current_scope = emit->current_scope->prev;
+	emit->current_function_name = NULL;
 
-	ctx->indent--;
+	emit->indent--;
 }
 
-static void codegen_statement_extern(Context * ctx, AST_Statement const * stat) {
+static void codegen_statement_extern(Code_Emitter * emit, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_EXTERN);
 
-	context_emit_code(ctx, "extern %s\n", stat->stat_extern.function_def->name);
+	emit_asm(emit, "extern %s\n", stat->stat_extern.function_def->name);
 }
 
-static void codegen_statement_export(Context * ctx, AST_Statement const * stat) {
+static void codegen_statement_export(Code_Emitter * emit, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_EXPORT);
 
 	char const * name = stat->stat_export.name;
 
 	// Lookup function to make sure it exists
-	Function_Def * function_def = scope_get_function_def(ctx->current_scope, name);
+	Function_Def * function_def = scope_get_function_def(emit->current_scope, name);
 	if (function_def == NULL) {
 		printf("ERROR: Trying to export function '%s' that is not in scope!", name);
 		error(ERROR_SCOPE);
 	}
 
-	context_emit_code(ctx, "global %s\n", name);
-	context_emit_code(ctx, "export %s\n", name);
+	emit_asm(emit, "global %s\n", name);
+	emit_asm(emit, "export %s\n", name);
 }
 
-static void codegen_statement_if(Context * ctx, AST_Statement const * stat) {
+static void codegen_statement_if(Code_Emitter * emit, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_IF);
 
-	if (ctx->emit_debug_lines) {
+	if (emit->emit_debug_lines) {
 		char str[1024];
 		ast_print_expression(stat->stat_if.condition, str, sizeof(str));
-		context_emit_code(ctx, "; if (%s)\n", str);
+		emit_asm(emit, "; if (%s)\n", str);
 	}
 
-	Result result = codegen_expression(ctx, stat->stat_if.condition);
-	context_reg_free(ctx, result.reg);
+	Result result = codegen_expression(emit, stat->stat_if.condition);
+	
+	if (result.form == RESULT_IMMEDIATE) {
+		if (result.u64 != 0) {
+			codegen_statement(emit, stat->stat_if.case_true);
+		} else if (stat->stat_if.case_false != NULL) {
+			codegen_statement(emit, stat->stat_if.case_false);
+		}
+		return;
+	}
+	
+	int  label = get_new_label(emit);
+	char label_str[32];
 
-	int label = context_new_label(ctx);
-	context_emit_code(ctx, "cmp %s, 0\n", get_reg_name_scratch(result.reg, 8));
+	Condition_Code condition_code = condition_code_invert(result_get_condition_code(emit, &result));
+	result_free(emit, &result);
 
 	if (stat->stat_if.case_false == NULL) {
-		context_emit_code(ctx, "je L_exit%i\n", label);
-		
-		ctx->indent++;
-		codegen_statement(ctx, stat->stat_if.case_true);
-		ctx->indent--;
+		sprintf_s(label_str, sizeof(label_str), "L_exit%i", label);
+		emit_jcc(emit, condition_code, label_str);
+
+		emit->indent++;
+		codegen_statement(emit, stat->stat_if.case_true);
+		emit->indent--;
 	} else {
-		if (ctx->emit_debug_lines) {
-			context_emit_code(ctx, "; else\n");
-		}
-
-		context_emit_code(ctx, "je L_else%i\n", label);
-
-		ctx->indent++;
-		codegen_statement(ctx, stat->stat_if.case_true);
-		ctx->indent--;
-
-		context_emit_code(ctx, "jmp L_exit%i\n", label);
-		context_emit_code(ctx, "L_else%i:\n",    label);
+		sprintf_s(label_str, sizeof(label_str), "L_else%i", label);
+		emit_jcc(emit, condition_code, label_str);
 		
-		ctx->indent++;
-		codegen_statement(ctx, stat->stat_if.case_false);
-		ctx->indent--;
+		emit->indent++;
+		codegen_statement(emit, stat->stat_if.case_true);
+		emit->indent--;
+
+		emit_asm(emit, "jmp L_exit%i\n", label);
+		emit_asm(emit, "L_else%i:\n",    label);
+		
+		emit->indent++;
+		codegen_statement(emit, stat->stat_if.case_false);
+		emit->indent--;
 	}
 
-	context_emit_code(ctx, "L_exit%i:\n", label);
+	emit_asm(emit, "L_exit%i:\n", label);
 }
 
-static void codegen_statement_while(Context * ctx, AST_Statement const * stat) {
+static void codegen_statement_while(Code_Emitter * emit, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_WHILE);
 	
-	if (ctx->emit_debug_lines) {
+	if (emit->emit_debug_lines) {
 		char str[1024];
 		ast_print_expression(stat->stat_while.condition, str, sizeof(str));
-		context_emit_code(ctx, "; while (%s)\n", str);
+		emit_asm(emit, "; while (%s)\n", str);
 	}
 
-	int label = context_new_label(ctx);
-	context_emit_code(ctx, "L_loop%i:\n", label);
+	int  label = get_new_label(emit);
+	char label_str[32];
+
+	emit_asm(emit, "L_loop%i:\n", label);
 	
-	Result result = codegen_expression(ctx, stat->stat_while.condition);
-	context_reg_free(ctx, result.reg);
+	Result result = codegen_expression(emit, stat->stat_while.condition);
+	
+	if (result.form == RESULT_IMMEDIATE) {
+		if (result.u64 == 0) {
+			return;
+		}
+	} else {
+		Condition_Code condition_code = condition_code_invert(result_get_condition_code(emit, &result));
+		sprintf_s(label_str, sizeof(label_str), "L_exit%i", label);
+		emit_jcc(emit, condition_code, label_str);
+	}
+	
+	result_free(emit, &result);
 
-	context_emit_code(ctx, "cmp %s, 0\n", get_reg_name_scratch(result.reg, 8));
-	context_emit_code(ctx, "je L_exit%i\n", label);
+	int prev_loop_label = emit->current_loop_label;
 
-	int prev_loop_label = ctx->current_loop_label;
+	emit->current_loop_label = label;
+	emit->indent++;
+	codegen_statement(emit, stat->stat_while.body);
+	emit->indent--;
+	emit->current_loop_label = prev_loop_label;
 
-	ctx->current_loop_label = label;
-	ctx->indent++;
-	codegen_statement(ctx, stat->stat_while.body);
-	ctx->indent--;
-	ctx->current_loop_label = prev_loop_label;
-
-	context_emit_code(ctx, "jmp L_loop%i\n", label);
-	context_emit_code(ctx, "L_exit%i:\n", label);
+	emit_asm(emit, "jmp L_loop%i\n", label);
+	emit_asm(emit, "L_exit%i:\n", label);
 }
 
-static void codegen_statement_break(Context * ctx, AST_Statement const * stat) {
+static void codegen_statement_break(Code_Emitter * emit, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_BREAK);
 
-	if (ctx->current_loop_label == -1) {
+	if (emit->current_loop_label == -1) {
 		printf("ERROR: Cannot use 'break' outside of loop!");
 		error(ERROR_CODEGEN);
 	}
 
-	if (ctx->emit_debug_lines) {
-		context_emit_code(ctx, "; break\n");
+	if (emit->emit_debug_lines) {
+		emit_asm(emit, "; break\n");
 	}
 
-	context_emit_code(ctx, "jmp L_exit%i\n", ctx->current_loop_label);
+	emit_asm(emit, "jmp L_exit%i\n", emit->current_loop_label);
 }
 
-static void codegen_statement_continue(Context * ctx, AST_Statement const * stat) {
+static void codegen_statement_continue(Code_Emitter * emit, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_CONTINUE);
 	
-	if (ctx->current_loop_label == -1) {
+	if (emit->current_loop_label == -1) {
 		printf("ERROR: Cannot use 'continue' outside of loop!");
 		error(ERROR_CODEGEN);
 	}
 	
-	if (ctx->emit_debug_lines) {
-		context_emit_code(ctx, "; continue\n");
+	if (emit->emit_debug_lines) {
+		emit_asm(emit, "; continue\n");
 	}
 
-	context_emit_code(ctx, "jmp L_loop%i\n", ctx->current_loop_label);
+	emit_asm(emit, "jmp L_loop%i\n", emit->current_loop_label);
 }
 
-static void codegen_statement_return(Context * ctx, AST_Statement const * stat) {
+static void codegen_statement_return(Code_Emitter * emit, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_RETURN);
 	
-	Function_Def * func_def = scope_get_function_def(ctx->current_scope, ctx->current_function_name);
+	Function_Def * func_def = scope_get_function_def(emit->current_scope, emit->current_function_name);
 	assert(func_def);
 
 	if (stat->stat_return.expr) {
-		if (ctx->emit_debug_lines) {
+		if (emit->emit_debug_lines) {
 			char str[1024];
 			ast_print_expression(stat->stat_return.expr, str, sizeof(str));
-			context_emit_code(ctx, "; return %s\n", str);
+			emit_asm(emit, "; return %s\n", str);
 		}
 
-		Result result = codegen_expression(ctx, stat->stat_return.expr);
+		Result result = codegen_expression(emit, stat->stat_return.expr);
 
 		if (type_is_struct(result.type)) {
-			type_error(ctx, "Cannot return structs by value from function");
+			type_error(emit, "Cannot return structs by value from function");
 		}
 
 		if (!types_unifiable(result.type, func_def->return_type)) {
 			char str_ret_type[128]; type_to_string(result.type,           str_ret_type, sizeof(str_ret_type));
 			char str_def_type[128]; type_to_string(func_def->return_type, str_def_type, sizeof(str_def_type));
 
-			type_error(ctx, "Return statement in function '%s' cannot unify types '%s' and '%s'", ctx->current_function_name, str_ret_type, str_def_type);
+			type_error(emit, "Return statement in function '%s' cannot unify types '%s' and '%s'", emit->current_function_name, str_ret_type, str_def_type);
 		}
 		
 		if (type_is_void(result.type)) {
-			type_error(ctx, "Return statement in function '%s' cannot return void expression!", ctx->current_function_name);
+			type_error(emit, "Return statement in function '%s' cannot return void expression!", emit->current_function_name);
 		}
 
-		if (type_is_f32(result.type)) {
-			context_emit_code(ctx, "movss xmm0, %s ; return via xmm0\n", get_reg_name_scratch(result.reg, 8));
-		} else if (type_is_f64(result.type)) {
-			context_emit_code(ctx, "movsd xmm0, %s ; return via xmm0\n", get_reg_name_scratch(result.reg, 8));
+		Result result_ret;
+		if (type_is_float(result.type)) {
+			result_ret = result_make_reg(result.type, XMM0);
 		} else {
-			context_emit_code(ctx, "mov rax, %s ; return via rax\n", get_reg_name_scratch(result.reg, 8));
+			result_ret = result_make_reg(result.type, RAX);
 		}
 
-		context_reg_free(ctx, result.reg);
+		if (result.by_address) {
+			emit_lea(emit, &result_ret, &result);
+		} else {
+			emit_mov(emit, &result_ret, &result);
+		}
+
+		result_free(emit, &result);
 	} else {		
-		if (ctx->emit_debug_lines) {
-			context_emit_code(ctx, "; return\n");
+		if (emit->emit_debug_lines) {
+			emit_asm(emit, "; return\n");
 		}
 
 		if (!type_is_void(func_def->return_type)) {
 			char str_ret_type[128];
 			type_to_string(func_def->return_type, str_ret_type, sizeof(str_ret_type));
 
-			type_error(ctx, "Return statement without expression in function '%s', which should return type '%s'", ctx->current_function_name, str_ret_type);
+			type_error(emit, "Return statement without expression in function '%s', which should return type '%s'", emit->current_function_name, str_ret_type);
 		}
 
-		context_emit_code(ctx, "mov rax, 0\n");
+		emit_asm(emit, "xor rax, rax\n");
 	}
 	
-	context_emit_code(ctx, "jmp L_function_%s_exit\n", ctx->current_scope->variable_buffer->name);
+	emit_asm(emit, "jmp L_function_%s_exit\n", emit->current_scope->variable_buffer->name);
 }
 
-static void codegen_statement_block(Context * ctx, AST_Statement const * stat) {
+static void codegen_statement_block(Code_Emitter * emit, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_BLOCK);
 
-	ctx->current_scope = stat->stat_block.scope;
+	emit->current_scope = stat->stat_block.scope;
 
-	if (stat->stat_block.stat) codegen_statement(ctx, stat->stat_block.stat);
+	if (stat->stat_block.stat) codegen_statement(emit, stat->stat_block.stat);
 
-	ctx->current_scope = ctx->current_scope->prev;
+	emit->current_scope = emit->current_scope->prev;
 }
 
-static void codegen_statement_program(Context * ctx, AST_Statement const * stat) {
+static void codegen_statement_program(Code_Emitter * emit, AST_Statement const * stat) {
 	assert(stat->type == AST_STATEMENT_PROGRAM);
 
-	ctx->current_scope = stat->stat_program.global_scope;
+	emit->current_scope = stat->stat_program.global_scope;
 
-	Function_Def * main_def = scope_lookup_function_def(ctx->current_scope, "main");
+	Function_Def * main_def = scope_lookup_function_def(emit->current_scope, "main");
 	
-	context_emit_code(ctx, "__chkstk: ; touch stack at page size offsets (4096 bytes) to ensure pages are commited\n");
-	ctx->indent++;
-	context_emit_code(ctx, "sub rsp, 16\n");
-	context_emit_code(ctx, "mov QWORD [rsp], r10\n");
-	context_emit_code(ctx, "mov QWORD [rsp + 8], r11\n");
-	context_emit_code(ctx, "xor r11, r11\n");
-	context_emit_code(ctx, "lea r10, [rsp + 24]\n");
-	context_emit_code(ctx, "sub r10, rax\n");
-	context_emit_code(ctx, "cmovb r10, r11\n");
-	context_emit_code(ctx, "mov r11, QWORD gs:[16]\n");
-	context_emit_code(ctx, "cmp r10, r11\n");
-	context_emit_code(ctx, "jae done\n");
-	context_emit_code(ctx, "and r10w, 0F000h\n\n");
-	context_emit_code(ctx, "commit_page:\n");
-	context_emit_code(ctx, "lea r11, [r11 - 4096]\n");
-	context_emit_code(ctx, "mov BYTE [r11], 0\n");
-	context_emit_code(ctx, "cmp r10, r11\n");
-	context_emit_code(ctx, "jne commit_page\n\n");
-	context_emit_code(ctx, "done:\n");
-	context_emit_code(ctx, "mov r10, QWORD [rsp]\n");
-	context_emit_code(ctx, "mov r11, QWORD [rsp+8]\n");
-	context_emit_code(ctx, "add rsp, 16\n");
-	context_emit_code(ctx, "ret\n\n");
-	ctx->indent--;
+	emit_asm(emit, "__chkstk: ; touch stack at page size offsets (4096 bytes) to ensure pages are commited\n");
+	emit->indent++;
+	emit_asm(emit, "xor r11, r11\n");
+	emit_asm(emit, "lea r10, [rsp + 8]\n");
+	emit_asm(emit, "sub r10, rax\n");
+	emit_asm(emit, "cmovb r10, r11\n");
+	emit_asm(emit, "mov r11, QWORD gs:[16]\n");
+	emit_asm(emit, "cmp r10, r11\n");
+	emit_asm(emit, "jae __chkstk_done\n");
+	emit_asm(emit, "and r10w, 0F000h\n\n");
+	emit_asm(emit, "__chkstk_commit_page:\n");
+	emit_asm(emit, "lea r11, [r11 - 4096]\n");
+	emit_asm(emit, "mov BYTE [r11], 0\n");
+	emit_asm(emit, "cmp r10, r11\n");
+	emit_asm(emit, "jne __chkstk_commit_page\n\n");
+	emit_asm(emit, "__chkstk_done:\n");
+	emit_asm(emit, "ret\n\n");
+	emit->indent--;
 
 	if (main_def) {
-		if (ctx->needs_main) {
+		if (emit->needs_main) {
 			bool main_valid = false;
 			bool needs_args = false;
 
 			if (main_def->arg_count == 0) {
 				main_valid = true;
 			} else if (main_def->arg_count == 1) {
-				main_valid = 
-					type_is_pointer(main_def->args[0].type) &&
-					type_is_u8     (main_def->args[0].type->base); // Arg should be pointer to char
+				main_valid = type_is_string(main_def->args[0].type); // Argument to main should be string
 				needs_args = true;
 			}
 
 			if (!main_valid) {
-				type_error(ctx, "Entry point 'main' has invalid arguments!\nShould have either 0 arguments or 1 (char *)\n");
+				type_error(emit, "Entry point 'main' has invalid arguments!\nShould have either 0 arguments or 1 (char *)\n");
 			}
 
-			context_emit_code(ctx, "global __start\n");
-			context_emit_code(ctx, "__start:\n");
-			ctx->indent++;
-			context_emit_code(ctx, "sub rsp, 32 + 8\n");
+			emit_asm(emit, "global __start\n");
+			emit_asm(emit, "__start:\n");
+			emit->indent++;
+			emit_asm(emit, "sub rsp, 32 + 8\n");
 
 			if (needs_args) {
-				context_emit_code(ctx, "call GetCommandLineA\n");
-				context_emit_code(ctx, "mov [rsp], rax\n");
-				context_emit_code(ctx, "mov rcx, rax\n");
+				emit_asm(emit, "call GetCommandLineA\n");
+				emit_asm(emit, "mov [rsp], rax\n");
+				emit_asm(emit, "mov rcx, rax\n");
 			}
 
-			context_emit_code(ctx, "call main\n");
-			context_emit_code(ctx, "add rsp, 32\n");
+			emit_asm(emit, "call main\n");
+			emit_asm(emit, "add rsp, 32\n");
 
-			context_emit_code(ctx, "mov ecx, eax\n");
-			context_emit_code(ctx, "call ExitProcess\n\n");
-			ctx->indent--;
+			emit_asm(emit, "mov ecx, eax\n");
+			emit_asm(emit, "call ExitProcess\n\n");
+			emit->indent--;
 		} else {
 			puts("WARNING: A 'main' function was defined but was not needed for entry!");
 		}
-	} else if (ctx->needs_main) {
+	} else if (emit->needs_main) {
 		puts("ERROR: No function 'main' was defined!");
 		error(ERROR_CODEGEN);
 	}
 
-	codegen_statement(ctx, stat->stat_program.stat);
+	codegen_statement(emit, stat->stat_program.stat);
 }
 
-static void codegen_statement(Context * ctx, AST_Statement const * stat) {
-	if (stat->type != AST_STATEMENTS) context_trace_push_stat(ctx, stat);
+static void codegen_statement(Code_Emitter * emit, AST_Statement const * stat) {
+	if (stat->type != AST_STATEMENTS) emit_trace_push_stat(emit, stat);
 
 	switch (stat->type) {
-		case AST_STATEMENT_PROGRAM: codegen_statement_program(ctx, stat); break;
+		case AST_STATEMENT_PROGRAM: codegen_statement_program(emit, stat); break;
 
-		case AST_STATEMENTS:      codegen_statement_statements(ctx, stat); break;
-		case AST_STATEMENT_BLOCK: codegen_statement_block     (ctx, stat); break;
+		case AST_STATEMENTS:      codegen_statement_statements(emit, stat); break;
+		case AST_STATEMENT_BLOCK: codegen_statement_block     (emit, stat); break;
 
-		case AST_STATEMENT_EXPR: codegen_statement_expression(ctx, stat); break;
+		case AST_STATEMENT_EXPR: codegen_statement_expression(emit, stat); break;
 
-		case AST_STATEMENT_DEF_VAR:  codegen_statement_def_var (ctx, stat); break;
-		case AST_STATEMENT_DEF_FUNC: codegen_statement_def_func(ctx, stat); break;
-		case AST_STATEMENT_EXTERN:   codegen_statement_extern  (ctx, stat); break;
-		case AST_STATEMENT_EXPORT:   codegen_statement_export  (ctx, stat); break;
+		case AST_STATEMENT_DEF_VAR:  codegen_statement_def_var (emit, stat); break;
+		case AST_STATEMENT_DEF_FUNC: codegen_statement_def_func(emit, stat); break;
+		case AST_STATEMENT_EXTERN:   codegen_statement_extern  (emit, stat); break;
+		case AST_STATEMENT_EXPORT:   codegen_statement_export  (emit, stat); break;
 
-		case AST_STATEMENT_IF:    codegen_statement_if   (ctx, stat); break;
-		case AST_STATEMENT_WHILE: codegen_statement_while(ctx, stat); break;
+		case AST_STATEMENT_IF:    codegen_statement_if   (emit, stat); break;
+		case AST_STATEMENT_WHILE: codegen_statement_while(emit, stat); break;
 
-		case AST_STATEMENT_BREAK:    codegen_statement_break   (ctx, stat); break;
-		case AST_STATEMENT_CONTINUE: codegen_statement_continue(ctx, stat); break;
-		case AST_STATEMENT_RETURN:   codegen_statement_return  (ctx, stat); break;
+		case AST_STATEMENT_BREAK:    codegen_statement_break   (emit, stat); break;
+		case AST_STATEMENT_CONTINUE: codegen_statement_continue(emit, stat); break;
+		case AST_STATEMENT_RETURN:   codegen_statement_return  (emit, stat); break;
 
 		default: error(ERROR_CODEGEN);
 	}
 
 	// No regs should be active after a statement is complete
-	assert(ctx->reg_mask_scratch == 0); 
-	assert(ctx->reg_mask_call    == 0);
-
-	if (stat->type != AST_STATEMENTS && stat->type != AST_STATEMENT_BLOCK) context_emit_code(ctx, "\n");
-
-	if (stat->type != AST_STATEMENTS) context_trace_pop(ctx);
+	assert(emit->reg_mask == 0); 
+	
+	if (stat->type != AST_STATEMENTS && stat->type != AST_STATEMENT_BLOCK) emit_asm(emit, "\n");
+	if (stat->type != AST_STATEMENTS) emit_trace_pop(emit);
 }
 
 char const * codegen_program(AST_Statement const * program, bool needs_main) {
-	Context ctx;
-	context_init(&ctx);
-	ctx.needs_main = needs_main;
+	Code_Emitter emit;
+	emit_init(&emit);
+	emit.needs_main = needs_main;
 
 	char const asm_init[] =
 		"; Generated by Lang compiler\n\n"
@@ -2147,16 +1796,16 @@ char const * codegen_program(AST_Statement const * program, bool needs_main) {
 		
 		"section .code\n";
 
-	context_emit_code(&ctx, asm_init);
-	codegen_statement(&ctx, program);
+	emit_asm(&emit, asm_init);
+	codegen_statement(&emit, program);
 
-	context_emit_code(&ctx, "section .data\n");
-	context_emit_code(&ctx, "%s dq 0x5f000000 ; 2^63 as float\n",          const_f32_to_u64_name);
-	context_emit_code(&ctx, "%s dq 0x43e0000000000000 ; 2^63 as double\n", const_f64_to_u64_name);
+	emit_asm(&emit, "section .data\n");
+	emit_asm(&emit, "%s dq 0x5f000000 ; 2^63 as float\n",          const_f32_to_u64_name);
+	emit_asm(&emit, "%s dq 0x43e0000000000000 ; 2^63 as double\n", const_f64_to_u64_name);
 
-	for (int i = 0; i < ctx.data_seg_len; i++) {
-		context_emit_code(&ctx, "%s\n", ctx.data_seg_vals[i]);
+	for (int i = 0; i < emit.data_seg_len; i++) {
+		emit_asm(&emit, "%s\n", emit.data_seg_vals[i]);
 	}
 
-	return ctx.code;
+	return emit.code;
 }

@@ -1,0 +1,5 @@
+func main() -> int {
+	dbl := 1.0;
+	neg := -dbl;
+	return cast(int) neg;
+}

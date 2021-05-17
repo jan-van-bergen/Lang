@@ -1,0 +1,11 @@
+func main() -> int {
+	a := 1 + 2;
+	b := a + 1;
+	c := 1 + b;
+	d := a + b;
+	
+	test := 1 == 1;
+	
+	x := 2;
+	return 1 - x;
+}

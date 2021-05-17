@@ -33,6 +33,34 @@ void mem_free(void * ptr) {
 	free(ptr);
 }
 
+
+void flag_set(unsigned * flags, unsigned flag) {
+	*flags |= flag;
+}
+
+void flag_unset(unsigned * flags, unsigned flag) {
+	*flags &= ~flag;
+}
+
+bool flag_is_set(unsigned flags, unsigned flag) {
+	return flags & flag;
+}
+
+
+bool is_power_of_two(int x) {
+	return x > 0 && ((x & (x - 1)) == 0);
+}
+
+int log2(int x) {
+	int result = 0;
+	while (x > 1) {
+		x /= 2;
+		result++;
+	}
+	return result;
+}
+
+
 bool is_escape_char(char c) {
 	switch (c) {
 		case '\a':
@@ -63,6 +91,21 @@ char remove_escape(char c) {
 		default: return c;
 	}
 }
+
+
+void swap(void * a, void * b, size_t size_in_bytes) {
+	if (a == b) return;
+
+	char tmp[1024];
+	if (size_in_bytes > sizeof(tmp)) {
+		error(ERROR_INTERNAL);
+	}
+
+	memcpy(tmp, a, size_in_bytes);
+	memcpy(a, b,   size_in_bytes);
+	memcpy(b, tmp, size_in_bytes);
+}
+
 
 char const * read_file(char const * filename) {
 	FILE * f;

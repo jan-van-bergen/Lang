@@ -344,6 +344,7 @@ Examples/*.obj
 Examples/*.exe
 Examples/*.exp
 Examples/*.lib
+Examples/*.dll
 Examples/*.asm
 
 # Test Output

@@ -116,6 +116,7 @@ bool type_is_float(Type const * type);
 bool type_is_arithmetic(Type const * type);
 
 bool type_is_void_pointer(Type const * type);
+bool type_is_string(Type const * type);
 
 bool type_is_primitive(Type const * type);
 

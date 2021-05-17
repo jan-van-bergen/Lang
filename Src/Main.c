@@ -20,7 +20,7 @@ bool match_arg(char const ** arg, char const * target) {
 }
 
 int main(int arg_count, char const * args[]) {
-	char const * filename = "Examples\\hanoi.lang";
+	char const * filename = "Examples\\constdiv.lang";
 
 	Compiler_Config config = {
 		.output    = COMPILER_OUTPUT_EXE,
@@ -35,7 +35,7 @@ int main(int arg_count, char const * args[]) {
 			char const ** arg = &args[i];
 
 			if (match_arg(arg, "/lib:")) {
-				config.libs[config.lib_count++] = *arg;
+				config_add_lib(&config, *arg);
 			} else if (match_arg(arg, "/out:")) {
 				if (strncmp(*arg, "exe", 3) == 0) {
 					config.output = COMPILER_OUTPUT_EXE;

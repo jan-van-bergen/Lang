@@ -296,7 +296,11 @@ bool type_is_arithmetic(Type const * type) {
 }
 
 bool type_is_void_pointer(Type const * type) {
-	return type_is_pointer(type) && type->base->type == TYPE_VOID;
+	return type_is_pointer(type) && type_is_void(type->base);
+}
+
+bool type_is_string(Type const * type) {
+	return type_is_pointer(type) && type_is_u8(type->base);
 }
 
 bool type_is_primitive(Type const * type) {

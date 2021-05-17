@@ -1,0 +1,16 @@
+
+func memcpy(dst: void *, src: void *, i: int) {
+	(cast(char *) dst)[i] = (cast(char *) src)[i];
+}
+
+func strlen(str: char *) -> int {
+	start := str;
+	
+	while (*str != '\0') str++;
+	
+	return str - start;
+}
+
+func main() -> u64 {
+
+}

@@ -49,6 +49,9 @@ test_cases = [
 #	("Examples\\gui.lang", "/lib:Examples\\stdlib.lib /lib:user32.lib /lib:gdi32.lib",                   0, "", 0, "done"),
 #	("Examples\\gl.lang",  "/lib:Examples\\stdlib.lib /lib:user32.lib /lib:gdi32.lib /lib:opengl32.lib", 0, "", 0, "done"),
 
+	("Examples\\constdiv.lang",           "/lib:Examples\\stdlib.lib", 0,             "",               0xffffffca, ""),
+	("Examples\\neg_double.lang",         "/lib:Examples\\stdlib.lib", 0,             "",               0xffffffff, ""),
+	("Examples\\codegen.lang",            "/lib:Examples\\stdlib.lib", 0,             "",               0xffffffff, ""),
 	("Examples\\hanoi.lang",              "/lib:Examples\\stdlib.lib", 0,             "",                        0, "A -> C\nA -> B\nC -> B\nA -> C\nB -> A\nB -> C\nA -> C\n"),
 	("Examples\\roman.lang",              "/lib:Examples\\stdlib.lib", 0,             "3549 ",                   0, "MMMDXLIX"),
 	("Examples\\chkstk.lang",             "",                          0,             "",                     4096, ""),
@@ -123,11 +126,11 @@ test_cases = [
 ]
 
 def run_cmd(cmd):
-    result = sp.run(cmd, shell=True)
-    return result.returncode
-
-num_tests_successfull = 0
-num_tests_total       = 0
+	result = sp.run(cmd, shell=True)
+	return result.returncode
+	
+num_tests_successful = 0
+num_tests_total      = 0
 
 fail_names = []
 
@@ -181,13 +184,13 @@ for (file, compiler_args, expected_compiler_status, program_args, expected_progr
 
     print("{}TEST SUCCESS{}: {}".format(col.OKGREEN, col.ENDC, file))
 
-    num_tests_successfull += 1
+    num_tests_successful += 1
 
 print()
-if (num_tests_successfull == num_tests_total):
-    print("{}{}/{} tests were successful{}".format(col.OKGREEN, num_tests_successfull, num_tests_total, col.ENDC))
+if (num_tests_successful == num_tests_total):
+    print("{}{}/{} tests were successful{}".format(col.OKGREEN, num_tests_successful, num_tests_total, col.ENDC))
 else:
-    print("{}{}/{} tests were successful{}".format(col.FAIL, num_tests_successfull, num_tests_total, col.ENDC))
+    print("{}{}/{} tests were successful{}".format(col.FAIL, num_tests_successful, num_tests_total, col.ENDC))
     print("Failed:")
 
     for name in fail_names:

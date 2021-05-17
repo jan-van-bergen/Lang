@@ -1,11 +1,14 @@
 extern ExitProcess(exit_code: int) -> void;
 
+func return_true()  -> bool { return true; }
+func return_false() -> bool { return false; }
+
 func fail() -> bool { ExitProcess(-1); } // Better not call this function
 
 func main() -> int {
-	stat: bool = false && fail();
+	stat: bool = return_false() && fail();
 	
-	if (true  || fail()) { }
+	if (return_true() || fail()) { }
 	
 	return 0;
 }

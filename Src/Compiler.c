@@ -13,6 +13,15 @@
 #include "Util.h"
 #include "Error.h"
 
+void config_add_lib(Compiler_Config * config, char const * lib_name) {
+	if (config->lib_count < MAX_NUM_LIBS) {
+		config->libs[config->lib_count++] = lib_name;
+	} else {
+		printf("ERROR: Too many libraries given, only %i are supported!\n", MAX_NUM_LIBS);
+		error(ERROR_INTERNAL);
+	}
+}
+
 void compile_file(char const * filename, Compiler_Config const * config) {
 	char const * source = read_file(filename);
 
@@ -76,7 +85,7 @@ void compile_file(char const * filename, Compiler_Config const * config) {
 
 	switch (config->output) {
 		case COMPILER_OUTPUT_EXE: {
-			cmd_offset = sprintf_s(cmd, sizeof(cmd), "link \"%s\" /out:\"%s\" /subsystem:console /entry:__start /debug /nologo /libpath:\"%s\" kernel32.lib",
+			cmd_offset = sprintf_s(cmd, sizeof(cmd), "link \"%s\" /out:\"%s\" /subsystem:console /entry:__start /debug /nologo /opt:ref /libpath:\"%s\" kernel32.lib",
 				file_obj,
 				file_exe,
 				lib_path
@@ -90,7 +99,7 @@ void compile_file(char const * filename, Compiler_Config const * config) {
 		}
 
 		case COMPILER_OUTPUT_DLL: {
-			cmd_offset = sprintf_s(cmd, sizeof(cmd), "link /dll %s /out:\"%s\" /entry:DllMain /nologo /libpath:\"%s\" kernel32.lib", file_obj, file_dll, lib_path);
+			cmd_offset = sprintf_s(cmd, sizeof(cmd), "link /dll %s /out:\"%s\" /entry:DllMain /nologo /opt:ref /libpath:\"%s\" kernel32.lib", file_obj, file_dll, lib_path);
 			break;
 		}
 
