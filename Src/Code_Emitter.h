@@ -90,14 +90,14 @@ typedef struct Code_Emitter {
 	bool needs_main;
 	bool emit_debug_lines;
 
-	unsigned reg_mask;
+	uint32_t reg_mask;
 
 	int indent;
 
 	int label;
 	int current_loop_label;
 
-	unsigned flags;
+	uint32_t flags;
 
 	char const * current_function_name;
 	Scope      * current_scope;
@@ -133,7 +133,7 @@ void emit_print_stack_trace(Code_Emitter * emit);
 
 NO_RETURN void type_error(Code_Emitter * emit, char const * msg, ...);
 
-void emit_global(Code_Emitter * emit, Variable * var, bool sign, unsigned long long value);
+void emit_global(Code_Emitter * emit, Variable * var, bool sign, uint64_t value);
 void emit_float_literal (Code_Emitter * emit, char const * flt_name, char const * flt_lit);
 void emit_string_literal(Code_Emitter * emit, char const * str_name, char const * str_lit);
 

@@ -1,4 +1,5 @@
 #pragma once
+#include <stdint.h>
 #include <stdbool.h>
 
 #define MIN(a, b) (a < b ? a : b)
@@ -12,9 +13,9 @@ void * mem_alloc(size_t size);
 void * mem_realloc(void * old_ptr, size_t new_size);
 void   mem_free(void * ptr);
 
-void flag_set  (unsigned * flags, unsigned flag);
-void flag_unset(unsigned * flags, unsigned flag);
-bool flag_is_set(unsigned flags, unsigned flag);
+void flag_set   (uint32_t * flags, uint32_t flag);
+void flag_unset (uint32_t * flags, uint32_t flag);
+bool flag_is_set(uint32_t   flags, uint32_t flag);
 
 bool is_power_of_two(int x);
 int log2(int x);

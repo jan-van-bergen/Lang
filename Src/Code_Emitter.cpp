@@ -256,7 +256,7 @@ NO_RETURN void type_error(Code_Emitter * emit, char const * msg, ...) {
 }
 
 // Adds global variable to data segment
-void emit_global(Code_Emitter * emit, Variable * var, bool sign, unsigned long long value) {
+void emit_global(Code_Emitter * emit, Variable * var, bool sign, uint64_t value) {
 	int type_size = type_get_size(var->type, emit->current_scope);
 	
 	int    global_size = (int)strlen(var->name) + 64;
@@ -917,7 +917,7 @@ void emit_div(Code_Emitter * emit, Result * lhs, Result * rhs) {
 		result_ensure_in_register(emit, lhs);
 
 		if (type_is_integral(rhs->type) && rhs->form == RESULT_IMMEDIATE) {
-			unsigned const TWO_TO_THE_31 = 1u << 31;
+			uint32_t const TWO_TO_THE_31 = 1u << 31;
 			
 			uint64_t divisor = rhs->u64;
 
@@ -948,16 +948,16 @@ void emit_div(Code_Emitter * emit, Result * lhs, Result * rhs) {
 				// Based on Hackers Delight chapter 10 //
 				/////////////////////////////////////////
 
-				unsigned ad  = divisor;
-				unsigned t   = TWO_TO_THE_31 + (divisor >> 31);
-				unsigned anc = t - 1 - t % ad;
+				uint32_t ad  = divisor;
+				uint32_t t   = TWO_TO_THE_31 + (divisor >> 31);
+				uint32_t anc = t - 1 - t % ad;
 
-				unsigned p  = 31;
-				unsigned q1 = TWO_TO_THE_31 / anc;
-				unsigned r1 = TWO_TO_THE_31 - q1 * anc;
-				unsigned q2 = TWO_TO_THE_31 / ad;
-				unsigned r2 = TWO_TO_THE_31 - q2 * ad;
-				unsigned delta = 0;
+				uint32_t p  = 31;
+				uint32_t q1 = TWO_TO_THE_31 / anc;
+				uint32_t r1 = TWO_TO_THE_31 - q1 * anc;
+				uint32_t q2 = TWO_TO_THE_31 / ad;
+				uint32_t r2 = TWO_TO_THE_31 - q2 * ad;
+				uint32_t delta = 0;
 
 				do {      
 					p = p + 1;      

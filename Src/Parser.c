@@ -57,6 +57,16 @@ static bool parser_matchn(Parser const * parser, Token_Type token_type, int offs
 }
 
 
+static void parser_push_scope(Parser * parser, Scope * scope) {
+	scope->prev = parser->current_scope;
+	parser->current_scope = scope;
+}
+
+static void parser_pop_scope(Parser * parser) {
+	parser->current_scope = parser->current_scope->prev;
+}
+
+
 static Token const * parser_advance(Parser * parser) {
 	//char string[128];
 	//token_to_string(&parser->tokens[parser->index], string, sizeof(string));
@@ -904,21 +914,16 @@ static AST_Statement * parser_parse_statement_block(Parser * parser) {
 	parser_match_and_advance(parser, TOKEN_BRACES_OPEN);
 
 	Scope * scope = make_scope(parser->current_variable_buffer);
-
-	// Push Scope
-	scope->prev = parser->current_scope;
-	parser->current_scope = scope;
+	parser_push_scope(parser, scope);
 
 	AST_Statement * stat = NULL;
-
 	if (parser_match_statement(parser)) {
 		stat = parser_parse_statements(parser);
 	}
 	
 	parser_match_and_advance(parser, TOKEN_BRACES_CLOSE);
 
-	// Pop scope
-	parser->current_scope = parser->current_scope->prev;
+	parser_pop_scope(parser);
 
 	return ast_make_stat_block(scope, stat);
 }

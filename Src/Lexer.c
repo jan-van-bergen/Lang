@@ -126,7 +126,7 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 		lexer->index += 2;
 		curr = lexer_peek(lexer);
 
-		unsigned long long hex = 0;
+		uint64_t hex = 0;
 
 		while (isalnum(curr)) {
 			hex <<= 4;
@@ -165,7 +165,7 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 			curr = lexer_peek(lexer);
 		}
 
-		unsigned long long value = 0;
+		uint64_t value = 0;
 
 		while (isdigit(curr)) {
 			value *= 10;

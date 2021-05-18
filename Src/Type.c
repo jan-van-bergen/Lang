@@ -398,7 +398,7 @@ Type const * type_infer(AST_Expression const * expr, Scope const * scope) {
 			switch (literal_type) {
 				case TOKEN_LITERAL_INT: {
 					if (expr->expr_const.token.sign) {
-						long long value = expr->expr_const.token.value_int;
+						int64_t value = expr->expr_const.token.value_int;
 
 						if (value >= INT_MIN && value <= INT_MAX) {
 							return make_type_i32();
@@ -406,7 +406,7 @@ Type const * type_infer(AST_Expression const * expr, Scope const * scope) {
 							return make_type_i64();
 						}
 					} else {
-						unsigned long long value = expr->expr_const.token.value_int;
+						uint64_t value = expr->expr_const.token.value_int;
 
 						if (value <= INT_MAX) {
 							return make_type_i32();

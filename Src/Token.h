@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdint.h>
 #include <stdbool.h>
 
 typedef enum Token_Type {
@@ -94,7 +95,7 @@ typedef struct Token {
 
 	union {
 		struct {
-			unsigned long long value_int;
+			uint64_t value_int;
 			bool sign;
 		};
 

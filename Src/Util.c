@@ -34,15 +34,15 @@ void mem_free(void * ptr) {
 }
 
 
-void flag_set(unsigned * flags, unsigned flag) {
+void flag_set(uint32_t * flags, uint32_t flag) {
 	*flags |= flag;
 }
 
-void flag_unset(unsigned * flags, unsigned flag) {
+void flag_unset(uint32_t * flags, uint32_t flag) {
 	*flags &= ~flag;
 }
 
-bool flag_is_set(unsigned flags, unsigned flag) {
+bool flag_is_set(uint32_t flags, uint32_t flag) {
 	return flags & flag;
 }
 

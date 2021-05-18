@@ -76,7 +76,7 @@ static Result codegen_expression_const(Code_Emitter * emit, AST_Expression const
 			char str_lit_name[128];
 			sprintf_s(str_lit_name, sizeof(str_lit_name), "lit_flt_%i", emit->data_seg_len);
 
-			unsigned flt; memcpy(&flt, &expr->expr_const.token.value_float, 4);
+			uint32_t flt; memcpy(&flt, &expr->expr_const.token.value_float, 4);
 
 			char str_lit_flt[64];
 			sprintf_s(str_lit_flt, sizeof(str_lit_flt), "0%xh ; %ff", flt, expr->expr_const.token.value_float);
@@ -92,7 +92,7 @@ static Result codegen_expression_const(Code_Emitter * emit, AST_Expression const
 			char str_lit_name[128];
 			sprintf_s(str_lit_name, sizeof(str_lit_name), "lit_flt_%i", emit->data_seg_len);
 
-			unsigned long long dbl; memcpy(&dbl, &expr->expr_const.token.value_double, 8);
+			uint64_t dbl; memcpy(&dbl, &expr->expr_const.token.value_double, 8);
 
 			char str_lit_dbl[64];
 			sprintf_s(str_lit_dbl, sizeof(str_lit_dbl), "%llxh ; %f", dbl, expr->expr_const.token.value_double);
