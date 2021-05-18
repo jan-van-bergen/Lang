@@ -26,66 +26,6 @@ bool register_is_scratch(Register reg) {
 	return false;
 }
 
-char const * get_reg_name(Register reg, int size) {
-	static char const * reg_names_float[] = { "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15" };
-
-	if (reg >= XMM0 && reg <= XMM15) {
-		return reg_names_float[reg - XMM0];
-	}
-
-	static char const * reg_names_8bit[]  = { [RAX] = "al",  [RBX] = "bl",  [RCX] = "cl",  [RDX] = "dl",  [RSP] = "spl", [RBP] = "bpl", [RSI] = "sil", [RDI] = "dil", [R8]  = "r8b", [R9]  = "r9b", [R10] = "r10b", [R11] = "r11b", [R12] = "r12b", [R13] = "r13b", [R14] = "r14b", [R15] = "r15b" };
-	static char const * reg_names_16bit[] = { [RAX] = "ax",  [RBX] = "bx",  [RCX] = "cx",  [RDX] = "dx",  [RSP] = "sp",  [RBP] = "bp",  [RSI] = "si",  [RDI] = "di",  [R8]  = "r8w", [R9]  = "r9w", [R10] = "r10w", [R11] = "r11w", [R12] = "r12w", [R13] = "r13w", [R14] = "r14w", [R15] = "r15w" };
-	static char const * reg_names_32bit[] = { [RAX] = "eax", [RBX] = "ebx", [RCX] = "ecx", [RDX] = "edx", [RSP] = "esp", [RBP] = "ebp", [RSI] = "esi", [RDI] = "edi", [R8]  = "r8d", [R9]  = "r9d", [R10] = "r10d", [R11] = "r11d", [R12] = "r12d", [R13] = "r13d", [R14] = "r14d", [R15] = "r15d" };
-	static char const * reg_names_64bit[] = { [RAX] = "rax", [RBX] = "rbx", [RCX] = "rcx", [RDX] = "rdx", [RSP] = "rsp", [RBP] = "rbp", [RSI] = "rsi", [RDI] = "rdi", [R8]  = "r8",  [R9]  = "r9",  [R10] = "r10",  [R11] = "r11",  [R12] = "r12",  [R13] = "r13",  [R14] = "r14",  [R15] = "r15"  };
-
-	if (reg < RAX || reg > R15) error(ERROR_CODEGEN);
-
-	switch (size) {
-		case 1: return reg_names_8bit [reg];
-		case 2: return reg_names_16bit[reg];
-		case 4: return reg_names_32bit[reg];
-		case 8: return reg_names_64bit[reg];
-
-		default: error(ERROR_CODEGEN);
-	}
-}
-
-char const * get_word_name(int size) {
-	switch (size) {
-		case 1:  return "BYTE";
-		case 2:  return "WORD";
-		case 4:  return "DWORD";
-		default: return "QWORD";
-	}
-}
-
-void emit_init(Code_Emitter * emit) {
-	emit->needs_main       = true;
-	emit->emit_debug_lines = true;
-
-	emit->reg_mask = 0;
-
-	emit->indent = 0;
-
-	emit->label = 0;
-	emit->current_loop_label = -1;
-
-	emit->flags = 0;
-
-	emit->current_function_name = NULL;
-	emit->current_scope         = NULL;
-
-	emit->code_len = 0;
-	emit->code_cap = 512;
-	emit->code     = mem_alloc(emit->code_cap);
-
-	emit->data_seg_len  = 0;
-	emit->data_seg_cap  = 16;
-	emit->data_seg_vals = mem_alloc(emit->data_seg_cap * sizeof(char const *));
-
-	emit->trace_stack_size = 0;
-}
-
 Register register_alloc(Code_Emitter * emit) {
 	for (int i = 0; i < ARRAY_COUNT(scratch_registers); i++) {
 		Register reg = scratch_registers[i];
@@ -135,6 +75,76 @@ Register get_call_register(int argument_index, bool is_float) {
 	}
 }
 
+char const * get_reg_name(Register reg, int size) {
+	static char const * reg_names_float[] = { "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15" };
+
+	if (reg >= XMM0 && reg <= XMM15) {
+		return reg_names_float[reg - XMM0];
+	}
+
+	static char const * reg_names_8bit[]  = { [RAX] = "al",  [RBX] = "bl",  [RCX] = "cl",  [RDX] = "dl",  [RSP] = "spl", [RBP] = "bpl", [RSI] = "sil", [RDI] = "dil", [R8]  = "r8b", [R9]  = "r9b", [R10] = "r10b", [R11] = "r11b", [R12] = "r12b", [R13] = "r13b", [R14] = "r14b", [R15] = "r15b" };
+	static char const * reg_names_16bit[] = { [RAX] = "ax",  [RBX] = "bx",  [RCX] = "cx",  [RDX] = "dx",  [RSP] = "sp",  [RBP] = "bp",  [RSI] = "si",  [RDI] = "di",  [R8]  = "r8w", [R9]  = "r9w", [R10] = "r10w", [R11] = "r11w", [R12] = "r12w", [R13] = "r13w", [R14] = "r14w", [R15] = "r15w" };
+	static char const * reg_names_32bit[] = { [RAX] = "eax", [RBX] = "ebx", [RCX] = "ecx", [RDX] = "edx", [RSP] = "esp", [RBP] = "ebp", [RSI] = "esi", [RDI] = "edi", [R8]  = "r8d", [R9]  = "r9d", [R10] = "r10d", [R11] = "r11d", [R12] = "r12d", [R13] = "r13d", [R14] = "r14d", [R15] = "r15d" };
+	static char const * reg_names_64bit[] = { [RAX] = "rax", [RBX] = "rbx", [RCX] = "rcx", [RDX] = "rdx", [RSP] = "rsp", [RBP] = "rbp", [RSI] = "rsi", [RDI] = "rdi", [R8]  = "r8",  [R9]  = "r9",  [R10] = "r10",  [R11] = "r11",  [R12] = "r12",  [R13] = "r13",  [R14] = "r14",  [R15] = "r15"  };
+
+	if (reg < RAX || reg > R15) error(ERROR_CODEGEN);
+
+	switch (size) {
+		case 1: return reg_names_8bit [reg];
+		case 2: return reg_names_16bit[reg];
+		case 4: return reg_names_32bit[reg];
+		case 8: return reg_names_64bit[reg];
+
+		default: error(ERROR_CODEGEN);
+	}
+}
+
+char const * get_word_name(int size) {
+	switch (size) {
+		case 1:  return "BYTE";
+		case 2:  return "WORD";
+		case 4:  return "DWORD";
+		default: return "QWORD";
+	}
+}
+
+Code_Emitter make_emit(bool needs_main, bool emit_debug_lines) {
+	int const CODE_CAP = 512;
+	int const DATA_CAP = 16;
+	int const BSS_CAP  = 16;
+
+	return (Code_Emitter) {
+		.needs_main       = needs_main,
+		.emit_debug_lines = emit_debug_lines,
+
+		.reg_mask = 0,
+
+		.indent = 0,
+
+		.label = 0,
+		.current_loop_label = -1,
+
+		.flags = 0,
+
+		.current_function_name = NULL,
+		.current_scope         = NULL,
+
+		.code     = mem_alloc(CODE_CAP),
+		.code_len = 0,
+		.code_cap = CODE_CAP,
+
+		.data_seg_vals = mem_alloc(DATA_CAP * sizeof(char const *)),
+		.data_seg_len  = 0,
+		.data_seg_cap  = DATA_CAP,
+		
+		.bss     = mem_alloc(DATA_CAP * sizeof(char const *)),
+		.bss_len = 0,
+		.bss_cap = DATA_CAP,
+
+		.trace_stack_size = 0
+	};
+}
+
 int get_new_label(Code_Emitter * emit) {
 	return emit->label++;
 }
@@ -179,6 +189,15 @@ void emit_data(Code_Emitter * emit, char const * data) {
 	}
 
 	emit->data_seg_vals[emit->data_seg_len++] = data;
+}
+
+void emit_bss(Code_Emitter * emit, char const * bss) {
+	if (emit->bss_len == emit->bss_cap) {
+		emit->bss_cap *= 2;
+		emit->bss = mem_realloc(emit->bss, emit->bss_cap * sizeof(char const *));
+	}
+
+	emit->bss[emit->bss_len++] = bss;
 }
 
 void emit_trace_push_expr(Code_Emitter * emit, AST_Expression * expr) {
@@ -238,32 +257,37 @@ NO_RETURN void type_error(Code_Emitter * emit, char const * msg, ...) {
 
 // Adds global variable to data segment
 void emit_global(Code_Emitter * emit, Variable * var, bool sign, unsigned long long value) {
-	int var_name_len = (int)strlen(var->name);
-
-	int    global_size = var_name_len + 5 + 32;
+	int type_size = type_get_size(var->type, emit->current_scope);
+	
+	int    global_size = (int)strlen(var->name) + 64;
 	char * global = mem_alloc(global_size);
 
-	if (type_is_struct(var->type) || type_is_array(var->type)) {
+	if (type_is_struct(var->type) || type_is_array(var->type) || value == 0) {
 		if (value != 0) {
 			type_error(emit, "Cannot initialize global aggregate '%s' with value '%llu'", var->name, value);
 		}
+		
+		sprintf_s(global, global_size, "%s resb %u", var->name, type_size);
 
-		// Fill aggregate with 0 quad words
-		sprintf_s(global, global_size, "%s dq 0", var->name);
-
-		int size = type_get_size(var->type, emit->current_scope);
-		int size_in_qwords = (size + 7) / 8;
-
-		for (int i = 1; i < size_in_qwords; i++) {
-			strcat_s(global, global_size, ", 0");
-		}
-	} else if (sign) {
-		sprintf_s(global, global_size, "%s dq %lld", var->name, value);
+		emit_bss(emit, global);
 	} else {
-		sprintf_s(global, global_size, "%s dq %llu", var->name, value);
-	}
+		char const * define_keyword = NULL;
+		switch (type_size) {
+			case 1: define_keyword = "db"; break; // define byte
+			case 2: define_keyword = "dw"; break; // define word
+			case 4: define_keyword = "dd"; break; // define dword
+			case 8: define_keyword = "dq"; break; // define qword
+			default: error(ERROR_INTERNAL);
+		}
 
-	emit_data(emit, global);
+		if (sign) {
+			sprintf_s(global, global_size, "%s %s %lld", var->name, define_keyword, value);
+		} else {
+			sprintf_s(global, global_size, "%s %s %llu", var->name, define_keyword, value);
+		}
+		
+		emit_data(emit, global);
+	}
 }
 
 // Adds float literal to data segment

@@ -109,17 +109,22 @@ typedef struct Code_Emitter {
 	char const ** data_seg_vals;
 	int           data_seg_len;
 	int           data_seg_cap;
+	
+	char const ** bss;
+	int           bss_len;
+	int           bss_cap;
 
 	int           trace_stack_size;
 	Trace_Element trace_stack[MAX_TRACE];
 } Code_Emitter;
 
-void emit_init(Code_Emitter * emit);
+Code_Emitter make_emit(bool needs_main, bool emit_debug_lines);
 
 int get_new_label(Code_Emitter * emit);
 
-void emit_asm(Code_Emitter * emit, char const * fmt, ...);
+void emit_asm (Code_Emitter * emit, char const * fmt, ...);
 void emit_data(Code_Emitter * emit, char const * data);
+void emit_bss (Code_Emitter * emit, char const * bss);
 
 void emit_trace_push_expr(Code_Emitter * emit, AST_Expression * expr);
 void emit_trace_push_stat(Code_Emitter * emit, AST_Statement  * stat);
