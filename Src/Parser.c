@@ -401,7 +401,7 @@ static AST_Expression * parser_parse_expression_postfix(Parser * parser) {
 
 	if (parser_match(parser, TOKEN_OPERATOR_INC) || parser_match(parser, TOKEN_OPERATOR_DEC)) {
 		Token const * operator = parser_advance(parser);
-		return ast_make_expr_op_post(operator, operand);
+		return ast_make_expr_op_post(operator->type, operand);
 	}
 
 	return operand;
@@ -419,7 +419,7 @@ static AST_Expression * parser_parse_expression_prefix(Parser * parser) {
 	) {
 		Token    const * operator = parser_advance(parser);
 		AST_Expression * operand  = parser_parse_expression_prefix(parser);
-		return ast_make_expr_op_pre(operator, operand);
+		return ast_make_expr_op_pre(operator->type, operand);
 	}
 
 	return parser_parse_expression_postfix(parser);
@@ -437,7 +437,7 @@ static AST_Expression * parser_parse_expression_multiplicative(Parser * parser) 
 		Token    const * operator = parser_advance(parser);
 		AST_Expression * rhs = parser_parse_expression_prefix(parser);
 
-		lhs = ast_make_expr_op_bin(operator, lhs, rhs);
+		lhs = ast_make_expr_op_bin(operator->type, lhs, rhs);
 	}
 
 	return lhs;
@@ -454,7 +454,7 @@ static AST_Expression * parser_parse_expression_additive(Parser * parser) {
 		Token    const * operator = parser_advance(parser);
 		AST_Expression * rhs = parser_parse_expression_multiplicative(parser);
 
-		lhs = ast_make_expr_op_bin(operator, lhs, rhs);
+		lhs = ast_make_expr_op_bin(operator->type, lhs, rhs);
 	}
 
 	return lhs;
@@ -471,7 +471,7 @@ static AST_Expression * parser_parse_expression_bitshift(Parser * parser) {
 		Token    const * operator = parser_advance(parser);
 		AST_Expression * rhs = parser_parse_expression_additive(parser);
 
-		lhs = ast_make_expr_op_bin(operator, lhs, rhs);
+		lhs = ast_make_expr_op_bin(operator->type, lhs, rhs);
 	}
 
 	return lhs;
@@ -490,7 +490,7 @@ static AST_Expression * parser_parse_expression_relational(Parser * parser) {
 		Token    const * operator = parser_advance(parser);
 		AST_Expression * rhs = parser_parse_expression_bitshift(parser);
 
-		lhs = ast_make_expr_op_bin(operator, lhs, rhs);
+		lhs = ast_make_expr_op_bin(operator->type, lhs, rhs);
 	}
 
 	return lhs;
@@ -507,7 +507,7 @@ static AST_Expression * parser_parse_expression_equality(Parser * parser) {
 		Token    const * operator = parser_advance(parser);
 		AST_Expression * rhs = parser_parse_expression_relational(parser);
 
-		lhs = ast_make_expr_op_bin(operator, lhs, rhs);
+		lhs = ast_make_expr_op_bin(operator->type, lhs, rhs);
 	}
 
 	return lhs;
@@ -521,7 +521,7 @@ static AST_Expression * parser_parse_expression_bitwise_and(Parser * parser) {
 		Token    const * operator = parser_advance(parser);
 		AST_Expression * rhs = parser_parse_expression_equality(parser);
 
-		lhs = ast_make_expr_op_bin(operator, lhs, rhs);
+		lhs = ast_make_expr_op_bin(operator->type, lhs, rhs);
 	}
 
 	return lhs;
@@ -535,7 +535,7 @@ static AST_Expression * parser_parse_expression_bitwise_xor(Parser * parser) {
 		Token    const * operator = parser_advance(parser);
 		AST_Expression * rhs = parser_parse_expression_bitwise_and(parser);
 
-		lhs = ast_make_expr_op_bin(operator, lhs, rhs);
+		lhs = ast_make_expr_op_bin(operator->type, lhs, rhs);
 	}
 
 	return lhs;
@@ -549,7 +549,7 @@ static AST_Expression * parser_parse_expression_bitwise_or(Parser * parser) {
 		Token    const * operator = parser_advance(parser);
 		AST_Expression * rhs = parser_parse_expression_bitwise_xor(parser);
 
-		lhs = ast_make_expr_op_bin(operator, lhs, rhs);
+		lhs = ast_make_expr_op_bin(operator->type, lhs, rhs);
 	}
 
 	return lhs;
@@ -563,7 +563,7 @@ static AST_Expression * parser_parse_expression_logical_and(Parser * parser) {
 		Token    const * operator = parser_advance(parser);
 		AST_Expression * rhs = parser_parse_expression_bitwise_or(parser);
 
-		lhs = ast_make_expr_op_bin(operator, lhs, rhs);
+		lhs = ast_make_expr_op_bin(operator->type, lhs, rhs);
 	}
 
 	return lhs;
@@ -577,7 +577,7 @@ static AST_Expression * parser_parse_expression_logical_or(Parser * parser) {
 		Token    const * operator = parser_advance(parser);
 		AST_Expression * rhs = parser_parse_expression_logical_and(parser);
 
-		lhs = ast_make_expr_op_bin(operator, lhs, rhs);
+		lhs = ast_make_expr_op_bin(operator->type, lhs, rhs);
 	}
 
 	return lhs;
@@ -588,10 +588,41 @@ static AST_Expression * parser_parse_expression_assign(Parser * parser) {
 
 	// Right Associative
 	if (parser_match(parser, TOKEN_ASSIGN)) {
-		Token    const * operator = parser_advance(parser);
+		parser_advance(parser);
 		AST_Expression * rhs = parser_parse_expression(parser);
 
-		lhs = ast_make_expr_op_bin(operator, lhs, rhs);
+		lhs = ast_make_expr_op_bin(OPERATOR_BIN_ASSIGN, lhs, rhs);
+	} else if (
+		parser_match(parser, TOKEN_ASSIGN_PLUS) ||
+		parser_match(parser, TOKEN_ASSIGN_MINUS) ||
+		parser_match(parser, TOKEN_ASSIGN_MULTIPLY) ||
+		parser_match(parser, TOKEN_ASSIGN_DIVIDE) ||
+		parser_match(parser, TOKEN_ASSIGN_MODULO) ||
+		parser_match(parser, TOKEN_ASSIGN_SHIFT_LEFT) ||
+		parser_match(parser, TOKEN_ASSIGN_SHIFT_RIGHT) ||
+		parser_match(parser, TOKEN_ASSIGN_BITWISE_AND) ||
+		parser_match(parser, TOKEN_ASSIGN_BITWISE_XOR) ||
+		parser_match(parser, TOKEN_ASSIGN_BITWISE_OR)
+	) {
+		Token const * token = parser_advance(parser);
+		Operator_Bin operator;
+		switch (token->type) {
+			case TOKEN_ASSIGN_PLUS:        operator = OPERATOR_BIN_PLUS; break;
+			case TOKEN_ASSIGN_MINUS:       operator = OPERATOR_BIN_MINUS; break;
+			case TOKEN_ASSIGN_MULTIPLY:    operator = OPERATOR_BIN_MULTIPLY; break;
+			case TOKEN_ASSIGN_DIVIDE:      operator = OPERATOR_BIN_DIVIDE; break;
+			case TOKEN_ASSIGN_MODULO:      operator = OPERATOR_BIN_MODULO; break;
+			case TOKEN_ASSIGN_SHIFT_LEFT:  operator = OPERATOR_BIN_SHIFT_LEFT; break;
+			case TOKEN_ASSIGN_SHIFT_RIGHT: operator = OPERATOR_BIN_SHIFT_RIGHT; break;
+			case TOKEN_ASSIGN_BITWISE_AND: operator = OPERATOR_BIN_BITWISE_AND; break;
+			case TOKEN_ASSIGN_BITWISE_XOR: operator = OPERATOR_BIN_BITWISE_XOR; break;
+			case TOKEN_ASSIGN_BITWISE_OR:  operator = OPERATOR_BIN_BITWISE_OR; break;
+
+			default: error(ERROR_INTERNAL);
+		}
+
+		AST_Expression * rhs = parser_parse_expression(parser);
+		lhs = ast_make_expr_op_bin(OPERATOR_BIN_ASSIGN, lhs, ast_make_expr_op_bin(operator, lhs, rhs));
 	}
 
 	return lhs;
@@ -629,8 +660,7 @@ static AST_Statement * parser_parse_statement_def_var(Parser * parser) {
 		AST_Expression * lhs = ast_make_expr_var(var_name);
 		AST_Expression * rhs = parser_parse_expression(parser);
 		
-		Token token = (Token) { TOKEN_ASSIGN };
-		expr_assign = ast_make_expr_op_bin(&token, lhs, rhs);
+		expr_assign = ast_make_expr_op_bin(OPERATOR_BIN_ASSIGN, lhs, rhs);
 	}
 
 	parser_match_and_advance(parser, TOKEN_SEMICOLON);

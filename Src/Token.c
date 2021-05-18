@@ -87,11 +87,17 @@ void token_to_string(Token const * token, char * string, int string_size) {
 
 		case TOKEN_ARROW: strcpy_s(string, string_size, "->"); return;
 
-		case TOKEN_ASSIGN:		    strcpy_s(string, string_size, "=");  return;
-		case TOKEN_ASSIGN_PLUS:     strcpy_s(string, string_size, "+="); return;
-		case TOKEN_ASSIGN_MINUS:    strcpy_s(string, string_size, "-="); return;
-		case TOKEN_ASSIGN_MULTIPLY: strcpy_s(string, string_size, "*="); return;
-		case TOKEN_ASSIGN_DIVIDE:   strcpy_s(string, string_size, "/="); return;
+		case TOKEN_ASSIGN:		       strcpy_s(string, string_size, "=");  return;
+		case TOKEN_ASSIGN_PLUS:        strcpy_s(string, string_size, "+="); return;
+		case TOKEN_ASSIGN_MINUS:       strcpy_s(string, string_size, "-="); return;
+		case TOKEN_ASSIGN_MULTIPLY:    strcpy_s(string, string_size, "*="); return;
+		case TOKEN_ASSIGN_DIVIDE:      strcpy_s(string, string_size, "/="); return;
+		case TOKEN_ASSIGN_MODULO:      strcpy_s(string, string_size, "%="); return;
+		case TOKEN_ASSIGN_SHIFT_LEFT:  strcpy_s(string, string_size, "<<="); return;
+		case TOKEN_ASSIGN_SHIFT_RIGHT: strcpy_s(string, string_size, ">>="); return;
+		case TOKEN_ASSIGN_BITWISE_AND: strcpy_s(string, string_size, "&="); return;
+		case TOKEN_ASSIGN_BITWISE_XOR: strcpy_s(string, string_size, "^="); return;
+		case TOKEN_ASSIGN_BITWISE_OR:  strcpy_s(string, string_size, "/="); return;
 		
 		case TOKEN_OPERATOR_PLUS:	  strcpy_s(string, string_size, "+"); return;
 		case TOKEN_OPERATOR_MINUS:	  strcpy_s(string, string_size, "-"); return;

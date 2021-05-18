@@ -469,48 +469,48 @@ static Result codegen_expression_sizeof(Code_Emitter * emit, AST_Expression * ex
 }
 
 // Helper function used by relational and equality operators
-static Result codegen_compare(Code_Emitter * emit, char const * cmp_inst, Token_Type token_operator, Result * result_left, Result * result_right) {
+static Result codegen_compare(Code_Emitter * emit, char const * cmp_inst, Operator_Bin operator, Result * result_left, Result * result_right) {
 	if (result_left->form == RESULT_IMMEDIATE && result_right->form == RESULT_IMMEDIATE) {
 		bool compare_result = false;
 
 		if (type_is_f32(result_left->type)) {
-			switch (token_operator) {
-				case TOKEN_OPERATOR_LT:    compare_result = result_left->f32 <  result_right->f32; break;
-				case TOKEN_OPERATOR_LT_EQ: compare_result = result_left->f32 <= result_right->f32; break;
-				case TOKEN_OPERATOR_GT:    compare_result = result_left->f32 >  result_right->f32; break;
-				case TOKEN_OPERATOR_GT_EQ: compare_result = result_left->f32 >= result_right->f32; break;
-				case TOKEN_OPERATOR_EQ:    compare_result = result_left->f32 == result_right->f32; break;
-				case TOKEN_OPERATOR_NE:    compare_result = result_left->f32 != result_right->f32; break;
+			switch (operator) {
+				case OPERATOR_BIN_LT: compare_result = result_left->f32 <  result_right->f32; break;
+				case OPERATOR_BIN_LE: compare_result = result_left->f32 <= result_right->f32; break;
+				case OPERATOR_BIN_GT: compare_result = result_left->f32 >  result_right->f32; break;
+				case OPERATOR_BIN_GE: compare_result = result_left->f32 >= result_right->f32; break;
+				case OPERATOR_BIN_EQ: compare_result = result_left->f32 == result_right->f32; break;
+				case OPERATOR_BIN_NE: compare_result = result_left->f32 != result_right->f32; break;
 				default: error(ERROR_INTERNAL);
 			}
 		} else if (type_is_f64(result_left->type)) {
-			switch (token_operator) {
-				case TOKEN_OPERATOR_LT:    compare_result = result_left->f64 <  result_right->f64; break;
-				case TOKEN_OPERATOR_LT_EQ: compare_result = result_left->f64 <= result_right->f64; break;
-				case TOKEN_OPERATOR_GT:    compare_result = result_left->f64 >  result_right->f64; break;
-				case TOKEN_OPERATOR_GT_EQ: compare_result = result_left->f64 >= result_right->f64; break;
-				case TOKEN_OPERATOR_EQ:    compare_result = result_left->f64 == result_right->f64; break;
-				case TOKEN_OPERATOR_NE:    compare_result = result_left->f64 != result_right->f64; break;
+			switch (operator) {
+				case OPERATOR_BIN_LT: compare_result = result_left->f64 <  result_right->f64; break;
+				case OPERATOR_BIN_LE: compare_result = result_left->f64 <= result_right->f64; break;
+				case OPERATOR_BIN_GT: compare_result = result_left->f64 >  result_right->f64; break;
+				case OPERATOR_BIN_GE: compare_result = result_left->f64 >= result_right->f64; break;
+				case OPERATOR_BIN_EQ: compare_result = result_left->f64 == result_right->f64; break;
+				case OPERATOR_BIN_NE: compare_result = result_left->f64 != result_right->f64; break;
 				default: error(ERROR_INTERNAL);
 			}
 		} else if (type_is_integral_signed(result_left->type) && type_is_integral_signed(result_right->type)) {
-			switch (token_operator) {
-				case TOKEN_OPERATOR_LT:    compare_result = result_left->i64 <  result_right->i64; break;
-				case TOKEN_OPERATOR_LT_EQ: compare_result = result_left->i64 <= result_right->i64; break;
-				case TOKEN_OPERATOR_GT:    compare_result = result_left->i64 >  result_right->i64; break;
-				case TOKEN_OPERATOR_GT_EQ: compare_result = result_left->i64 >= result_right->i64; break;
-				case TOKEN_OPERATOR_EQ:    compare_result = result_left->i64 == result_right->i64; break;
-				case TOKEN_OPERATOR_NE:    compare_result = result_left->i64 != result_right->i64; break;
+			switch (operator) {
+				case OPERATOR_BIN_LT: compare_result = result_left->i64 <  result_right->i64; break;
+				case OPERATOR_BIN_LE: compare_result = result_left->i64 <= result_right->i64; break;
+				case OPERATOR_BIN_GT: compare_result = result_left->i64 >  result_right->i64; break;
+				case OPERATOR_BIN_GE: compare_result = result_left->i64 >= result_right->i64; break;
+				case OPERATOR_BIN_EQ: compare_result = result_left->i64 == result_right->i64; break;
+				case OPERATOR_BIN_NE: compare_result = result_left->i64 != result_right->i64; break;
 				default: error(ERROR_INTERNAL);
 			}
 		} else {
-			switch (token_operator) {
-				case TOKEN_OPERATOR_LT:    compare_result = result_left->u64 <  result_right->u64; break;
-				case TOKEN_OPERATOR_LT_EQ: compare_result = result_left->u64 <= result_right->u64; break;
-				case TOKEN_OPERATOR_GT:    compare_result = result_left->u64 >  result_right->u64; break;
-				case TOKEN_OPERATOR_GT_EQ: compare_result = result_left->u64 >= result_right->u64; break;
-				case TOKEN_OPERATOR_EQ:    compare_result = result_left->u64 == result_right->u64; break;
-				case TOKEN_OPERATOR_NE:    compare_result = result_left->u64 != result_right->u64; break;
+			switch (operator) {
+				case OPERATOR_BIN_LT: compare_result = result_left->u64 <  result_right->u64; break;
+				case OPERATOR_BIN_LE: compare_result = result_left->u64 <= result_right->u64; break;
+				case OPERATOR_BIN_GT: compare_result = result_left->u64 >  result_right->u64; break;
+				case OPERATOR_BIN_GE: compare_result = result_left->u64 >= result_right->u64; break;
+				case OPERATOR_BIN_EQ: compare_result = result_left->u64 == result_right->u64; break;
+				case OPERATOR_BIN_NE: compare_result = result_left->u64 != result_right->u64; break;
 				default: error(ERROR_INTERNAL);
 			}
 		}
@@ -529,24 +529,24 @@ static Result codegen_compare(Code_Emitter * emit, char const * cmp_inst, Token_
 	char str_result_right[RESULT_STR_BUF_SIZE]; result_to_str_sized(str_result_right,sizeof(str_result_right), result_right, type_size);
 	emit_asm(emit, "%s %s, %s\n", cmp_inst, str_result_left, str_result_right);
 
-	return result_make_cmp(make_type_bool(), get_condition_code(token_operator, result_left, result_right));
+	return result_make_cmp(make_type_bool(), get_condition_code(operator, result_left, result_right));
 }
 
 // Helper function used by relational operators
-static void codegen_relational(Code_Emitter * emit, char const * operator, Token_Type token_operator, Result * result_left, Result * result_right) {
+static void codegen_relational(Code_Emitter * emit, char const * str_operator, Operator_Bin operator, Result * result_left, Result * result_right) {
 	Result result;
 
 	if ((type_is_integral(result_left->type) && type_is_integral(result_right->type)) ||
 		(type_is_bool    (result_left->type) && type_is_bool    (result_right->type)) ||
 		(type_is_pointer (result_left->type) && type_is_pointer (result_right->type) && types_unifiable(result_left->type, result_right->type))
 	) {
-		result = codegen_compare(emit, "cmp", token_operator, result_left, result_right);
+		result = codegen_compare(emit, "cmp", operator, result_left, result_right);
 	} else if (type_is_f32(result_left->type) && type_is_f32(result_right->type)) {
-		result = codegen_compare(emit, "comiss", token_operator, result_left, result_right);
+		result = codegen_compare(emit, "comiss", operator, result_left, result_right);
 	} else if (type_is_f64(result_left->type) && type_is_f64(result_right->type)) {
-		result = codegen_compare(emit, "comisd", token_operator, result_left, result_right);
+		result = codegen_compare(emit, "comisd", operator, result_left, result_right);
 	} else {
-		type_error(emit, "Operator '%s' requires two integral, boolean, float, or pointer types", operator);
+		type_error(emit, "Operator '%s' requires two integral, boolean, float, or pointer types", str_operator);
 	}
 
 	result_free(emit, result_left);
@@ -556,7 +556,7 @@ static void codegen_relational(Code_Emitter * emit, char const * operator, Token
 static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression const * expr) {
 	assert(expr->type == AST_EXPRESSION_OPERATOR_BIN);
 
-	Token_Type operator = expr->expr_op_bin.token.type;
+	Operator_Bin operator = expr->expr_op_bin.operator;
 		
 	AST_Expression const * expr_left  = expr->expr_op_bin.expr_left;
 	AST_Expression const * expr_right = expr->expr_op_bin.expr_right;
@@ -564,7 +564,7 @@ static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression cons
 	Result result_left, result_right;
 
 	// Assignment operator is handled separately, because it needs the lhs by address
-	if (operator == TOKEN_ASSIGN) {
+	if (operator == OPERATOR_BIN_ASSIGN) {
 		// Traverse tallest subtree first
 		if (expr_left->height > expr_right->height) {
 			// Evaluate lhs by address
@@ -627,7 +627,7 @@ static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression cons
 	}
 	
 	// Handle operators that require short-circuit evaluation separately
-	if (operator == TOKEN_OPERATOR_LOGICAL_AND) {
+	if (operator == OPERATOR_BIN_LOGICAL_AND) {
 		int label = get_new_label(emit);
 
 		result_left = codegen_expression(emit, expr_left);
@@ -726,45 +726,7 @@ static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression cons
 
 	// Emit correct instructions based on operator type
 	switch (operator) {
-		case TOKEN_OPERATOR_MULTIPLY: {
-			if (type_is_integral(result_left.type) && type_is_integral(result_right.type)) {
-				result_left.type = types_unify(result_left.type, result_right.type, emit->current_scope);
-			} else if (type_is_f32(result_left.type) && type_is_f32(result_right.type)) {
-				
-			} else if (type_is_f64(result_left.type) && type_is_f64(result_right.type)) {
-				
-			} else {
-				type_error(emit, "Operator '*' only works with integral or float types");
-			}
-			emit_mul(emit, &result_left, &result_right);
-			break;
-		}
-
-		case TOKEN_OPERATOR_DIVIDE: {
-			if (type_is_integral(result_left.type) && type_is_integral(result_right.type)) {
-				result_left.type = types_unify(result_left.type, result_right.type, emit->current_scope);
-			} else if (type_is_f32(result_left.type) && type_is_f32(result_right.type)) {
-				
-			} else if (type_is_f64(result_left.type) && type_is_f64(result_right.type)) {
-				
-			} else {
-				type_error(emit, "Operator '/' only works with integral or float types");
-			}
-			emit_div(emit, &result_left, &result_right);
-			break;
-		}
-
-		case TOKEN_OPERATOR_MODULO: {
-			if (type_is_integral(result_left.type) && type_is_integral(result_right.type)) {
-				result_left.type = types_unify(result_left.type, result_right.type, emit->current_scope);
-			} else {
-				type_error(emit, "Operator '%' only works with integral types");
-			}
-			emit_mod(emit, &result_left, &result_right);
-			break;
-		}
-
-		case TOKEN_OPERATOR_PLUS: {		
+		case OPERATOR_BIN_PLUS: {		
 			if (type_is_arithmetic(result_left.type) && type_is_arithmetic(result_right.type)) { // arithmetic + arithmetic --> arithmetic
 				result_left.type = types_unify(result_left.type, result_right.type, emit->current_scope);
 			} else if (type_is_pointer(result_left.type) && type_is_integral(result_right.type)) { // pointer + integral --> pointer
@@ -781,7 +743,7 @@ static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression cons
 			break;
 		}
 
-		case TOKEN_OPERATOR_MINUS: {
+		case OPERATOR_BIN_MINUS: {
 			if (type_is_arithmetic(result_left.type) && type_is_arithmetic(result_right.type)) { // arithmetic - arithmetic --> arithmetic
 				result_left.type = types_unify(result_left.type, result_right.type, emit->current_scope);
 			} else if (type_is_pointer(result_left.type) && type_is_integral(result_right.type)) { // pointer - integral --> pointer
@@ -798,7 +760,45 @@ static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression cons
 			break;
 		}
 
-		case TOKEN_OPERATOR_SHIFT_LEFT: {
+		case OPERATOR_BIN_MULTIPLY: {
+			if (type_is_integral(result_left.type) && type_is_integral(result_right.type)) {
+				result_left.type = types_unify(result_left.type, result_right.type, emit->current_scope);
+			} else if (type_is_f32(result_left.type) && type_is_f32(result_right.type)) {
+				
+			} else if (type_is_f64(result_left.type) && type_is_f64(result_right.type)) {
+				
+			} else {
+				type_error(emit, "Operator '*' only works with integral or float types");
+			}
+			emit_mul(emit, &result_left, &result_right);
+			break;
+		}
+
+		case OPERATOR_BIN_DIVIDE: {
+			if (type_is_integral(result_left.type) && type_is_integral(result_right.type)) {
+				result_left.type = types_unify(result_left.type, result_right.type, emit->current_scope);
+			} else if (type_is_f32(result_left.type) && type_is_f32(result_right.type)) {
+				
+			} else if (type_is_f64(result_left.type) && type_is_f64(result_right.type)) {
+				
+			} else {
+				type_error(emit, "Operator '/' only works with integral or float types");
+			}
+			emit_div(emit, &result_left, &result_right);
+			break;
+		}
+
+		case OPERATOR_BIN_MODULO: {
+			if (type_is_integral(result_left.type) && type_is_integral(result_right.type)) {
+				result_left.type = types_unify(result_left.type, result_right.type, emit->current_scope);
+			} else {
+				type_error(emit, "Operator '%' only works with integral types");
+			}
+			emit_mod(emit, &result_left, &result_right);
+			break;
+		}
+
+		case OPERATOR_BIN_SHIFT_LEFT: {
 			if (!type_is_integral(result_left.type) || !type_is_integral(result_right.type)) {
 				type_error(emit, "Operator '<<' requires two operands of integral type");
 			}
@@ -808,7 +808,7 @@ static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression cons
 			break;
 		}
 
-		case TOKEN_OPERATOR_SHIFT_RIGHT: {
+		case OPERATOR_BIN_SHIFT_RIGHT: {
 			if (!type_is_integral(result_left.type) || !type_is_integral(result_right.type)) {
 				type_error(emit, "Operator '>>' requires two operands of integral type");
 			}
@@ -818,10 +818,10 @@ static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression cons
 			break;
 		}
 
-		case TOKEN_OPERATOR_LT:    codegen_relational(emit, "<",  TOKEN_OPERATOR_LT,    &result_left, &result_right); break;
-		case TOKEN_OPERATOR_LT_EQ: codegen_relational(emit, "<=", TOKEN_OPERATOR_LT_EQ, &result_left, &result_right); break;
-		case TOKEN_OPERATOR_GT:    codegen_relational(emit, ">",  TOKEN_OPERATOR_GT,    &result_left, &result_right); break;
-		case TOKEN_OPERATOR_GT_EQ: codegen_relational(emit, ">=", TOKEN_OPERATOR_GT_EQ, &result_left, &result_right); break;
+		case OPERATOR_BIN_LT: codegen_relational(emit, "<",  OPERATOR_BIN_LT, &result_left, &result_right); break;
+		case OPERATOR_BIN_LE: codegen_relational(emit, "<=", OPERATOR_BIN_LE, &result_left, &result_right); break;
+		case OPERATOR_BIN_GT: codegen_relational(emit, ">",  OPERATOR_BIN_GT, &result_left, &result_right); break;
+		case OPERATOR_BIN_GE: codegen_relational(emit, ">=", OPERATOR_BIN_GE, &result_left, &result_right); break;
 
 		case TOKEN_OPERATOR_EQ: codegen_relational(emit, "==", TOKEN_OPERATOR_EQ, &result_left, &result_right); break;
 		case TOKEN_OPERATOR_NE: codegen_relational(emit, "!=", TOKEN_OPERATOR_NE, &result_left, &result_right); break;
@@ -868,12 +868,12 @@ static Result codegen_expression_op_pre(Code_Emitter * emit, AST_Expression cons
 	assert(expr->type == AST_EXPRESSION_OPERATOR_PRE);
 
 	AST_Expression * operand  = expr->expr_op_pre.expr;
-	Token_Type       operator = expr->expr_op_pre.token.type;
+	Operator_Pre     operator = expr->expr_op_pre.operator;
 
 	Result result;
 
 	// Check if this is a pointer operator
-	if (operator == TOKEN_OPERATOR_BITWISE_AND) {
+	if (operator == OPERATOR_PRE_ADDRESS_OF) {
 		if (operand->type != AST_EXPRESSION_VAR && 
 			operand->type != AST_EXPRESSION_ARRAY_ACCESS && 
 			operand->type != AST_EXPRESSION_STRUCT_MEMBER
@@ -890,7 +890,7 @@ static Result codegen_expression_op_pre(Code_Emitter * emit, AST_Expression cons
 		if (!by_address) flag_unset(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
 
 		return result;
-	} else if (operator == TOKEN_OPERATOR_MULTIPLY) {
+	} else if (operator == OPERATOR_PRE_DEREF) {
 		bool by_address = flag_is_set(emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
 
 		flag_unset(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS); // Unset temporarily
@@ -921,7 +921,7 @@ static Result codegen_expression_op_pre(Code_Emitter * emit, AST_Expression cons
 
 	bool by_address = false;
 	
-	if (operator == TOKEN_OPERATOR_INC || operator == TOKEN_OPERATOR_DEC) {
+	if (operator == OPERATOR_PRE_INC || operator == OPERATOR_PRE_DEC) {
 		by_address = flag_is_set(emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
 		flag_set(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
 	}
@@ -931,7 +931,7 @@ static Result codegen_expression_op_pre(Code_Emitter * emit, AST_Expression cons
 	if (!by_address) flag_unset(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
 
 	switch (operator) {
-		case TOKEN_OPERATOR_INC: {
+		case OPERATOR_PRE_INC: {
 			Result result_address = result_make_reg(result.type, register_alloc(emit));
 			emit_mov(emit,&result_address, &result);
 			
@@ -957,7 +957,7 @@ static Result codegen_expression_op_pre(Code_Emitter * emit, AST_Expression cons
 			break;
 		}
 
-		case TOKEN_OPERATOR_DEC: {
+		case OPERATOR_PRE_DEC: {
 			Result result_address = result_make_reg(result.type, register_alloc(emit));
 			emit_mov(emit,&result_address, &result);
 			
@@ -983,7 +983,7 @@ static Result codegen_expression_op_pre(Code_Emitter * emit, AST_Expression cons
 			break;
 		}
 
-		case TOKEN_OPERATOR_PLUS: {
+		case OPERATOR_PRE_PLUS: {
 			// Unary plus is a no-op, no code is emitted
 
 			if (!type_is_arithmetic(result.type)) {
@@ -992,7 +992,7 @@ static Result codegen_expression_op_pre(Code_Emitter * emit, AST_Expression cons
 
 			break;
 		}
-		case TOKEN_OPERATOR_MINUS: {
+		case OPERATOR_PRE_MINUS: {
 			emit_neg(emit, &result);
 
 			if (!type_is_arithmetic(result.type)) {
@@ -1002,7 +1002,7 @@ static Result codegen_expression_op_pre(Code_Emitter * emit, AST_Expression cons
 			break;
 		}
 
-		case TOKEN_OPERATOR_BITWISE_NOT: {
+		case OPERATOR_PRE_BITWISE_NOT: {
 			emit_not(emit, &result);
 
 			if (!type_is_integral(result.type)) {
@@ -1012,7 +1012,7 @@ static Result codegen_expression_op_pre(Code_Emitter * emit, AST_Expression cons
 			break;
 		}
 
-		case TOKEN_OPERATOR_LOGICAL_NOT: {
+		case OPERATOR_PRE_LOGICAL_NOT: {
 			Result result_one     = result_make_i64(result.type,  1);
 			Result result_neg_one = result_make_i64(result.type, -1);
 
@@ -1039,7 +1039,7 @@ static Result codegen_expression_op_post(Code_Emitter * emit, AST_Expression con
 	assert(expr->type == AST_EXPRESSION_OPERATOR_POST);
 
 	AST_Expression * operand  = expr->expr_op_pre.expr;
-	Token_Type       operator = expr->expr_op_pre.token.type;
+	Operator_Post    operator = expr->expr_op_pre.operator;
 
 	bool by_address = flag_is_set(emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
 
@@ -1050,7 +1050,7 @@ static Result codegen_expression_op_post(Code_Emitter * emit, AST_Expression con
 	if (!by_address) flag_unset(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
 
 	switch (operator) {
-		case TOKEN_OPERATOR_INC: {
+		case OPERATOR_POST_INC: {
 			Result result_address;
 			Result result_value = result_make_reg(result.type, register_alloc(emit));
 			
@@ -1090,7 +1090,7 @@ static Result codegen_expression_op_post(Code_Emitter * emit, AST_Expression con
 			break;
 		}
 
-		case TOKEN_OPERATOR_DEC: {
+		case OPERATOR_POST_DEC: {
 			Result result_address;
 			Result result_value = result_make_reg(result.type, register_alloc(emit));
 			

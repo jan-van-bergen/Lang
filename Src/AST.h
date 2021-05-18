@@ -4,6 +4,48 @@
 #include "Type.h"
 #include "Scope.h"
 
+typedef enum Operator_Bin {
+	OPERATOR_BIN_ASSIGN      = TOKEN_ASSIGN,
+	OPERATOR_BIN_LOGICAL_AND = TOKEN_OPERATOR_LOGICAL_AND,
+	OPERATOR_BIN_LOGICAL_OR	 = TOKEN_OPERATOR_LOGICAL_OR,
+	OPERATOR_BIN_PLUS		 = TOKEN_OPERATOR_PLUS,
+	OPERATOR_BIN_MINUS		 = TOKEN_OPERATOR_MINUS,
+	OPERATOR_BIN_MULTIPLY	 = TOKEN_OPERATOR_MULTIPLY,
+	OPERATOR_BIN_DIVIDE		 = TOKEN_OPERATOR_DIVIDE,
+	OPERATOR_BIN_MODULO		 = TOKEN_OPERATOR_MODULO,
+	OPERATOR_BIN_SHIFT_LEFT	 = TOKEN_OPERATOR_SHIFT_LEFT,
+	OPERATOR_BIN_SHIFT_RIGHT = TOKEN_OPERATOR_SHIFT_RIGHT,
+	OPERATOR_BIN_LT			 = TOKEN_OPERATOR_LT,
+	OPERATOR_BIN_LE			 = TOKEN_OPERATOR_LT_EQ,
+	OPERATOR_BIN_GT			 = TOKEN_OPERATOR_GT,
+	OPERATOR_BIN_GE			 = TOKEN_OPERATOR_GT_EQ,
+	OPERATOR_BIN_EQ			 = TOKEN_OPERATOR_EQ,
+	OPERATOR_BIN_NE			 = TOKEN_OPERATOR_NE,
+	OPERATOR_BIN_BITWISE_AND = TOKEN_OPERATOR_BITWISE_AND,
+	OPERATOR_BIN_BITWISE_XOR = TOKEN_OPERATOR_BITWISE_XOR,
+	OPERATOR_BIN_BITWISE_OR	 = TOKEN_OPERATOR_BITWISE_OR
+} Operator_Bin;
+
+typedef enum Operator_Pre {
+	OPERATOR_PRE_ADDRESS_OF  = TOKEN_OPERATOR_BITWISE_AND,
+	OPERATOR_PRE_DEREF       = TOKEN_OPERATOR_MULTIPLY,
+	OPERATOR_PRE_INC         = TOKEN_OPERATOR_INC,
+	OPERATOR_PRE_DEC         = TOKEN_OPERATOR_DEC,
+	OPERATOR_PRE_PLUS        = TOKEN_OPERATOR_PLUS,
+	OPERATOR_PRE_MINUS       = TOKEN_OPERATOR_MINUS,
+	OPERATOR_PRE_LOGICAL_NOT = TOKEN_OPERATOR_LOGICAL_NOT,
+	OPERATOR_PRE_BITWISE_NOT = TOKEN_OPERATOR_BITWISE_NOT
+} Operator_Pre;
+
+typedef enum Operator_Post {
+	OPERATOR_POST_INC = TOKEN_OPERATOR_INC,
+	OPERATOR_POST_DEC = TOKEN_OPERATOR_DEC
+} Operator_Post;
+
+char const * operator_bin_to_str (Operator_Bin  operator);
+char const * operator_pre_to_str (Operator_Pre  operator);
+char const * operator_post_to_str(Operator_Post operator);
+
 typedef enum AST_Expression_Type {
 	AST_EXPRESSION_CONST,
 	AST_EXPRESSION_VAR,
@@ -58,20 +100,20 @@ typedef struct AST_Expression {
 		} expr_sizeof;
 
 		struct Op_Bin {
-			Token token;
+			Operator_Bin operator;
 
 			struct AST_Expression * expr_left;
 			struct AST_Expression * expr_right;
 		} expr_op_bin;
 
 		struct Op_Pre {
-			Token token;
+			Operator_Pre operator;
 
 			struct AST_Expression * expr;
 		} expr_op_pre;
 		
 		struct Op_Post {
-			Token token;
+			Operator_Post operator;
 
 			struct AST_Expression * expr;
 		} expr_op_post;
@@ -190,9 +232,9 @@ AST_Expression * ast_make_expr_struct_member(AST_Expression * expr_struct, char 
 AST_Expression * ast_make_expr_cast  (Type const * type, AST_Expression * expr);
 AST_Expression * ast_make_expr_sizeof(Type const * type);
 
-AST_Expression * ast_make_expr_op_bin (Token const * token, AST_Expression * expr_left, AST_Expression * expr_right);
-AST_Expression * ast_make_expr_op_pre (Token const * token, AST_Expression * expr);
-AST_Expression * ast_make_expr_op_post(Token const * token, AST_Expression * expr);
+AST_Expression * ast_make_expr_op_bin (Operator_Bin  operator, AST_Expression * expr_left, AST_Expression * expr_right);
+AST_Expression * ast_make_expr_op_pre (Operator_Pre  operator, AST_Expression * expr);
+AST_Expression * ast_make_expr_op_post(Operator_Post operator, AST_Expression * expr);
 
 AST_Expression * ast_make_expr_call(AST_Expression * expr_function, int arg_count, AST_Call_Arg * args); 
 

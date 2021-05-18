@@ -49,6 +49,7 @@ test_cases = [
 #	("Examples\\gui.lang", "/lib:Examples\\stdlib.lib /lib:user32.lib /lib:gdi32.lib",                   0, "", 0, "done"),
 #	("Examples\\gl.lang",  "/lib:Examples\\stdlib.lib /lib:user32.lib /lib:gdi32.lib /lib:opengl32.lib", 0, "", 0, "done"),
 
+	("Examples\\op_assign.lang",          "",                          0,             "",                        3, ""),
 	("Examples\\constdiv.lang",           "/lib:Examples\\stdlib.lib", 0,             "",               0xffffffca, ""),
 	("Examples\\neg_double.lang",         "/lib:Examples\\stdlib.lib", 0,             "",               0xffffffff, ""),
 	("Examples\\codegen.lang",            "/lib:Examples\\stdlib.lib", 0,             "",               0xffffffff, ""),

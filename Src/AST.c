@@ -7,6 +7,53 @@
 #include "Util.h"
 #include "Error.h"
 
+char const * operator_bin_to_str(Operator_Bin  operator) {
+	switch (operator) {
+		case OPERATOR_BIN_ASSIGN:      return "=";
+		case OPERATOR_BIN_LOGICAL_AND: return "&&";
+		case OPERATOR_BIN_LOGICAL_OR:  return "||";
+		case OPERATOR_BIN_PLUS:        return "+";
+		case OPERATOR_BIN_MINUS:       return "-";
+		case OPERATOR_BIN_MULTIPLY:    return "*";
+		case OPERATOR_BIN_DIVIDE:      return "/";
+		case OPERATOR_BIN_MODULO:      return "%";
+		case OPERATOR_BIN_SHIFT_LEFT:  return "<<";
+		case OPERATOR_BIN_SHIFT_RIGHT: return ">>";
+		case OPERATOR_BIN_LT:          return "<";
+		case OPERATOR_BIN_LE:          return "<=";
+		case OPERATOR_BIN_GT:          return ">";
+		case OPERATOR_BIN_GE:          return ">=";
+		case OPERATOR_BIN_EQ:          return "==";
+		case OPERATOR_BIN_NE:          return "!=";
+		case OPERATOR_BIN_BITWISE_AND: return "&";
+		case OPERATOR_BIN_BITWISE_XOR: return "^";
+		case OPERATOR_BIN_BITWISE_OR:  return "|";
+		default: error(ERROR_INTERNAL);
+	}
+}
+
+char const * operator_pre_to_str(Operator_Pre  operator) {
+	switch (operator) {
+		case OPERATOR_PRE_ADDRESS_OF:  return "&";
+		case OPERATOR_PRE_DEREF:       return "*";
+		case OPERATOR_PRE_INC:         return "++";
+		case OPERATOR_PRE_DEC:         return "--";
+		case OPERATOR_PRE_PLUS:        return "+";
+		case OPERATOR_PRE_MINUS:       return "-";
+		case OPERATOR_PRE_LOGICAL_NOT: return "!";
+		case OPERATOR_PRE_BITWISE_NOT: return "~";
+		default: error(ERROR_INTERNAL);
+	}
+}
+
+char const * operator_post_to_str(Operator_Post operator) {
+	switch (operator) {
+		case OPERATOR_POST_INC: return "++";
+		case OPERATOR_POST_DEC: return "--";
+		default: error(ERROR_INTERNAL);
+	}
+}
+
 AST_Expression * ast_make_expr_const(Token const * token) {
 	AST_Expression * expr = mem_alloc(sizeof(AST_Expression));
 	expr->type = AST_EXPRESSION_CONST;
@@ -69,36 +116,36 @@ AST_Expression * ast_make_expr_sizeof(Type const * type) {
 	return expr;
 }
 
-AST_Expression * ast_make_expr_op_bin(Token const * token, AST_Expression * expr_left, AST_Expression * expr_right) {
+AST_Expression * ast_make_expr_op_bin(Operator_Bin operator, AST_Expression * expr_left, AST_Expression * expr_right) {
 	AST_Expression * expr = mem_alloc(sizeof(AST_Expression));
 	expr->type = AST_EXPRESSION_OPERATOR_BIN;
 	expr->height = MAX(expr_left->height, expr_right->height) + 1;
 
-	expr->expr_op_bin.token      = *token;
+	expr->expr_op_bin.operator   = operator;
 	expr->expr_op_bin.expr_left  = expr_left;
 	expr->expr_op_bin.expr_right = expr_right;
 
 	return expr;
 }
 
-AST_Expression * ast_make_expr_op_pre(Token const * token, AST_Expression * expr_operand) {
+AST_Expression * ast_make_expr_op_pre(Operator_Pre operator, AST_Expression * expr_operand) {
 	AST_Expression * expr = mem_alloc(sizeof(AST_Expression));
 	expr->type = AST_EXPRESSION_OPERATOR_PRE;
 	expr->height = expr_operand->height + 1;
 
-	expr->expr_op_pre.token = *token;
-	expr->expr_op_pre.expr  = expr_operand;
+	expr->expr_op_bin.operator = operator;
+	expr->expr_op_pre.expr     = expr_operand;
 
 	return expr;
 }
 
-AST_Expression * ast_make_expr_op_post(Token const * token, AST_Expression * expr_operand) {
+AST_Expression * ast_make_expr_op_post(Operator_Post operator, AST_Expression * expr_operand) {
 	AST_Expression * expr = mem_alloc(sizeof(AST_Expression));
 	expr->type = AST_EXPRESSION_OPERATOR_POST;
 	expr->height = expr_operand->height + 1;
 
-	expr->expr_op_post.token = *token;
-	expr->expr_op_post.expr  = expr_operand;
+	expr->expr_op_bin.operator = operator;
+	expr->expr_op_post.expr    = expr_operand;
 
 	return expr;
 }
@@ -332,9 +379,7 @@ static void print_expression(AST_Expression const * expr, char * string, int * s
 			print_expression(expr->expr_op_bin.expr_left, string, string_offset, string_size);
 			if (needs_parentheses_left) SPRINTF(")");
 
-			char token_string[128];
-			token_to_string(&expr->expr_op_bin.token, token_string, sizeof(token_string));
-			VSPRINTF(" %s ", token_string);
+			VSPRINTF(" %s ", operator_bin_to_str(expr->expr_op_bin.operator));
 			
 			if (needs_parentheses_right) SPRINTF("(");
 			print_expression(expr->expr_op_bin.expr_right, string, string_offset, string_size);
@@ -349,9 +394,7 @@ static void print_expression(AST_Expression const * expr, char * string, int * s
 
 			bool needs_parentheses = precedence_inner > precedence_here;
 
-			char token_string[128];
-			token_to_string(&expr->expr_op_pre.token, token_string, sizeof(token_string));
-			VSPRINTF("%s", token_string);
+			VSPRINTF("%s", operator_pre_to_str(expr->expr_op_pre.operator));
 			
 			if (needs_parentheses) SPRINTF("(");
 			print_expression(expr->expr_op_pre.expr, string, string_offset, string_size);
@@ -370,9 +413,7 @@ static void print_expression(AST_Expression const * expr, char * string, int * s
 			print_expression(expr->expr_op_post.expr, string, string_offset, string_size);
 			if (needs_parentheses) SPRINTF(")");
 
-			char token_string[128];
-			token_to_string(&expr->expr_op_post.token, token_string, sizeof(token_string));
-			VSPRINTF("%s", token_string);
+			VSPRINTF("%s", operator_post_to_str(expr->expr_op_post.operator));
 
 			break;
 		}
@@ -687,31 +728,31 @@ Precedence get_precedence(AST_Expression const * expr) {
 		case AST_EXPRESSION_SIZEOF: return PRECEDENCE_CAST_SIZEOF;
 
 		case AST_EXPRESSION_OPERATOR_BIN: {
-			switch (expr->expr_op_bin.token.type) {
-				case TOKEN_OPERATOR_MULTIPLY:
-				case TOKEN_OPERATOR_DIVIDE:
-				case TOKEN_OPERATOR_MODULO: return PRECEDENCE_MULTIPLICATIVE;
+			switch (expr->expr_op_bin.operator) {
+				case OPERATOR_BIN_MULTIPLY:
+				case OPERATOR_BIN_DIVIDE:
+				case OPERATOR_BIN_MODULO: return PRECEDENCE_MULTIPLICATIVE;
 
-				case TOKEN_OPERATOR_PLUS:
-				case TOKEN_OPERATOR_MINUS: return PRECEDENCE_ADDITIVE;
+				case OPERATOR_BIN_PLUS:
+				case OPERATOR_BIN_MINUS: return PRECEDENCE_ADDITIVE;
 					
-				case TOKEN_OPERATOR_SHIFT_LEFT:
-				case TOKEN_OPERATOR_SHIFT_RIGHT: return PRECEDENCE_SHIFT;
+				case OPERATOR_BIN_SHIFT_LEFT:
+				case OPERATOR_BIN_SHIFT_RIGHT: return PRECEDENCE_SHIFT;
 					
-				case TOKEN_OPERATOR_LT:
-				case TOKEN_OPERATOR_GT:
-				case TOKEN_OPERATOR_LT_EQ:
-				case TOKEN_OPERATOR_GT_EQ: return PRECEDENCE_RELATIONAL;
+				case OPERATOR_BIN_LT:
+				case OPERATOR_BIN_GT:
+				case OPERATOR_BIN_LE:
+				case OPERATOR_BIN_GE: return PRECEDENCE_RELATIONAL;
 
-				case TOKEN_OPERATOR_EQ:
-				case TOKEN_OPERATOR_NE: return PRECEDENCE_EQUALITY;
+				case OPERATOR_BIN_EQ:
+				case OPERATOR_BIN_NE: return PRECEDENCE_EQUALITY;
 
-				case TOKEN_OPERATOR_BITWISE_AND: return PRECEDENCE_BITWISE_AND;
-				case TOKEN_OPERATOR_BITWISE_XOR: return PRECEDENCE_BITWISE_XOR;
-				case TOKEN_OPERATOR_BITWISE_OR:  return PRECEDENCE_BITWISE_OR;
+				case OPERATOR_BIN_BITWISE_AND: return PRECEDENCE_BITWISE_AND;
+				case OPERATOR_BIN_BITWISE_XOR: return PRECEDENCE_BITWISE_XOR;
+				case OPERATOR_BIN_BITWISE_OR:  return PRECEDENCE_BITWISE_OR;
 
-				case TOKEN_OPERATOR_LOGICAL_AND: return PRECEDENCE_LOGICAL_AND;
-				case TOKEN_OPERATOR_LOGICAL_OR:  return PRECEDENCE_LOGICAL_OR;
+				case OPERATOR_BIN_LOGICAL_AND: return PRECEDENCE_LOGICAL_AND;
+				case OPERATOR_BIN_LOGICAL_OR:  return PRECEDENCE_LOGICAL_OR;
 
 				defaut: error(ERROR_INTERNAL);
 			}

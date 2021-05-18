@@ -423,16 +423,16 @@ Result variable_get_address(Variable const * var) {
 	}
 }
 
-Condition_Code get_condition_code(Token_Type token_operator, Result const * lhs, Result const * rhs) {
+Condition_Code get_condition_code(Operator_Bin operator, Result const * lhs, Result const * rhs) {
 	bool both_signed_ints = type_is_integral_signed(lhs->type) && type_is_integral_signed(rhs->type);
 
-	switch (token_operator)	{
-		case TOKEN_OPERATOR_LT:    if (both_signed_ints) return CC_L;  else return CC_B;
-		case TOKEN_OPERATOR_LT_EQ: if (both_signed_ints) return CC_LE; else return CC_BE;
-		case TOKEN_OPERATOR_GT:    if (both_signed_ints) return CC_G;  else return CC_A;
-		case TOKEN_OPERATOR_GT_EQ: if (both_signed_ints) return CC_GE; else return CC_AE;
-		case TOKEN_OPERATOR_EQ: return CC_E;
-		case TOKEN_OPERATOR_NE: return CC_NE;
+	switch (operator)	{
+		case OPERATOR_BIN_LT: if (both_signed_ints) return CC_L;  else return CC_B;
+		case OPERATOR_BIN_LE: if (both_signed_ints) return CC_LE; else return CC_BE;
+		case OPERATOR_BIN_GT: if (both_signed_ints) return CC_G;  else return CC_A;
+		case OPERATOR_BIN_GE: if (both_signed_ints) return CC_GE; else return CC_AE;
+		case OPERATOR_BIN_EQ: return CC_E;
+		case OPERATOR_BIN_NE: return CC_NE;
 	}
 	error(ERROR_INTERNAL);
 }

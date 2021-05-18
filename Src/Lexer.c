@@ -250,6 +250,18 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 		return;
 	}
 	
+	// Aassignment Operators (excluding = see switch statement)
+	if (match_length = lexer_match(lexer, "+="))  { token->type = TOKEN_ASSIGN_PLUS;        lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "-="))  { token->type = TOKEN_ASSIGN_MINUS;       lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "*="))  { token->type = TOKEN_ASSIGN_MULTIPLY;    lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "/="))  { token->type = TOKEN_ASSIGN_DIVIDE;      lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "%="))  { token->type = TOKEN_ASSIGN_MODULO;      lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "<<=")) { token->type = TOKEN_ASSIGN_SHIFT_LEFT;  lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, ">>=")) { token->type = TOKEN_ASSIGN_SHIFT_RIGHT; lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "&="))  { token->type = TOKEN_ASSIGN_BITWISE_AND; lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "^="))  { token->type = TOKEN_ASSIGN_BITWISE_XOR; lexer->index += match_length; return; }
+	if (match_length = lexer_match(lexer, "|="))  { token->type = TOKEN_ASSIGN_BITWISE_OR;  lexer->index += match_length; return; }
+
 	// Bitshift Operators
 	if (match_length = lexer_match(lexer, "<<")) { token->type = TOKEN_OPERATOR_SHIFT_LEFT;  lexer->index += match_length; return; }
 	if (match_length = lexer_match(lexer, ">>")) { token->type = TOKEN_OPERATOR_SHIFT_RIGHT; lexer->index += match_length; return; }
@@ -271,12 +283,6 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 	// Unary Increment/Decrement Operators
 	if (match_length = lexer_match(lexer, "++")) { token->type = TOKEN_OPERATOR_INC; lexer->index += match_length; return; }
 	if (match_length = lexer_match(lexer, "--")) { token->type = TOKEN_OPERATOR_DEC; lexer->index += match_length; return; }
-
-	// Aassignment Operators (excluding = see switch statement)
-	if (match_length = lexer_match(lexer, "+=")) { token->type = TOKEN_ASSIGN_PLUS;     lexer->index += match_length; return; }
-	if (match_length = lexer_match(lexer, "-=")) { token->type = TOKEN_ASSIGN_MINUS;    lexer->index += match_length; return; }
-	if (match_length = lexer_match(lexer, "*=")) { token->type = TOKEN_ASSIGN_MULTIPLY; lexer->index += match_length; return; }
-	if (match_length = lexer_match(lexer, "/=")) { token->type = TOKEN_ASSIGN_DIVIDE;   lexer->index += match_length; return; }
 
 	if (match_length = lexer_match(lexer, "->")) { token->type = TOKEN_ARROW; lexer->index += match_length; return; }
 

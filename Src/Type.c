@@ -440,26 +440,26 @@ Type const * type_infer(AST_Expression const * expr, Scope const * scope) {
 
 //			if (!types_unifiable(type_left, type_right)) break;
 
-			switch (expr->expr_op_bin.token.type) {
-				case TOKEN_ASSIGN: {
+			switch (expr->expr_op_bin.operator) {
+				case OPERATOR_BIN_ASSIGN: {
 //					if (type_is_pointer(type_left) && type_is_array(type_right) && types_unifiable)
 					break; // Unify types
 				}
 
-				case TOKEN_OPERATOR_EQ:
-				case TOKEN_OPERATOR_NE:
-				case TOKEN_OPERATOR_LT:
-				case TOKEN_OPERATOR_LT_EQ:
-				case TOKEN_OPERATOR_GT:
-				case TOKEN_OPERATOR_GT_EQ: {
+				case OPERATOR_BIN_EQ:
+				case OPERATOR_BIN_NE:
+				case OPERATOR_BIN_LT:
+				case OPERATOR_BIN_LE:
+				case OPERATOR_BIN_GT:
+				case OPERATOR_BIN_GE: {
 					if (types_unifiable(type_left, type_right)) {
 						return make_type_bool();
 					}
 					break; // Unify types
 				}
 
-				case TOKEN_OPERATOR_LOGICAL_AND:
-				case TOKEN_OPERATOR_LOGICAL_OR: {
+				case OPERATOR_BIN_LOGICAL_AND:
+				case OPERATOR_BIN_LOGICAL_OR: {
 					if (type_is_bool(type_left) && type_is_bool(type_right)) {
 						return make_type_bool();
 					}
@@ -467,13 +467,13 @@ Type const * type_infer(AST_Expression const * expr, Scope const * scope) {
 					error(ERROR_TYPECHECK);
 				}
 
-				case TOKEN_OPERATOR_MINUS: {
+				case OPERATOR_BIN_MINUS: {
 					if (type_is_pointer(type_left) && type_is_pointer(type_right)) {
 						return make_type_u64();
 					}
 					break; // Unify types
 				}
-				case TOKEN_OPERATOR_PLUS: {
+				case OPERATOR_BIN_PLUS: {
 					if (type_is_pointer(type_left) && type_is_integral(type_right)) {
 						return type_left;
 					}
@@ -482,15 +482,15 @@ Type const * type_infer(AST_Expression const * expr, Scope const * scope) {
 					}
 					break; // Unify types
 				}
-				case TOKEN_OPERATOR_MULTIPLY:
-				case TOKEN_OPERATOR_DIVIDE:
-				case TOKEN_OPERATOR_MODULO: break; // Unify types
+				case OPERATOR_BIN_MULTIPLY:
+				case OPERATOR_BIN_DIVIDE:
+				case OPERATOR_BIN_MODULO: break; // Unify types
 
-				case TOKEN_OPERATOR_BITWISE_AND:
-				case TOKEN_OPERATOR_BITWISE_OR:
-				case TOKEN_OPERATOR_BITWISE_XOR:
-				case TOKEN_OPERATOR_SHIFT_LEFT:
-				case TOKEN_OPERATOR_SHIFT_RIGHT: {
+				case OPERATOR_BIN_BITWISE_AND:
+				case OPERATOR_BIN_BITWISE_OR:
+				case OPERATOR_BIN_BITWISE_XOR:
+				case OPERATOR_BIN_SHIFT_LEFT:
+				case OPERATOR_BIN_SHIFT_RIGHT: {
 					if (!type_is_integral(type_left) || !type_is_integral(type_right)) {
 						error(ERROR_TYPECHECK);
 					}
@@ -510,15 +510,15 @@ Type const * type_infer(AST_Expression const * expr, Scope const * scope) {
 		case AST_EXPRESSION_OPERATOR_PRE:  {
 			Type const * type_inner = type_infer(expr->expr_op_pre.expr, scope);
 
-			switch (expr->expr_op_pre.token.type) {
-				case TOKEN_OPERATOR_BITWISE_AND: return make_type_pointer(type_inner); // Address of  (&)
-				case TOKEN_OPERATOR_MULTIPLY:    return type_dereference (type_inner); // Dereference (*)
+			switch (expr->expr_op_pre.operator) {
+				case OPERATOR_PRE_ADDRESS_OF: return make_type_pointer(type_inner); // Address of  (&)
+				case OPERATOR_PRE_DEREF:      return type_dereference (type_inner); // Dereference (*)
 
-				case TOKEN_OPERATOR_INC:
-				case TOKEN_OPERATOR_DEC:
-				case TOKEN_OPERATOR_PLUS: return type_inner;
+				case OPERATOR_PRE_INC:
+				case OPERATOR_PRE_DEC:
+				case OPERATOR_PRE_PLUS: return type_inner;
 
-				case TOKEN_OPERATOR_MINUS: {
+				case OPERATOR_PRE_MINUS: {
 					if (type_is_integral_unsigned(type_inner)) { // Turn unsigned integral type into its signed counterpart
 						switch (type_inner->type) {
 							case TYPE_U8:  return make_type_i8();
