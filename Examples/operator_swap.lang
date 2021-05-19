@@ -1,0 +1,9 @@
+extern assert(assertion: bool);
+
+func main() {
+	x := 5;
+	assert(1 < x);
+	assert(5 <= x);
+	assert(50 > x);
+	assert(5 >= x);
+}

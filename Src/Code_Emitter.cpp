@@ -1327,6 +1327,25 @@ void emit_cmp(Code_Emitter * emit, Operator_Bin operator, Result * lhs, Result *
 		return;
 	}
 	
+	Operator_Bin original_operator = operator;
+	
+	if (lhs->form == RESULT_IMMEDIATE) {
+		// Change operator to account for swapping of operands
+		switch (operator) {
+			case OPERATOR_BIN_LT: operator = OPERATOR_BIN_GT; break; // <  becomes >
+			case OPERATOR_BIN_LE: operator = OPERATOR_BIN_GE; break; // <= becomes >=
+			case OPERATOR_BIN_GT: operator = OPERATOR_BIN_LT; break; // >  becomes <
+			case OPERATOR_BIN_GE: operator = OPERATOR_BIN_LE; break; // >= becomes <=
+			case OPERATOR_BIN_EQ: break;                             // == stays ==
+			case OPERATOR_BIN_NE: break;                             // != stays !=
+			default: break;
+		}
+		swap(lhs, rhs, sizeof(Result));
+	}
+	if (rhs->form == RESULT_IMMEDIATE) {
+		result_ensure_fits_in_imm32(emit, rhs);
+	}
+
 	result_ensure_in_register(emit, lhs);
 	
 	char const * cmp = NULL;
@@ -1340,7 +1359,7 @@ void emit_cmp(Code_Emitter * emit, Operator_Bin operator, Result * lhs, Result *
 	} else if (type_is_f64(lhs->type) && type_is_f64(rhs->type)) {
 		cmp = "comisd";
 	} else {
-		type_error(emit, "Operator '%s' requires two integral, boolean, float, or pointer types", operator_bin_to_str(operator));
+		type_error(emit, "Operator '%s' requires two integral, boolean, float, or pointer types", operator_bin_to_str(original_operator));
 	}
 
 	int type_size = MAX(
