@@ -68,7 +68,8 @@ typedef enum SIB_Scale {
 
 
 typedef enum Emit_Flags {
-	CTX_FLAG_VAR_BY_ADDRESS = 1
+	EMIT_FLAG_EVAL_BY_ADDRESS  = 1,
+	EMIT_FLAG_INSIDE_CONDITION = 2
 } Emit_Flags;
 
 typedef struct Trace_Element {
@@ -100,6 +101,8 @@ typedef struct Code_Emitter {
 	uint32_t flags;
 
 	char const * current_function_name;
+	char const * current_condition_label_true;
+	char const * current_condition_label_false;
 	Scope      * current_scope;
 
 	char * code;
@@ -134,7 +137,8 @@ void emit_print_stack_trace(Code_Emitter * emit);
 NO_RETURN void type_error(Code_Emitter * emit, char const * msg, ...);
 
 void emit_global(Code_Emitter * emit, Variable * var, bool sign, uint64_t value);
-void emit_float_literal (Code_Emitter * emit, char const * flt_name, char const * flt_lit);
+void emit_f32_literal(Code_Emitter * emit, char const * flt_name, float  value);
+void emit_f64_literal(Code_Emitter * emit, char const * flt_name, double value);
 void emit_string_literal(Code_Emitter * emit, char const * str_name, char const * str_lit);
 
 
@@ -208,7 +212,7 @@ bool result_is_indirect(Result const * result);
 
 Result variable_get_address(Variable const * var);
 
-Condition_Code get_condition_code(Token_Type token_operator, Result const * lhs, Result const * rhs);
+Condition_Code get_condition_code(Operator_Bin operator, Result const * lhs, Result const * rhs);
 
 Condition_Code result_get_condition_code(Code_Emitter * emit, Result * result);
 
@@ -224,6 +228,10 @@ void result_to_str      (char * str, int str_size, Result const * result);
 void emit_lea         (Code_Emitter * emit, Result * lhs, Result * rhs);
 void emit_mov         (Code_Emitter * emit, Result * lhs, Result * rhs);
 void emit_mov_indirect(Code_Emitter * emit, Result * lhs, Result * rhs);
+
+void emit_label(Code_Emitter * emit, char const * label);
+
+void emit_jmp(Code_Emitter * emit, char const * label);
 
 void emit_add(Code_Emitter * emit, Result * lhs, Result * rhs);
 void emit_sub(Code_Emitter * emit, Result * lhs, Result * rhs);
@@ -242,6 +250,7 @@ void emit_neg(Code_Emitter * emit, Result * result);
 void emit_not(Code_Emitter * emit, Result * result);
 
 void emit_test(Code_Emitter * emit, Result * lhs, Result * rhs);
+void emit_cmp (Code_Emitter * emit, Operator_Bin operator, Result * lhs, Result * rhs);
 
 void emit_jcc   (Code_Emitter * emit, Condition_Code cc, char const * label);
 void emit_setcc (Code_Emitter * emit, Condition_Code cc, Result * result);

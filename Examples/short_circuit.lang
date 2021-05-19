@@ -1,14 +1,26 @@
-extern ExitProcess(exit_code: int) -> void;
+extern exit(exit_code: int);
+extern assert(assertion: bool);
 
+// Functions to prevent constant folding
 func return_true()  -> bool { return true; }
 func return_false() -> bool { return false; }
 
-func fail() -> bool { ExitProcess(-1); } // Better not call this function
+func fail() -> bool { exit(-1); } // Better not call this function
 
 func main() -> int {
 	stat: bool = return_false() && fail();
 	
 	if (return_true() || fail()) { }
+	
+	assert((return_false() && return_false()) == false);
+	assert((return_false() && return_true())  == false);
+	assert((return_true()  && return_false()) == false);
+	assert((return_true()  && return_true())  == true);
+	
+	assert((return_false() || return_false()) == false);
+	assert((return_false() || return_true())  == true);
+	assert((return_true()  || return_false()) == true);
+	assert((return_true()  || return_true())  == true);
 	
 	return 0;
 }

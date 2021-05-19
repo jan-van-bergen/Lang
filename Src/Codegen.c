@@ -15,6 +15,8 @@
 #include "Util.h"
 #include "Error.h"
 
+#define LABEL_STR_BUF_SIZE 64
+
 static char const * const_f32_to_u64_name = "__const_f32_to_u64";
 static char const * const_f64_to_u64_name = "__const_f64_to_u64";
 
@@ -29,15 +31,15 @@ static Result codegen_expression_const(Code_Emitter * emit, AST_Expression const
 	Token_Type literal_type = expr->expr_const.token.type;
 	switch (literal_type) {
 		case TOKEN_LITERAL_STRING: {
-			char str_lit_name[128];
-			sprintf_s(str_lit_name, sizeof(str_lit_name), "lit_str_%i", emit->data_seg_len);
+			char str_lit_name[128]; sprintf_s(str_lit_name, sizeof(str_lit_name), "str_%i", emit->data_seg_len);
 
-			Result result = result_make_reg(type, register_alloc(emit));
+			Result result_reg = result_make_reg(type, register_alloc(emit));
+			Result result_lit = result_make_global(type, str_lit_name);
 
 			emit_string_literal(emit, str_lit_name, expr->expr_const.token.value_str);
-			emit_asm(emit, "lea %s, [REL %s] ; \"%s\"\n", get_reg_name(result.reg, 8), str_lit_name, expr->expr_const.token.value_str);
+			emit_lea(emit, &result_reg, &result_lit);
 
-			return result;
+			return result_reg;
 		}
 
 		case TOKEN_LITERAL_BOOL:
@@ -71,36 +73,26 @@ static Result codegen_expression_const(Code_Emitter * emit, AST_Expression const
 		}
 
 		case TOKEN_LITERAL_F32: {
-			Result result = result_make_reg(type, register_alloc_float(emit));
+			char flt_lit_name[128]; sprintf_s(flt_lit_name, sizeof(flt_lit_name), "flt_%i", emit->data_seg_len);
 
-			char str_lit_name[128];
-			sprintf_s(str_lit_name, sizeof(str_lit_name), "lit_flt_%i", emit->data_seg_len);
+			Result result_reg = result_make_reg(type, register_alloc_float(emit));
+			Result result_lit = result_make_global(type, flt_lit_name);
+			
+			emit_f32_literal(emit, flt_lit_name, expr->expr_const.token.value_float);
+			emit_mov(emit, &result_reg, &result_lit);
 
-			uint32_t flt; memcpy(&flt, &expr->expr_const.token.value_float, 4);
-
-			char str_lit_flt[64];
-			sprintf_s(str_lit_flt, sizeof(str_lit_flt), "0%xh ; %ff", flt, expr->expr_const.token.value_float);
-
-			emit_float_literal(emit, str_lit_name, str_lit_flt);
-			emit_asm(emit, "movss %s, DWORD [REL %s]\n", get_reg_name(result.reg, 8), str_lit_name);
-
-			return result;
+			return result_reg;
 		}
 		case TOKEN_LITERAL_F64: {
-			Result result = result_make_reg(type, register_alloc_float(emit));
+			char dbl_lit_name[128]; sprintf_s(dbl_lit_name, sizeof(dbl_lit_name), "dbl_%i", emit->data_seg_len);
 
-			char str_lit_name[128];
-			sprintf_s(str_lit_name, sizeof(str_lit_name), "lit_flt_%i", emit->data_seg_len);
+			Result result_reg = result_make_reg(type, register_alloc_float(emit));
+			Result result_lit = result_make_global(type, dbl_lit_name);
+			
+			emit_f64_literal(emit, dbl_lit_name, expr->expr_const.token.value_double);
+			emit_mov(emit, &result_reg, &result_lit);
 
-			uint64_t dbl; memcpy(&dbl, &expr->expr_const.token.value_double, 8);
-
-			char str_lit_dbl[64];
-			sprintf_s(str_lit_dbl, sizeof(str_lit_dbl), "%llxh ; %f", dbl, expr->expr_const.token.value_double);
-
-			emit_float_literal(emit, str_lit_name, str_lit_dbl);
-			emit_asm(emit, "movsd %s, QWORD [REL %s]\n", get_reg_name(result.reg, 8), str_lit_name);
-
-			return result;
+			return result_reg;
 		}
 
 		case TOKEN_KEYWORD_NULL: return result_make_u64(type, 0);
@@ -114,7 +106,7 @@ static Result codegen_expression_var(Code_Emitter * emit, AST_Expression const *
 	char     const * var_name = expr->expr_var.name;
 	Variable const * var = scope_get_variable(emit->current_scope, var_name);
 
-	bool by_address = flag_is_set(emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+	bool by_address = flag_is_set(emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
 	
 	bool is_global_function = false;
 	if (type_is_function(var->type)) {
@@ -148,7 +140,7 @@ static Result codegen_expression_var(Code_Emitter * emit, AST_Expression const *
 static Result codegen_expression_array_access(Code_Emitter * emit, AST_Expression * expr) {
 	assert(expr->type == AST_EXPRESSION_ARRAY_ACCESS);
 
-	bool return_by_address = emit->flags & CTX_FLAG_VAR_BY_ADDRESS; 
+	bool return_by_address = emit->flags & EMIT_FLAG_EVAL_BY_ADDRESS; 
 	
 	AST_Expression * expr_array = expr->expr_array_access.expr_array;
 	AST_Expression * expr_index = expr->expr_array_access.expr_index;
@@ -156,21 +148,21 @@ static Result codegen_expression_array_access(Code_Emitter * emit, AST_Expressio
 	Result result_array, result_index;
 
 	bool array_by_address = type_is_array(type_infer(expr_array, emit->current_scope));
-	flag_unset(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+	flag_unset(&emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
 
 	// Traverse tallest subtree first
 	if (expr_array->height > expr_index->height) {
-		if (array_by_address) flag_set(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+		if (array_by_address) flag_set(&emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
 		result_array = codegen_expression(emit, expr_array);
-		if (array_by_address) flag_unset(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+		if (array_by_address) flag_unset(&emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
 
 		result_index = codegen_expression(emit, expr_index);
 	} else {
 		result_index = codegen_expression(emit, expr_index);
 		
-		if (array_by_address) flag_set(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+		if (array_by_address) flag_set(&emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
 		result_array = codegen_expression(emit, expr_array);
-		if (array_by_address) flag_unset(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+		if (array_by_address) flag_unset(&emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
 	}
 
 	if (!type_is_pointer(result_array.type) && !type_is_array(result_array.type)) {
@@ -207,7 +199,7 @@ static Result codegen_expression_array_access(Code_Emitter * emit, AST_Expressio
 
 	// Check if we need to return by address or value
 	if (return_by_address) {
-		flag_set(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+		flag_set(&emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
 	} else {
 		// Only dereference primitives, structs and arrays are always returned by address
 		if (type_is_primitive(result_array.type)) {
@@ -224,10 +216,10 @@ static Result codegen_expression_array_access(Code_Emitter * emit, AST_Expressio
 static Result codegen_expression_struct_member(Code_Emitter * emit, AST_Expression * expr) {
 	assert(expr->type == AST_EXPRESSION_STRUCT_MEMBER);
 
-	bool var_by_address = flag_is_set(emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+	bool var_by_address = flag_is_set(emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
 
 	// Evaluate LHS by address
-	flag_set(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+	flag_set(&emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
 	Result result = codegen_expression(emit, expr->expr_struct_member.expr);
 
 	char const * struct_name = NULL;
@@ -259,7 +251,7 @@ static Result codegen_expression_struct_member(Code_Emitter * emit, AST_Expressi
 
 	// Check if we need to return by value
 	if (!var_by_address) {
-		flag_unset(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+		flag_unset(&emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
 
 		// Only dereference primitives, structs and arrays are always returned by address
 		if (type_is_primitive(result.type)) {
@@ -468,91 +460,6 @@ static Result codegen_expression_sizeof(Code_Emitter * emit, AST_Expression * ex
 	return result_make_u64(make_type_u32(), size);
 }
 
-// Helper function used by relational and equality operators
-static Result codegen_compare(Code_Emitter * emit, char const * cmp_inst, Operator_Bin operator, Result * result_left, Result * result_right) {
-	if (result_left->form == RESULT_IMMEDIATE && result_right->form == RESULT_IMMEDIATE) {
-		bool compare_result = false;
-
-		if (type_is_f32(result_left->type)) {
-			switch (operator) {
-				case OPERATOR_BIN_LT: compare_result = result_left->f32 <  result_right->f32; break;
-				case OPERATOR_BIN_LE: compare_result = result_left->f32 <= result_right->f32; break;
-				case OPERATOR_BIN_GT: compare_result = result_left->f32 >  result_right->f32; break;
-				case OPERATOR_BIN_GE: compare_result = result_left->f32 >= result_right->f32; break;
-				case OPERATOR_BIN_EQ: compare_result = result_left->f32 == result_right->f32; break;
-				case OPERATOR_BIN_NE: compare_result = result_left->f32 != result_right->f32; break;
-				default: error(ERROR_INTERNAL);
-			}
-		} else if (type_is_f64(result_left->type)) {
-			switch (operator) {
-				case OPERATOR_BIN_LT: compare_result = result_left->f64 <  result_right->f64; break;
-				case OPERATOR_BIN_LE: compare_result = result_left->f64 <= result_right->f64; break;
-				case OPERATOR_BIN_GT: compare_result = result_left->f64 >  result_right->f64; break;
-				case OPERATOR_BIN_GE: compare_result = result_left->f64 >= result_right->f64; break;
-				case OPERATOR_BIN_EQ: compare_result = result_left->f64 == result_right->f64; break;
-				case OPERATOR_BIN_NE: compare_result = result_left->f64 != result_right->f64; break;
-				default: error(ERROR_INTERNAL);
-			}
-		} else if (type_is_integral_signed(result_left->type) && type_is_integral_signed(result_right->type)) {
-			switch (operator) {
-				case OPERATOR_BIN_LT: compare_result = result_left->i64 <  result_right->i64; break;
-				case OPERATOR_BIN_LE: compare_result = result_left->i64 <= result_right->i64; break;
-				case OPERATOR_BIN_GT: compare_result = result_left->i64 >  result_right->i64; break;
-				case OPERATOR_BIN_GE: compare_result = result_left->i64 >= result_right->i64; break;
-				case OPERATOR_BIN_EQ: compare_result = result_left->i64 == result_right->i64; break;
-				case OPERATOR_BIN_NE: compare_result = result_left->i64 != result_right->i64; break;
-				default: error(ERROR_INTERNAL);
-			}
-		} else {
-			switch (operator) {
-				case OPERATOR_BIN_LT: compare_result = result_left->u64 <  result_right->u64; break;
-				case OPERATOR_BIN_LE: compare_result = result_left->u64 <= result_right->u64; break;
-				case OPERATOR_BIN_GT: compare_result = result_left->u64 >  result_right->u64; break;
-				case OPERATOR_BIN_GE: compare_result = result_left->u64 >= result_right->u64; break;
-				case OPERATOR_BIN_EQ: compare_result = result_left->u64 == result_right->u64; break;
-				case OPERATOR_BIN_NE: compare_result = result_left->u64 != result_right->u64; break;
-				default: error(ERROR_INTERNAL);
-			}
-		}
-
-		return result_make_u64(make_type_bool(), compare_result);
-	}
-	
-	result_ensure_in_register(emit, result_left);
-
-	int type_size = MAX(
-		type_get_size(result_left ->type, emit->current_scope),
-		type_get_size(result_right->type, emit->current_scope)
-	);
-
-	char str_result_left [RESULT_STR_BUF_SIZE]; result_to_str_sized(str_result_left, sizeof(str_result_left),  result_left,  type_size);
-	char str_result_right[RESULT_STR_BUF_SIZE]; result_to_str_sized(str_result_right,sizeof(str_result_right), result_right, type_size);
-	emit_asm(emit, "%s %s, %s\n", cmp_inst, str_result_left, str_result_right);
-
-	return result_make_cmp(make_type_bool(), get_condition_code(operator, result_left, result_right));
-}
-
-// Helper function used by relational operators
-static void codegen_relational(Code_Emitter * emit, char const * str_operator, Operator_Bin operator, Result * result_left, Result * result_right) {
-	Result result;
-
-	if ((type_is_integral(result_left->type) && type_is_integral(result_right->type)) ||
-		(type_is_bool    (result_left->type) && type_is_bool    (result_right->type)) ||
-		(type_is_pointer (result_left->type) && type_is_pointer (result_right->type) && types_unifiable(result_left->type, result_right->type))
-	) {
-		result = codegen_compare(emit, "cmp", operator, result_left, result_right);
-	} else if (type_is_f32(result_left->type) && type_is_f32(result_right->type)) {
-		result = codegen_compare(emit, "comiss", operator, result_left, result_right);
-	} else if (type_is_f64(result_left->type) && type_is_f64(result_right->type)) {
-		result = codegen_compare(emit, "comisd", operator, result_left, result_right);
-	} else {
-		type_error(emit, "Operator '%s' requires two integral, boolean, float, or pointer types", str_operator);
-	}
-
-	result_free(emit, result_left);
-	*result_left = result;
-}
-
 static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression const * expr) {
 	assert(expr->type == AST_EXPRESSION_OPERATOR_BIN);
 
@@ -568,18 +475,18 @@ static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression cons
 		// Traverse tallest subtree first
 		if (expr_left->height > expr_right->height) {
 			// Evaluate lhs by address
-			flag_set(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+			flag_set(&emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
 			result_left  = codegen_expression(emit, expr_left);
-			flag_unset(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+			flag_unset(&emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
 
 			result_right = codegen_expression(emit, expr_right);
 		} else {
 			result_right = codegen_expression(emit, expr_right);
 
 			// Evaluate lhs by address
-			flag_set(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+			flag_set(&emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
 			result_left = codegen_expression(emit, expr_left);
-			flag_unset(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+			flag_unset(&emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
 		}
 
 		if (type_is_void(result_right.type)) {
@@ -628,8 +535,6 @@ static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression cons
 	
 	// Handle operators that require short-circuit evaluation separately
 	if (operator == OPERATOR_BIN_LOGICAL_AND) {
-		int label = get_new_label(emit);
-
 		result_left = codegen_expression(emit, expr_left);
 
 		if (result_left.form == RESULT_IMMEDIATE) {
@@ -641,38 +546,40 @@ static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression cons
 				error(ERROR_CODEGEN);
 			}
 		}
-		
-		Condition_Code cc_left = condition_code_invert(result_get_condition_code(emit, &result_left));
-		emit_asm(emit, "j%s L_land_false_%i ; short circuit '&&'\n", condition_code_to_str(cc_left), label);	
-		result_free(emit, &result_left);
 
-		result_right = codegen_expression(emit, expr_right);
+		if (flag_is_set(emit->flags, EMIT_FLAG_INSIDE_CONDITION)) {
+			assert(emit->current_condition_label_true);
+			assert(emit->current_condition_label_false);
 
-		Condition_Code cc_right = condition_code_invert(result_get_condition_code(emit, &result_right));		
-		result_free(emit, &result_right);
+			Condition_Code cc_left = condition_code_invert(result_get_condition_code(emit, &result_left));
+			emit_jcc(emit, cc_left, emit->current_condition_label_false);	
+			result_free(emit, &result_left);
+			
+			result_right = codegen_expression(emit, expr_right);
+		} else {
+			result_ensure_in_register(emit, &result_left);
 
-		Result result_0   = result_make_u64(make_type_bool(), 0);
-		Result result_1   = result_make_u64(make_type_bool(), 1);
-		Result result_out = result_make_reg(make_type_bool(), register_alloc(emit));
+			int  label = get_new_label(emit);
+			char label_land_short[LABEL_STR_BUF_SIZE]; sprintf_s(label_land_short, sizeof(label_land_short), "L_land_short_%i", label);
 
-		emit_asm(emit, "j%s L_land_false_%i\n", condition_code_to_str(cc_right), label);
-		emit_mov(emit, &result_out, &result_1);
-		emit_asm(emit, "jmp L_land_exit_%i\n", label);
-		emit_asm(emit, "L_land_false_%i:\n", label);
-		emit_mov(emit, &result_out, &result_0);
-		emit_asm(emit, "L_land_exit_%i:\n",  label);
-		
-		result_free(emit, &result_0);
-		result_free(emit, &result_1);
+			Condition_Code cc_left = condition_code_invert(result_get_condition_code(emit, &result_left));
+			emit_jcc(emit, cc_left, label_land_short);	
+			
+			Register reg = result_left.reg;
+			result_free(emit, &result_left);
+
+			result_right = codegen_expression(emit, expr_right);
+			result_ensure_in_given_register(emit, &result_right, reg);
+			
+			emit_label(emit, label_land_short);
+		}
 
 		if (!type_is_bool(result_left.type) || !type_is_bool(result_right.type)) {
 			type_error(emit, "Operator '&&' requires two boolean operands");
 		}
 		
-		return result_out;
+		return result_right;
 	} else if (operator == TOKEN_OPERATOR_LOGICAL_OR) {
-		int label = get_new_label(emit);
-		
 		result_left = codegen_expression(emit, expr_left);
 		
 		if (result_left.form == RESULT_IMMEDIATE) {
@@ -685,34 +592,38 @@ static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression cons
 			}
 		}
 
-		Condition_Code cc_left = result_get_condition_code(emit, &result_left);
-		emit_asm(emit, "j%s L_lor_true_%i ; short circuit '||'\n", condition_code_to_str(cc_left), label);
-		result_free(emit, &result_left);
-		
-		result_right = codegen_expression(emit, expr_right);
+		if (flag_is_set(emit->flags, EMIT_FLAG_INSIDE_CONDITION)) {
+			assert(emit->current_condition_label_true);
+			assert(emit->current_condition_label_false);
 
-		Condition_Code cc_right = result_get_condition_code(emit, &result_right);
-		result_free(emit, &result_right);
+			Condition_Code cc_left = result_get_condition_code(emit, &result_left);
+			emit_jcc(emit, cc_left, emit->current_condition_label_true);	
+			result_free(emit, &result_left);
+			
+			result_right = codegen_expression(emit, expr_right);
+		} else {
+			result_ensure_in_register(emit, &result_left);
 		
-		Result result_0   = result_make_u64(make_type_bool(), 0);
-		Result result_1   = result_make_u64(make_type_bool(), 1);
-		Result result_out = result_make_reg(make_type_bool(), register_alloc(emit));
+			int  label = get_new_label(emit);
+			char label_lor_short[LABEL_STR_BUF_SIZE]; sprintf_s(label_lor_short, sizeof(label_lor_short), "L_lor_short_%i", label);
 
-		emit_asm(emit, "j%s L_lor_true_%i\n", condition_code_to_str(cc_right), label);
-		emit_mov(emit, &result_out, &result_0);
-		emit_asm(emit, "jmp L_lor_exit_%i\n", label);
-		emit_asm(emit, "L_lor_true_%i:\n", label);
-		emit_mov(emit, &result_out, &result_1);
-		emit_asm(emit, "L_lor_exit_%i:\n",  label);
-		
-		result_free(emit, &result_0);
-		result_free(emit, &result_1);
+			Condition_Code cc_left = result_get_condition_code(emit, &result_left);
+			emit_jcc(emit, cc_left, label_lor_short);	
+			
+			Register reg = result_left.reg;
+			result_free(emit, &result_left);
+
+			result_right = codegen_expression(emit, expr_right);
+			result_ensure_in_given_register(emit, &result_right, reg);
+			
+			emit_label(emit, label_lor_short);
+		}
 
 		if (!type_is_bool(result_left.type) || !type_is_bool(result_right.type)) {
 			type_error(emit, "Operator '||' requires two boolean operands");
 		}
 		
-		return result_out;
+		return result_right;
 	}
 
 	// Traverse tallest subtree first
@@ -818,13 +729,15 @@ static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression cons
 			break;
 		}
 
-		case OPERATOR_BIN_LT: codegen_relational(emit, "<",  OPERATOR_BIN_LT, &result_left, &result_right); break;
-		case OPERATOR_BIN_LE: codegen_relational(emit, "<=", OPERATOR_BIN_LE, &result_left, &result_right); break;
-		case OPERATOR_BIN_GT: codegen_relational(emit, ">",  OPERATOR_BIN_GT, &result_left, &result_right); break;
-		case OPERATOR_BIN_GE: codegen_relational(emit, ">=", OPERATOR_BIN_GE, &result_left, &result_right); break;
-
-		case TOKEN_OPERATOR_EQ: codegen_relational(emit, "==", TOKEN_OPERATOR_EQ, &result_left, &result_right); break;
-		case TOKEN_OPERATOR_NE: codegen_relational(emit, "!=", TOKEN_OPERATOR_NE, &result_left, &result_right); break;
+		case OPERATOR_BIN_LT:
+		case OPERATOR_BIN_LE:
+		case OPERATOR_BIN_GT:
+		case OPERATOR_BIN_GE:
+		case OPERATOR_BIN_EQ:
+		case OPERATOR_BIN_NE: {
+			emit_cmp(emit, operator, &result_left, &result_right); 
+			break;
+		}
 
 		case TOKEN_OPERATOR_BITWISE_AND: {
 			if (!type_is_integral(result_left.type) || !type_is_integral(result_right.type)) {
@@ -881,19 +794,19 @@ static Result codegen_expression_op_pre(Code_Emitter * emit, AST_Expression cons
 			type_error(emit, "Operator '&' can only take address of a variable or struct member");
 		}
 
-		bool by_address = flag_is_set(emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
-		flag_set(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+		bool by_address = flag_is_set(emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
+		flag_set(&emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
 
 		result = codegen_expression(emit, operand);
 		result.type = make_type_pointer(result.type);
 
-		if (!by_address) flag_unset(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+		if (!by_address) flag_unset(&emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
 
 		return result;
 	} else if (operator == OPERATOR_PRE_DEREF) {
-		bool by_address = flag_is_set(emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+		bool by_address = flag_is_set(emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
 
-		flag_unset(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS); // Unset temporarily
+		flag_unset(&emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS); // Unset temporarily
 
 		result = codegen_expression(emit, operand);
 		
@@ -910,7 +823,7 @@ static Result codegen_expression_op_pre(Code_Emitter * emit, AST_Expression cons
 		result.type = result.type->base; // Remove 1 level of indirection
 
 		if (by_address) {
-			flag_set(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS); // Reset if this flag was previously set
+			flag_set(&emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS); // Reset if this flag was previously set
 		} else {
 			result.by_address = false;
 			result = result_deref(emit, &result, true);
@@ -922,13 +835,13 @@ static Result codegen_expression_op_pre(Code_Emitter * emit, AST_Expression cons
 	bool by_address = false;
 	
 	if (operator == OPERATOR_PRE_INC || operator == OPERATOR_PRE_DEC) {
-		by_address = flag_is_set(emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
-		flag_set(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+		by_address = flag_is_set(emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
+		flag_set(&emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
 	}
 	
 	result = codegen_expression(emit, operand);
 
-	if (!by_address) flag_unset(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+	if (!by_address) flag_unset(&emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
 
 	switch (operator) {
 		case OPERATOR_PRE_INC: {
@@ -1041,13 +954,13 @@ static Result codegen_expression_op_post(Code_Emitter * emit, AST_Expression con
 	AST_Expression * operand  = expr->expr_op_pre.expr;
 	Operator_Post    operator = expr->expr_op_pre.operator;
 
-	bool by_address = flag_is_set(emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+	bool by_address = flag_is_set(emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
 
 	// Evaluate operand by address
-	flag_set(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+	flag_set(&emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
 	Result result = codegen_expression(emit, operand);
 
-	if (!by_address) flag_unset(&emit->flags, CTX_FLAG_VAR_BY_ADDRESS);
+	if (!by_address) flag_unset(&emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
 
 	switch (operator) {
 		case OPERATOR_POST_INC: {
@@ -1350,24 +1263,22 @@ static void codegen_statement_def_var(Code_Emitter * emit, AST_Statement const *
 
 	if (scope_is_global(emit->current_scope)) {
 		if (stat->stat_def_var.assign) {
-			AST_Expression const * literal = stat->stat_def_var.assign->expr_op_bin.expr_right;
-			Token_Type literal_type = literal->expr_const.token.type;
+			AST_Expression const * literal_expr = stat->stat_def_var.assign->expr_op_bin.expr_right;
 			
-			if (literal->type != AST_EXPRESSION_CONST) {
+			if (literal_expr->type != AST_EXPRESSION_CONST) {
 				printf("ERROR: Globals can only be initialized to constant values! Variable name: '%s'", var_name); 
 				error(ERROR_CODEGEN);
 			}
 
-			switch (literal_type) {
+			Token const * literal = &literal_expr->expr_const.token;
+
+			switch (literal->type) {
 				case TOKEN_LITERAL_INT: 
-				case TOKEN_LITERAL_BOOL: {
-					emit_global(emit, var, literal->expr_const.token.sign, literal->expr_const.token.value_int);
-					break;
-				}
-				case TOKEN_LITERAL_STRING: {
-					emit_string_literal(emit, var_name, literal->expr_const.token.value_str);
-					break;
-				}
+				case TOKEN_LITERAL_BOOL: emit_global(emit, var, literal->sign, literal->value_int); break;
+				case TOKEN_LITERAL_STRING: emit_string_literal(emit, var_name, literal->value_str); break;
+				case TOKEN_LITERAL_F32: emit_f32_literal(emit, var_name, literal->value_float);  break;
+				case TOKEN_LITERAL_F64: emit_f64_literal(emit, var_name, literal->value_double); break;
+
 				default: error(ERROR_CODEGEN);
 			}
 		} else {
@@ -1404,7 +1315,7 @@ static void codegen_statement_def_func(Code_Emitter * emit, AST_Statement const 
 	char const * function_name = stat->stat_def_func.function_def->name;
 	emit->current_function_name = function_name;
 
-	emit_asm(emit, "%s:\n", function_name);
+	emit_label(emit, function_name);
 	emit->indent++;
 
 	emit_asm(emit, "push rbp ; save RBP\n");
@@ -1494,8 +1405,21 @@ static void codegen_statement_if(Code_Emitter * emit, AST_Statement const * stat
 		ast_print_expression(stat->stat_if.condition, str, sizeof(str));
 		emit_asm(emit, "; if (%s)\n", str);
 	}
+	
+	int  label = get_new_label(emit);
+	char label_if_true[LABEL_STR_BUF_SIZE]; sprintf_s(label_if_true, sizeof(label_if_true), "L_if_true_%i", label);
+	char label_if_else[LABEL_STR_BUF_SIZE];	sprintf_s(label_if_else, sizeof(label_if_else), "L_if_else_%i", label);
+	char label_if_exit[LABEL_STR_BUF_SIZE];	sprintf_s(label_if_exit, sizeof(label_if_exit), "L_if_exit_%i", label);
 
+	assert(!flag_is_set(emit->flags, EMIT_FLAG_INSIDE_CONDITION));
+
+	flag_set(&emit->flags, EMIT_FLAG_INSIDE_CONDITION);
+	emit->current_condition_label_true  = label_if_true;
+	emit->current_condition_label_false = stat->stat_if.case_false ? label_if_else : label_if_exit;
 	Result result = codegen_expression(emit, stat->stat_if.condition);
+	emit->current_condition_label_true  = NULL;
+	emit->current_condition_label_false = NULL;
+	flag_unset(&emit->flags, EMIT_FLAG_INSIDE_CONDITION);
 	
 	if (result.form == RESULT_IMMEDIATE) {
 		if (result.u64 != 0) {
@@ -1506,36 +1430,33 @@ static void codegen_statement_if(Code_Emitter * emit, AST_Statement const * stat
 		return;
 	}
 	
-	int  label = get_new_label(emit);
-	char label_str[32];
-
 	Condition_Code condition_code = condition_code_invert(result_get_condition_code(emit, &result));
 	result_free(emit, &result);
 
 	if (stat->stat_if.case_false == NULL) {
-		sprintf_s(label_str, sizeof(label_str), "L_exit%i", label);
-		emit_jcc(emit, condition_code, label_str);
+		emit_jcc  (emit, condition_code, label_if_exit);
+		emit_label(emit, label_if_true);
 
 		emit->indent++;
 		codegen_statement(emit, stat->stat_if.case_true);
 		emit->indent--;
 	} else {
-		sprintf_s(label_str, sizeof(label_str), "L_else%i", label);
-		emit_jcc(emit, condition_code, label_str);
-		
+		emit_jcc  (emit, condition_code, label_if_else);
+		emit_label(emit, label_if_true);
+
 		emit->indent++;
 		codegen_statement(emit, stat->stat_if.case_true);
 		emit->indent--;
 
-		emit_asm(emit, "jmp L_exit%i\n", label);
-		emit_asm(emit, "L_else%i:\n",    label);
-		
+		emit_jmp  (emit, label_if_exit);
+		emit_label(emit, label_if_else);
+
 		emit->indent++;
 		codegen_statement(emit, stat->stat_if.case_false);
 		emit->indent--;
 	}
 
-	emit_asm(emit, "L_exit%i:\n", label);
+	emit_label(emit, label_if_exit);
 }
 
 static void codegen_statement_while(Code_Emitter * emit, AST_Statement const * stat) {
@@ -1548,23 +1469,33 @@ static void codegen_statement_while(Code_Emitter * emit, AST_Statement const * s
 	}
 
 	int  label = get_new_label(emit);
-	char label_str[32];
+	char label_while_loop[LABEL_STR_BUF_SIZE]; sprintf_s(label_while_loop, sizeof(label_while_loop), "L_while_loop_%i", label);
+	char label_while_true[LABEL_STR_BUF_SIZE]; sprintf_s(label_while_true, sizeof(label_while_true), "L_while_true_%i", label);
+	char label_while_exit[LABEL_STR_BUF_SIZE]; sprintf_s(label_while_exit, sizeof(label_while_exit), "L_while_exit_%i", label);
 
-	emit_asm(emit, "L_loop%i:\n", label);
-	
+	emit_label(emit, label_while_loop);
+
+	assert(!flag_is_set(emit->flags, EMIT_FLAG_INSIDE_CONDITION));
+
+	flag_set(&emit->flags, EMIT_FLAG_INSIDE_CONDITION);
+	emit->current_condition_label_true  = label_while_true;
+	emit->current_condition_label_false = label_while_exit;
 	Result result = codegen_expression(emit, stat->stat_while.condition);
+	emit->current_condition_label_true  = NULL;
+	emit->current_condition_label_false = NULL;
+	flag_unset(&emit->flags, EMIT_FLAG_INSIDE_CONDITION);
 	
 	if (result.form == RESULT_IMMEDIATE) {
 		if (result.u64 == 0) {
 			return;
 		}
 	} else {
-		Condition_Code condition_code = condition_code_invert(result_get_condition_code(emit, &result));
-		sprintf_s(label_str, sizeof(label_str), "L_exit%i", label);
-		emit_jcc(emit, condition_code, label_str);
+		Condition_Code cc = condition_code_invert(result_get_condition_code(emit, &result));
+		emit_jcc(emit, cc, label_while_exit);
+		result_free(emit, &result);
 	}
 	
-	result_free(emit, &result);
+	emit_label(emit, label_while_true);
 
 	int prev_loop_label = emit->current_loop_label;
 
@@ -1574,8 +1505,8 @@ static void codegen_statement_while(Code_Emitter * emit, AST_Statement const * s
 	emit->indent--;
 	emit->current_loop_label = prev_loop_label;
 
-	emit_asm(emit, "jmp L_loop%i\n", label);
-	emit_asm(emit, "L_exit%i:\n", label);
+	emit_jmp  (emit, label_while_loop);
+	emit_label(emit, label_while_exit);
 }
 
 static void codegen_statement_break(Code_Emitter * emit, AST_Statement const * stat) {
@@ -1590,7 +1521,8 @@ static void codegen_statement_break(Code_Emitter * emit, AST_Statement const * s
 		emit_asm(emit, "; break\n");
 	}
 
-	emit_asm(emit, "jmp L_exit%i\n", emit->current_loop_label);
+	char label_while_exit[LABEL_STR_BUF_SIZE]; sprintf_s(label_while_exit, sizeof(label_while_exit), "L_while_exit_%i", emit->current_loop_label);
+	emit_jmp(emit, label_while_exit);
 }
 
 static void codegen_statement_continue(Code_Emitter * emit, AST_Statement const * stat) {
@@ -1605,7 +1537,8 @@ static void codegen_statement_continue(Code_Emitter * emit, AST_Statement const 
 		emit_asm(emit, "; continue\n");
 	}
 
-	emit_asm(emit, "jmp L_loop%i\n", emit->current_loop_label);
+	char label_while_loop[LABEL_STR_BUF_SIZE]; sprintf_s(label_while_loop, sizeof(label_while_loop), "L_while_loop_%i", emit->current_loop_label);
+	emit_jmp(emit, label_while_loop);
 }
 
 static void codegen_statement_return(Code_Emitter * emit, AST_Statement const * stat) {
@@ -1652,7 +1585,7 @@ static void codegen_statement_return(Code_Emitter * emit, AST_Statement const * 
 		}
 
 		result_free(emit, &result);
-	} else {		
+	} else {	
 		if (emit->emit_debug_lines) {
 			emit_asm(emit, "; return\n");
 		}

@@ -126,8 +126,10 @@ Code_Emitter make_emit(bool needs_main, bool emit_debug_lines) {
 
 		.flags = 0,
 
-		.current_function_name = NULL,
-		.current_scope         = NULL,
+		.current_function_name         = NULL,
+		.current_condition_label_true  = NULL,
+		.current_condition_label_false = NULL,
+		.current_scope                 = NULL,
 
 		.code     = mem_alloc(CODE_CAP),
 		.code_len = 0,
@@ -291,13 +293,27 @@ void emit_global(Code_Emitter * emit, Variable * var, bool sign, uint64_t value)
 }
 
 // Adds float literal to data segment
-void emit_float_literal(Code_Emitter * emit, char const * flt_name, char const * flt_lit) {
+void emit_f32_literal(Code_Emitter * emit, char const * flt_name, float value) {
 	int flt_name_len = (int)strlen(flt_name);
-	int flt_lit_len  = (int)strlen(flt_lit);
+	
+	uint32_t hex_value; memcpy(&hex_value, &value, sizeof(float));
 
-	int    str_lit_len = flt_name_len + 4 + flt_lit_len + 1;
+	int    str_lit_len = flt_name_len + 64;
 	char * str_lit = mem_alloc(str_lit_len);
-	sprintf_s(str_lit, str_lit_len, "%s dq %s", flt_name, flt_lit);
+	sprintf_s(str_lit, str_lit_len, "%s dd 0x%x ; %ff", flt_name, hex_value, value);
+
+	emit_data(emit, str_lit);
+}
+
+// Adds double literal to data segment
+void emit_f64_literal(Code_Emitter * emit, char const * flt_name, double value) {
+	int flt_name_len = (int)strlen(flt_name);
+	
+	uint64_t hex_value; memcpy(&hex_value, &value, sizeof(double));
+
+	int    str_lit_len = flt_name_len + 64;
+	char * str_lit = mem_alloc(str_lit_len);
+	sprintf_s(str_lit, str_lit_len, "%s dq 0x%llx ; %ff", flt_name, hex_value, value);
 
 	emit_data(emit, str_lit);
 }
@@ -588,6 +604,7 @@ void result_to_str(char * str, int str_size, Result const * result) {
 	result_to_str_sized(str, str_size, result, 8);
 }
 
+
 void emit_lea(Code_Emitter * emit, Result * lhs, Result * rhs) {
 	if (lhs->form != RESULT_REGISTER || !result_is_indirect(rhs)) {
 		error(ERROR_CODEGEN);
@@ -708,6 +725,14 @@ void emit_mov_indirect(Code_Emitter * emit, Result * lhs, Result * rhs) {
 			break;
 		}
 	}
+}
+
+void emit_label(Code_Emitter * emit, char const * label) {
+	emit_asm(emit, "%s:\n", label);
+}
+
+void emit_jmp(Code_Emitter * emit, char const * label) {
+	emit_asm(emit, "jmp %s\n", label);
 }
 
 void emit_add(Code_Emitter * emit, Result * lhs, Result * rhs) {
@@ -1249,6 +1274,86 @@ void emit_test(Code_Emitter * emit, Result * lhs, Result * rhs) {
 
 		emit_asm(emit, "test %s, %s\n", str_lhs, str_rhs);
 	}
+}
+
+void emit_cmp(Code_Emitter * emit, Operator_Bin operator, Result * lhs, Result * rhs) {
+	if (lhs->form == RESULT_IMMEDIATE && rhs->form == RESULT_IMMEDIATE) {
+		bool compare_result = false;
+
+		if (type_is_f32(lhs->type)) {
+			switch (operator) {
+				case OPERATOR_BIN_LT: compare_result = lhs->f32 <  rhs->f32; break;
+				case OPERATOR_BIN_LE: compare_result = lhs->f32 <= rhs->f32; break;
+				case OPERATOR_BIN_GT: compare_result = lhs->f32 >  rhs->f32; break;
+				case OPERATOR_BIN_GE: compare_result = lhs->f32 >= rhs->f32; break;
+				case OPERATOR_BIN_EQ: compare_result = lhs->f32 == rhs->f32; break;
+				case OPERATOR_BIN_NE: compare_result = lhs->f32 != rhs->f32; break;
+				default: error(ERROR_INTERNAL);
+			}
+		} else if (type_is_f64(lhs->type)) {
+			switch (operator) {
+				case OPERATOR_BIN_LT: compare_result = lhs->f64 <  rhs->f64; break;
+				case OPERATOR_BIN_LE: compare_result = lhs->f64 <= rhs->f64; break;
+				case OPERATOR_BIN_GT: compare_result = lhs->f64 >  rhs->f64; break;
+				case OPERATOR_BIN_GE: compare_result = lhs->f64 >= rhs->f64; break;
+				case OPERATOR_BIN_EQ: compare_result = lhs->f64 == rhs->f64; break;
+				case OPERATOR_BIN_NE: compare_result = lhs->f64 != rhs->f64; break;
+				default: error(ERROR_INTERNAL);
+			}
+		} else if (type_is_integral_signed(lhs->type) && type_is_integral_signed(rhs->type)) {
+			switch (operator) {
+				case OPERATOR_BIN_LT: compare_result = lhs->i64 <  rhs->i64; break;
+				case OPERATOR_BIN_LE: compare_result = lhs->i64 <= rhs->i64; break;
+				case OPERATOR_BIN_GT: compare_result = lhs->i64 >  rhs->i64; break;
+				case OPERATOR_BIN_GE: compare_result = lhs->i64 >= rhs->i64; break;
+				case OPERATOR_BIN_EQ: compare_result = lhs->i64 == rhs->i64; break;
+				case OPERATOR_BIN_NE: compare_result = lhs->i64 != rhs->i64; break;
+				default: error(ERROR_INTERNAL);
+			}
+		} else {
+			switch (operator) {
+				case OPERATOR_BIN_LT: compare_result = lhs->u64 <  rhs->u64; break;
+				case OPERATOR_BIN_LE: compare_result = lhs->u64 <= rhs->u64; break;
+				case OPERATOR_BIN_GT: compare_result = lhs->u64 >  rhs->u64; break;
+				case OPERATOR_BIN_GE: compare_result = lhs->u64 >= rhs->u64; break;
+				case OPERATOR_BIN_EQ: compare_result = lhs->u64 == rhs->u64; break;
+				case OPERATOR_BIN_NE: compare_result = lhs->u64 != rhs->u64; break;
+				default: error(ERROR_INTERNAL);
+			}
+		}
+
+		result_free(emit, lhs);
+		*lhs = result_make_u64(make_type_bool(), compare_result);
+		return;
+	}
+	
+	result_ensure_in_register(emit, lhs);
+	
+	char const * cmp = NULL;
+	if ((type_is_integral(lhs->type) && type_is_integral(rhs->type)) ||
+		(type_is_bool    (lhs->type) && type_is_bool    (rhs->type)) ||
+		(type_is_pointer (lhs->type) && type_is_pointer (rhs->type) && types_unifiable(lhs->type, rhs->type))
+	) {
+		cmp = "cmp";
+	} else if (type_is_f32(lhs->type) && type_is_f32(rhs->type)) {
+		cmp = "comiss";
+	} else if (type_is_f64(lhs->type) && type_is_f64(rhs->type)) {
+		cmp = "comisd";
+	} else {
+		type_error(emit, "Operator '%s' requires two integral, boolean, float, or pointer types", operator_bin_to_str(operator));
+	}
+
+	int type_size = MAX(
+		type_get_size(lhs->type, emit->current_scope),
+		type_get_size(rhs->type, emit->current_scope)
+	);
+
+	char str_result_left [RESULT_STR_BUF_SIZE]; result_to_str_sized(str_result_left, sizeof(str_result_left),  lhs, type_size);
+	char str_result_right[RESULT_STR_BUF_SIZE]; result_to_str_sized(str_result_right,sizeof(str_result_right), rhs, type_size);
+	emit_asm(emit, "%s %s, %s\n", cmp, str_result_left, str_result_right);
+
+	result_free(emit, lhs);
+	*lhs = result_make_cmp(make_type_bool(), get_condition_code(operator, lhs, rhs));
 }
 
 void emit_jcc(Code_Emitter * emit, Condition_Code cc, char const * label) {
