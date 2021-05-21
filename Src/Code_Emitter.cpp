@@ -259,7 +259,8 @@ NO_RETURN void type_error(Code_Emitter * emit, char const * msg, ...) {
 
 // Adds global variable to data segment
 void emit_global(Code_Emitter * emit, Variable * var, bool sign, uint64_t value) {
-	int type_size = type_get_size(var->type, emit->current_scope);
+	int type_align = type_get_align(var->type, emit->current_scope);
+	int type_size  = type_get_size (var->type, emit->current_scope);
 	
 	int    global_size = (int)strlen(var->name) + 64;
 	char * global = mem_alloc(global_size);
@@ -269,7 +270,7 @@ void emit_global(Code_Emitter * emit, Variable * var, bool sign, uint64_t value)
 			type_error(emit, "Cannot initialize global aggregate '%s' with value '%llu'", var->name, value);
 		}
 		
-		sprintf_s(global, global_size, "%s resb %u", var->name, type_size);
+		sprintf_s(global, global_size, "align %i\n%s resb %u", type_align, var->name, type_size);
 
 		emit_bss(emit, global);
 	} else {
@@ -283,9 +284,9 @@ void emit_global(Code_Emitter * emit, Variable * var, bool sign, uint64_t value)
 		}
 
 		if (sign) {
-			sprintf_s(global, global_size, "%s %s %lld", var->name, define_keyword, value);
+			sprintf_s(global, global_size, "align %i\n%s %s %lld", type_align, var->name, define_keyword, value);
 		} else {
-			sprintf_s(global, global_size, "%s %s %llu", var->name, define_keyword, value);
+			sprintf_s(global, global_size, "align %i\n%s %s %llu", type_align, var->name, define_keyword, value);
 		}
 		
 		emit_data(emit, global);
@@ -300,7 +301,7 @@ void emit_f32_literal(Code_Emitter * emit, char const * flt_name, float value) {
 
 	int    str_lit_len = flt_name_len + 64;
 	char * str_lit = mem_alloc(str_lit_len);
-	sprintf_s(str_lit, str_lit_len, "%s dd 0x%x ; %ff", flt_name, hex_value, value);
+	sprintf_s(str_lit, str_lit_len, "align 4\n%s dd 0x%x ; %ff", flt_name, hex_value, value);
 
 	emit_data(emit, str_lit);
 }
@@ -313,7 +314,7 @@ void emit_f64_literal(Code_Emitter * emit, char const * flt_name, double value) 
 
 	int    str_lit_len = flt_name_len + 64;
 	char * str_lit = mem_alloc(str_lit_len);
-	sprintf_s(str_lit, str_lit_len, "%s dq 0x%llx ; %ff", flt_name, hex_value, value);
+	sprintf_s(str_lit, str_lit_len, "align 8\n%s dq 0x%llx ; %ff", flt_name, hex_value, value);
 
 	emit_data(emit, str_lit);
 }
