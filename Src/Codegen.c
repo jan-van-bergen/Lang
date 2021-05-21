@@ -231,6 +231,10 @@ static Result codegen_expression_struct_member(Code_Emitter * emit, AST_Expressi
 
 		result.by_address = false;
 		result = result_deref(emit, &result, true);
+	} else if (type_is_array(result.type) && strcmp(expr->expr_struct_member.member_name, "length") == 0) {
+		result_free(emit, &result);
+		result = result_make_u64(make_type_u64(), result.type->array_size);
+		return result;
 	} else {
 		char str_type[128];
 		type_to_string(result.type, str_type, sizeof(str_type));
@@ -472,6 +476,12 @@ static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression cons
 
 	// Assignment operator is handled separately, because it needs the lhs by address
 	if (operator == OPERATOR_BIN_ASSIGN) {
+		if (!ast_is_lvalue(expr_left)) {
+			char str_expr_left[512]; ast_print_expression(expr_left, str_expr_left, sizeof(str_expr_left));
+			printf("ERROR: Left hand operand of assignment '%s' must be an l-value!\n", str_expr_left);
+			error(ERROR_CODEGEN);
+		}
+
 		// Traverse tallest subtree first
 		if (expr_left->height > expr_right->height) {
 			// Evaluate lhs by address
@@ -487,6 +497,12 @@ static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression cons
 			flag_set(&emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
 			result_left = codegen_expression(emit, expr_left);
 			flag_unset(&emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
+		}
+
+		if (result_left.form == RESULT_IMMEDIATE) {
+			char str_expr_left[512]; ast_print_expression(expr_left, str_expr_left, sizeof(str_expr_left));
+			printf("ERROR: Cannot assign left hand operand '%s'!\n", str_expr_left);
+			error(ERROR_CODEGEN);
 		}
 
 		if (type_is_void(result_right.type)) {
@@ -787,11 +803,8 @@ static Result codegen_expression_op_pre(Code_Emitter * emit, AST_Expression cons
 
 	// Check if this is a pointer operator
 	if (operator == OPERATOR_PRE_ADDRESS_OF) {
-		if (operand->type != AST_EXPRESSION_VAR && 
-			operand->type != AST_EXPRESSION_ARRAY_ACCESS && 
-			operand->type != AST_EXPRESSION_STRUCT_MEMBER
-		) {
-			type_error(emit, "Operator '&' can only take address of a variable or struct member");
+		if (!ast_is_lvalue(operand)) {
+			type_error(emit, "Operator '&' can only take address of an l-value");
 		}
 
 		bool by_address = flag_is_set(emit->flags, EMIT_FLAG_EVAL_BY_ADDRESS);
@@ -1071,15 +1084,15 @@ static Result codegen_expression_call_func(Code_Emitter * emit, AST_Expression *
 	// https://docs.microsoft.com/en-us/cpp/build/x64-calling-convention?view=msvc-160
 	static Register const volatile_registers[] = { RAX, RBX, RCX, RDX, R8, R9, R10, R11, XMM0, XMM1, XMM2, XMM3, XMM4, XMM5 };
 
-	bool pushed_regs[ARRAY_COUNT(volatile_registers)] = { false };
-	int num_pushed_regs = 0;
+	regmask_t pushed_reg_mask  = 0;
+	int       pushed_reg_count = 0;
 
 	// Preserve volatile registers if needed
 	for (int i = 0; i < ARRAY_COUNT(volatile_registers); i++) {
 		Register reg = volatile_registers[i];
 		if (register_is_reserved(emit, reg)) {
-			pushed_regs[i] = true;
-			num_pushed_regs++;
+			flag_set(&pushed_reg_mask, 1u << reg);
+			pushed_reg_count++;
 
 			if (register_is_float(reg)) {
 				emit_asm(emit, "sub rsp, 8 ; preserve XMM\n");
@@ -1116,7 +1129,7 @@ static Result codegen_expression_call_func(Code_Emitter * emit, AST_Expression *
 		arg_size = (arg_size + 15) & ~15; // Round up to next multiple of 16 bytes to ensure stack alignment
 	}
 
-	if (num_pushed_regs & 1) arg_size += 8; // Pushed an uneven number of registers, add 8 to realign to multiple of 16
+	if (pushed_reg_count & 1) arg_size += 8; // Pushed an uneven number of registers, add 8 to realign to multiple of 16
 
 	// Reserve stack space for arguments
 	emit_asm(emit, "sub rsp, %i ; reserve shadow space and %i arguments\n", arg_size, call_arg_count);
@@ -1171,10 +1184,10 @@ static Result codegen_expression_call_func(Code_Emitter * emit, AST_Expression *
 	emit_asm(emit, "add rsp, %i ; pop arguments\n", arg_size);
 
 	// Restore volatile registers
-	if (num_pushed_regs > 0) {
+	if (pushed_reg_count > 0) {
 		for (int i = ARRAY_COUNT(volatile_registers) - 1; i >= 0; i--) {
-			if (pushed_regs[i]) {
-				Register reg = volatile_registers[i];
+			Register reg = volatile_registers[i];
+			if (flag_is_set(pushed_reg_mask, 1u << reg)) {
 				if (register_is_float(reg)) {
 					emit_asm(emit, "movsd %s, QWORD [rsp] ; restore XMM\n", get_reg_name(reg, 8));
 					emit_asm(emit, "add rsp, 8\n");

@@ -49,6 +49,7 @@ test_cases = [
 #	("Examples\\gui.lang", "/lib:Examples\\stdlib.lib /lib:user32.lib /lib:gdi32.lib",                   0, "", 0, "done"),
 #	("Examples\\gl.lang",  "/lib:Examples\\stdlib.lib /lib:user32.lib /lib:gdi32.lib /lib:opengl32.lib", 0, "", 0, "done"),
 
+	("Examples\\array_length.lang",       "",                          0,             "",                        3, ""),
 	("Examples\\operator_swap.lang",      "/lib:Examples\\stdlib.lib", 0,             "",                        0, ""),
 	("Examples\\op_assign.lang",          "",                          0,             "",                        3, ""),
 	("Examples\\constdiv.lang",           "/lib:Examples\\stdlib.lib", 0,             "",               0xffffffca, ""),
@@ -125,6 +126,7 @@ test_cases = [
 	("Examples\\error_typecheck.lang",    "",                          err.TYPECHECK, "",                        0, ""),
 	("Examples\\error_linking.lang",      "",                          err.LINKER,    "",                        0, ""),
 	("Examples\\invalid_main.lang",       "",                          err.TYPECHECK, "",                        0, ""),
+	("Examples\\error_assign.lang",       "",                          err.CODEGEN,   "",                        0, ""),
 ]
 
 def run_cmd(cmd):

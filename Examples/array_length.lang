@@ -1,0 +1,4 @@
+func main() -> int {
+	arr: int[3];
+	return arr.length;
+}

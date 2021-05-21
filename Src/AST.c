@@ -576,6 +576,15 @@ static void print_statement(AST_Statement const * stat, char * string, int * str
 	}
 }
 
+bool ast_is_lvalue(AST_Expression const * expr) {
+	return
+		expr->type == AST_EXPRESSION_OPERATOR_PRE ||
+		expr->type == AST_EXPRESSION_OPERATOR_POST ||
+		expr->type == AST_EXPRESSION_VAR ||
+		expr->type == AST_EXPRESSION_ARRAY_ACCESS ||
+		expr->type == AST_EXPRESSION_STRUCT_MEMBER;
+}
+
 #undef  SPRINTF
 #undef VSPRINTF
 

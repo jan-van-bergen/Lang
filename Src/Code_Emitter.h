@@ -43,6 +43,8 @@ typedef enum Register {
 	XMM15,
 } Register;
 
+typedef uint32_t regmask_t;
+
 bool register_is_float  (Register reg);
 bool register_is_scratch(Register reg);
 
@@ -91,7 +93,7 @@ typedef struct Code_Emitter {
 	bool needs_main;
 	bool emit_debug_lines;
 
-	uint32_t reg_mask;
+	regmask_t reg_mask;
 
 	int indent;
 

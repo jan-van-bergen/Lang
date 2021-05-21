@@ -37,9 +37,10 @@ func main(arg: char *) {
 	numerals[6].digit = 'M';
 	numerals[6].value = 1000;
 	
-	idx := 6;
+	last_idx := cast(int) numerals.length - 1;
+	idx := last_idx;
 	while (idx >= 0) {
-		if (idx == 0 || idx == 6 || num != (numerals[idx + 1].value - numerals[idx - 1].value)) {
+		if (idx == 0 || idx == last_idx || num != (numerals[idx + 1].value - numerals[idx - 1].value)) {
 			div := num / numerals[idx].value;
 			mod := num % numerals[idx].value;
 			if (div == 4) {

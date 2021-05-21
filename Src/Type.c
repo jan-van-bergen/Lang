@@ -567,6 +567,8 @@ Type const * type_infer(AST_Expression const * expr, Scope const * scope) {
 				struct_name = struct_type->struct_name;
 			} else if (type_is_pointer(struct_type) && type_is_struct(struct_type->base)) {
 				struct_name = struct_type->base->struct_name;
+			} else if (type_is_array(struct_type) && strcmp(expr->expr_struct_member.member_name, "length") == 0) {
+				return make_type_u64();
 			} else {
 				error(ERROR_TYPECHECK);
 			}

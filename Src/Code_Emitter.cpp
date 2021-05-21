@@ -29,8 +29,8 @@ bool register_is_scratch(Register reg) {
 Register register_alloc(Code_Emitter * emit) {
 	for (int i = 0; i < ARRAY_COUNT(scratch_registers); i++) {
 		Register reg = scratch_registers[i];
-		if (!flag_is_set(emit->reg_mask, 1 << reg)) {
-			flag_set(&emit->reg_mask, 1 << reg);
+		if (!flag_is_set(emit->reg_mask, 1u << reg)) {
+			flag_set(&emit->reg_mask, 1u << reg);
 
 			return reg;
 		}
@@ -42,8 +42,8 @@ Register register_alloc(Code_Emitter * emit) {
 
 Register register_alloc_float(Code_Emitter * emit) {
 	for (Register reg = XMM4; reg <= XMM15; reg++) {
-		if (!flag_is_set(emit->reg_mask, 1 << reg)) {
-			flag_set(&emit->reg_mask, 1 << reg);
+		if (!flag_is_set(emit->reg_mask, 1u << reg)) {
+			flag_set(&emit->reg_mask, 1u << reg);
 
 			return reg;
 		}
@@ -54,14 +54,14 @@ Register register_alloc_float(Code_Emitter * emit) {
 }
 
 bool register_is_reserved(Code_Emitter * emit, Register reg) {
-	return flag_is_set(emit->reg_mask, 1 << reg);
+	return flag_is_set(emit->reg_mask, 1u << reg);
 }
 
 void register_free(Code_Emitter * emit, Register reg) {
 	if (reg == -1) return;
 
 	assert(register_is_reserved(emit, reg));
-	flag_unset(&emit->reg_mask, 1 << reg);
+	flag_unset(&emit->reg_mask, 1u << reg);
 }
 
 Register get_call_register(int argument_index, bool is_float) {
