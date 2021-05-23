@@ -1,53 +1,9 @@
-extern GetProcessHeap() -> void *;
-extern HeapAlloc(heap: void *, flags: int, size: int)   -> void *;
-extern HeapFree (heap: void *, flags: int, ptr: void *) -> void;
+extern malloc(size: int) -> void *;
+extern free(ptr: void *);
 
-extern GetStdHandle(std_handle: int) -> void *;
-extern WriteFile(handle: void *, buffer: void *, bytes_to_write: int, bytes_written: int *, overlapped: int) -> bool;
+extern assert(assertion: bool);
 
-extern ExitProcess(exit_code: int) -> void;
-
-NULL: void * = 0;
-
-heap: void *;
-
-func malloc(size: int) -> void * {
-	if (heap == NULL) {
-		heap = GetProcessHeap();
-	}
-	
-	return HeapAlloc(heap, 0, size);
-}
-
-func free(ptr: void *) -> void {
-	assert(ptr  != NULL);
-	assert(heap != NULL);
-	
-	HeapFree(heap, 0, ptr);
-}
-
-func assert(expression: bool) -> void {
-	if (!expression) {
-		ExitProcess(1);
-	}
-}
-
-STD_OUTPUT_HANDLE: int = -11;
-
-func print(str: char *, str_len: int) -> void {
-	std_handle: void * = GetStdHandle(STD_OUTPUT_HANDLE);
-
-	bytes_written: int;
-	WriteFile(std_handle, str, str_len, &bytes_written, 0);
-}
-
-func strlen(str: char *) -> int {
-	len: int = 0;
-	
-	while (*(str + len) != 0) len = len + 1;
-	
-	return len;
-}
+extern puts(str: char *);
 
 func main() -> int {
 	mem: char * = malloc(16);
@@ -62,9 +18,7 @@ func main() -> int {
 	*(mem + 7) = 't';
 	*(mem + 8) = '\0';
 
-	str_len: int = strlen(mem);
-
-	print(mem, str_len);
+	puts(mem);
 	free(mem);
 
 	mem2: char * = malloc(16);

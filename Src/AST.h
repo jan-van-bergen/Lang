@@ -261,6 +261,8 @@ AST_Statement * ast_make_stat_return  (AST_Expression * expr);
 
 bool ast_is_lvalue(AST_Expression const * expr);
 
+bool ast_contains(AST_Expression const * expr, AST_Expression_Type expression_type);
+
 
 void ast_print_expression(AST_Expression const * expr, char * string, int string_size);
 void ast_print_statement (AST_Statement  const * stat, char * string, int string_size);

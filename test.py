@@ -98,7 +98,7 @@ test_cases = [
 	("Examples\\mod.lang",                "",                          0,             "",                        2, ""),
 	("Examples\\fizzbuzz.lang",           "",                          0,             "",                        0, "1 2 buzz 4 fizz buzz 7 8 buzz fizz 11 buzz 13 14 fizzbuzz 16 17 buzz 19 fizz "),
 	("Examples\\logic.lang",              "",                          0,             "",                        0, ""),
-	("Examples\\heap.lang",               "",                          0,             "",                 67305985, "BruhTest"),
+	("Examples\\heap.lang",               "/lib:Examples\\stdlib.lib", 0,             "",                 67305985, "BruhTest"),
 	("Examples\\scope.lang",              "",                          0,             "",                        3, ""),
 	("Examples\\scope2.lang",             "",                          0,             "",                       32, ""),
 	("Examples\\cast.lang",               "",                          0,             "",               0x0a0b0c0d, ""),

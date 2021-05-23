@@ -585,6 +585,33 @@ bool ast_is_lvalue(AST_Expression const * expr) {
 		expr->type == AST_EXPRESSION_STRUCT_MEMBER;
 }
 
+bool ast_contains(AST_Expression const * expr, AST_Expression_Type expression_type) {
+	if (expr->type == expression_type) return true;
+
+	switch (expr->type) {
+		case AST_EXPRESSION_CONST: return false;
+		case AST_EXPRESSION_VAR:   return false;
+			
+		case AST_EXPRESSION_ARRAY_ACCESS: return
+			ast_contains(expr->expr_array_access.expr_array, expression_type) ||
+			ast_contains(expr->expr_array_access.expr_index, expression_type);
+		case AST_EXPRESSION_STRUCT_MEMBER: return ast_contains(expr->expr_struct_member.expr, expression_type);
+
+		case AST_EXPRESSION_CAST:   return ast_contains(expr->expr_cast.expr, expression_type);
+		case AST_EXPRESSION_SIZEOF: return false;
+
+		case AST_EXPRESSION_OPERATOR_BIN: return 
+			ast_contains(expr->expr_op_bin.expr_left,  expression_type) || 
+			ast_contains(expr->expr_op_bin.expr_right, expression_type);
+		case AST_EXPRESSION_OPERATOR_PRE:  return ast_contains(expr->expr_op_pre .expr, expression_type);
+		case AST_EXPRESSION_OPERATOR_POST: return ast_contains(expr->expr_op_post.expr, expression_type);
+
+		case AST_EXPRESSION_CALL_FUNC: return false;
+
+		default: error(ERROR_INTERNAL);
+	}
+}
+
 #undef  SPRINTF
 #undef VSPRINTF
 

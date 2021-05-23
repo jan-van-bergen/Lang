@@ -20,7 +20,7 @@ bool match_arg(char const ** arg, char const * target) {
 }
 
 int main(int arg_count, char const * args[]) {
-	char const * filename = "Examples\\float3.lang";
+	char const * filename = "Examples\\stdlib.lang";
 
 	Compiler_Config config = {
 		.output    = COMPILER_OUTPUT_EXE,
@@ -50,6 +50,11 @@ int main(int arg_count, char const * args[]) {
 				printf("WARNING: Unable to recognize argument '%s'\n", *arg);
 			}
 		}
+	}
+	
+	// Helps avoid debug mistakes
+	if (strcmp(filename, "Examples\\stdlib.lang") == 0) {
+		config.output = COMPILER_OUTPUT_LIB;
 	}
 
 	compile_file(filename, &config);

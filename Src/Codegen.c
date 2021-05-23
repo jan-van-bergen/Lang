@@ -1134,6 +1134,15 @@ static Result codegen_expression_call_func(Code_Emitter * emit, AST_Expression *
 	// Reserve stack space for arguments
 	emit_asm(emit, "sub rsp, %i ; reserve shadow space and %i arguments\n", arg_size, call_arg_count);
 
+	bool any_arg_contains_function_call = false;
+
+	for (int i = 0; i < call_arg_count; i++) {
+		if (ast_contains(expr->expr_call.args[i].expr, AST_EXPRESSION_CALL_FUNC)) {
+			any_arg_contains_function_call = true;
+			break;
+		}
+	}
+
 	// Evaluate arguments and put them into the right register / stack address
 	// The first 4 arguments go in registers, the rest spill onto the stack
 	for (int i = 0; i < call_arg_count; i++) {
@@ -1149,18 +1158,31 @@ static Result codegen_expression_call_func(Code_Emitter * emit, AST_Expression *
 		}
 		result_arg.type = arg_type;
 
-		Result result_rsp = result_make_sib(arg_type, RSP, 0, 0, arg_offsets[i]);
-		emit_mov(emit, &result_rsp, &result_arg);
+		// Move into shadow space if any argument contains another function call (thereby clobbering call registers)
+		// Arguments after the first four allways go via the stack.
+		bool via_stack = any_arg_contains_function_call || i >= 4;
 
-		result_free(emit, &result_rsp);
+		if (via_stack) {			
+			Result result_rsp = result_make_sib(arg_type, RSP, 0, 0, arg_offsets[i]);
+			emit_mov(emit, &result_rsp, &result_arg);
+
+			result_free(emit, &result_rsp);
+		} else {
+			// Move into call register
+			Result result_reg = result_make_reg(arg_types[i], get_call_register(i, type_is_float(arg_types[i])));
+			emit_mov(emit, &result_reg, &result_arg);
+		}
+
 		result_free(emit, &result_arg);
 	}
 	
-	for (int i = 0; i < MIN(4, call_arg_count); i++) {
-		Result result_reg = result_make_reg(arg_types[i], get_call_register(i, type_is_float(arg_types[i])));
-		Result result_rsp = result_make_sib(arg_types[i], RSP, 0, 0, arg_offsets[i]);
-
-		emit_mov(emit, &result_reg, &result_rsp);
+	if (any_arg_contains_function_call) {
+		// Move first four saved arguments from stack into the call registers
+		for (int i = 0; i < MIN(4, call_arg_count); i++) {
+			Result result_reg = result_make_reg(arg_types[i], get_call_register(i, type_is_float(arg_types[i])));
+			Result result_rsp = result_make_sib(arg_types[i], RSP, 0, 0, arg_offsets[i]);
+			emit_mov(emit, &result_reg, &result_rsp);
+		}
 	}
 
 	Function_Def * function_def = NULL;
