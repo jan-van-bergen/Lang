@@ -308,6 +308,11 @@ bool type_is_primitive(Type const * type) {
 }
 
 
+bool type_is_aggregate(Type const * type) {
+	return type_is_struct(type) || type_is_array(type);
+}
+
+
 bool types_equal(Type const * a, Type const * b) {
 	if (a->type != b->type) return false;
 

@@ -120,6 +120,7 @@ bool type_is_string(Type const * type);
 
 bool type_is_primitive(Type const * type);
 
+bool type_is_aggregate(Type const * type);
 
 bool types_equal(Type const * a, Type const * b);
 

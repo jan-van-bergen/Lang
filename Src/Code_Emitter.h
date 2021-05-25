@@ -231,6 +231,8 @@ void emit_lea         (Code_Emitter * emit, Result * lhs, Result * rhs);
 void emit_mov         (Code_Emitter * emit, Result * lhs, Result * rhs);
 void emit_mov_indirect(Code_Emitter * emit, Result * lhs, Result * rhs);
 
+void emit_rep_movsb(Code_Emitter * emit);
+
 void emit_label(Code_Emitter * emit, char const * label);
 
 void emit_jmp(Code_Emitter * emit, char const * label);

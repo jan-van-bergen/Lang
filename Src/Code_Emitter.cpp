@@ -265,11 +265,12 @@ void emit_global(Code_Emitter * emit, Variable * var, bool sign, uint64_t value)
 	int    global_size = (int)strlen(var->name) + 64;
 	char * global = mem_alloc(global_size);
 
-	if (type_is_struct(var->type) || type_is_array(var->type) || value == 0) {
-		if (value != 0) {
-			type_error(emit, "Cannot initialize global aggregate '%s' with value '%llu'", var->name, value);
-		}
-		
+	if (type_is_aggregate(var->type) && value != 0) {
+		type_error(emit, "Cannot initialize global aggregate '%s' with value '%llu'", var->name, value);
+	}
+
+	// Zero-initialized globals can go in the bss section
+	if (value == 0) {
 		sprintf_s(global, global_size, "align %i\n%s resb %u", type_align, var->name, type_size);
 
 		emit_bss(emit, global);
@@ -622,6 +623,9 @@ void emit_mov(Code_Emitter * emit, Result * lhs, Result * rhs) {
 	if (rhs->form == RESULT_COMPARE) result_ensure_in_register(emit, rhs);
 
 	int result_size = type_get_size(rhs->type, emit->current_scope);
+	if (type_is_aggregate(rhs->type)) {
+		result_size = 8; // Aggregates mov by pointer
+	}
 
 	switch (lhs->form) {
 		case RESULT_IMMEDIATE: error(ERROR_INTERNAL);
@@ -726,6 +730,10 @@ void emit_mov_indirect(Code_Emitter * emit, Result * lhs, Result * rhs) {
 			break;
 		}
 	}
+}
+
+void emit_rep_movsb(Code_Emitter * emit) {
+	emit_asm(emit, "rep movsb\n");
 }
 
 void emit_label(Code_Emitter * emit, char const * label) {

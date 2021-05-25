@@ -524,20 +524,25 @@ static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression cons
 			type_error(emit, "Implicit narrowing conversion from type '%s' to '%s' is not allowed. Explicit cast required", str_type_right, str_type_left);
 		}
 
-		if (type_is_struct(result_left.type) && type_is_struct(result_right.type)) {
-			int struct_size = type_get_size(result_left.type, emit->current_scope);
-			
-			Result result_rdi = result_make_reg(result_left .type, RDI);
-			Result result_rsi = result_make_reg(result_right.type, RSI);
-			Result result_rcx = result_make_reg(make_type_u64(), RCX);
-			Result result_len = result_make_u64(make_type_u64(), struct_size);
+		if (type_is_struct(result_left.type)) {
+			int struct_size = type_size_left;		
+			if (struct_size <= 8) {
+				// Use mov to copy by value if size fits in 8 bytes
+				result_right.by_address = false;
+				emit_mov_indirect(emit, &result_left, &result_right);
+			} else {
+				Result result_rdi = result_make_reg(result_left .type, RDI);
+				Result result_rsi = result_make_reg(result_right.type, RSI);
+				Result result_rcx = result_make_reg(make_type_u64(), RCX);
+				Result result_len = result_make_u64(make_type_u64(), struct_size);
 
-			emit_mov(emit, &result_rdi, &result_left);
-			emit_mov(emit, &result_rsi, &result_right);
-			emit_mov(emit, &result_rcx, &result_len);
-			emit_asm(emit, "rep movsb\n");
+				emit_mov(emit, &result_rdi, &result_left);
+				emit_mov(emit, &result_rsi, &result_right);
+				emit_mov(emit, &result_rcx, &result_len);
+				emit_rep_movsb(emit);
 
-			result_free(emit, &result_len);
+				result_free(emit, &result_len);
+			}
 		} else {
 			emit_mov_indirect(emit, &result_left, &result_right);
 		}
@@ -729,8 +734,7 @@ static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression cons
 			if (!type_is_integral(result_left.type) || !type_is_integral(result_right.type)) {
 				type_error(emit, "Operator '<<' requires two operands of integral type");
 			}
-			result_left.type = types_unify(result_left.type, result_right.type, emit->current_scope);
-
+			
 			emit_shift_left(emit, &result_left, &result_right);
 			break;
 		}
@@ -739,8 +743,7 @@ static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression cons
 			if (!type_is_integral(result_left.type) || !type_is_integral(result_right.type)) {
 				type_error(emit, "Operator '>>' requires two operands of integral type");
 			}
-			result_left.type = types_unify(result_left.type, result_right.type, emit->current_scope);
-
+			
 			emit_shift_right(emit, &result_left, &result_right);
 			break;
 		}
@@ -1590,10 +1593,6 @@ static void codegen_statement_return(Code_Emitter * emit, AST_Statement const * 
 		}
 
 		Result result = codegen_expression(emit, stat->stat_return.expr);
-
-		if (type_is_struct(result.type)) {
-			type_error(emit, "Cannot return structs by value from function");
-		}
 
 		if (!types_unifiable(result.type, func_def->return_type)) {
 			char str_ret_type[128]; type_to_string(result.type,           str_ret_type, sizeof(str_ret_type));

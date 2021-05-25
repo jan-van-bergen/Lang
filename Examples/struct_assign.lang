@@ -1,6 +1,16 @@
+extern assert(assertion: bool);
+
+// Struct with size <= 8
 struct Struct {
 	fst: int;
 	snd: int;
+}
+
+// Struct with size > 8
+struct LargeStruct {
+	a: u64;
+	b: u64;
+	c: u64;
 }
 
 func main() -> int {
@@ -11,5 +21,17 @@ func main() -> int {
 	a.snd = var;
 	
 	b := a;
+	a.fst = 4321;
+	assert(b.fst == 1234);
+	
+	aa: LargeStruct;
+	aa.a = 0xa;
+	aa.b = 0xb;
+	aa.c = 0xc;
+	
+	bb := aa;
+	aa.b = 0;
+	assert(bb.b == 0xb);
+	
 	return b.snd;
 }

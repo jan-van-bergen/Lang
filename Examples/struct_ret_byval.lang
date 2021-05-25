@@ -1,0 +1,25 @@
+extern assert(assertion: bool);
+
+struct Pair {
+	a: int;
+	b: int;
+}
+
+global_pair: Pair;
+
+func return_copy_of_global_pair() -> Pair {
+	return global_pair;
+}
+
+func main() -> int {
+	global_pair.a = 2;
+	global_pair.b = 3;
+	
+	copy := return_copy_of_global_pair();
+	copy.a = 4;
+	copy.b = 5;
+	
+	assert(copy.a != global_pair.a);
+	
+	return global_pair.b;
+}

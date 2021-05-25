@@ -1,0 +1,129 @@
+extern malloc(size: int) -> void *;
+extern memset(ptr: void *, value: u8, size: int);
+
+extern assert(assertion: bool);
+
+extern puts(str: char *);
+extern print_num(num: int);
+
+struct BitArray {
+	bytes  : u8 *;
+	length : u64;
+}
+
+func bitarray_make(length: u64) -> BitArray {
+	num_bytes := (length + 7) / 8;
+	
+	b: BitArray;
+	b.bytes  = malloc(num_bytes);
+	b.length = length;
+	
+	memset(b.bytes, 0, num_bytes);
+	
+	return b;
+}
+
+func bitarray_get(b: BitArray *, index: int) -> bool {
+	assert(index >= 0 && index < b.length);
+	
+	div := index >> 3;
+	mod := index & 7;
+	
+	byte := b.bytes[div];
+	return cast(bool) ((byte >> mod) & 1);
+}
+
+func bitarray_set(b: BitArray *, index: int, value: bool) {
+	assert(index >= 0 && index < b.length);
+	
+	div := index >> 3;
+	mod := index & 7;
+	
+	b.bytes[div] &= ~((cast(u8) 1)     << mod);
+	b.bytes[div] |=   (cast(u8) value) << mod;
+}
+
+struct Grid {
+	width  : int;
+	height : int;
+	grid   : BitArray;
+}
+
+func grid_init(grid: Grid *, width: int, height: int) {
+	grid.width  = width;
+	grid.height = height;
+	grid.grid   = bitarray_make(width * height);
+}
+
+func grid_get(grid: Grid *, x: int, y: int) -> bool {
+	if (x < 0 || x >= grid.width || y < 0 || y >= grid.height) return false;
+	
+	return bitarray_get(&grid.grid, x + y * grid.width);
+}
+
+func grid_set(grid: Grid *, x: int, y: int, value: bool) {
+	bitarray_set(&grid.grid, x + y * grid.width, value);
+}
+
+func life(width: int, height: int, num_steps: int) {
+	grid_a: Grid; grid_init(&grid_a, width, height);
+	grid_b: Grid; grid_init(&grid_b, width, height);
+	
+	grid_curr := &grid_a;
+	grid_next := &grid_b;
+	
+	// Initialize glider pattern
+	grid_set(grid_curr, 3, 5, true);
+	grid_set(grid_curr, 4, 5, true);
+	grid_set(grid_curr, 5, 5, true);
+	grid_set(grid_curr, 3, 6, true);
+	grid_set(grid_curr, 4, 7, true);
+	
+	step := 0; while (step++ < num_steps) {
+		puts("Step ");
+		print_num(step);
+		puts(":\n");
+		y := 0; while (y < height) {
+			x := 0; while (x < width) {
+				// Calculate number of active neighbours
+				num_alive_neighbours := 0;
+				
+				j := -1; while (j <= 1) {
+					i := -1; while (i <= 1) {
+						if (i != 0 || j != 0) {
+							if (grid_get(grid_curr, x + i, y + j)) {
+								num_alive_neighbours++;
+							}
+						}						
+						i++;
+					}				
+					j++;
+				}
+				
+				cell_alive := grid_get(grid_curr, x, y);
+				
+				if (cell_alive) {
+					puts("x");
+					cell_alive = num_alive_neighbours == 2 || num_alive_neighbours == 3;
+				} else {
+					puts(".");
+					cell_alive = num_alive_neighbours == 3;
+				}
+				
+				grid_set(grid_next, x, y, cell_alive);
+				x++;
+			}
+			puts("\n");
+			y++;
+		}
+		
+		// Swap current and next Grids
+		grid_tmp := grid_curr;
+		grid_curr = grid_next;
+		grid_next = grid_tmp;
+	}
+}
+
+func main() {
+	life(10, 10, 4);
+}

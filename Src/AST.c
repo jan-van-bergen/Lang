@@ -765,6 +765,8 @@ Precedence get_precedence(AST_Expression const * expr) {
 
 		case AST_EXPRESSION_OPERATOR_BIN: {
 			switch (expr->expr_op_bin.operator) {
+				case OPERATOR_BIN_ASSIGN: return PRECEDENCE_ASSIGNMENT;
+
 				case OPERATOR_BIN_MULTIPLY:
 				case OPERATOR_BIN_DIVIDE:
 				case OPERATOR_BIN_MODULO: return PRECEDENCE_MULTIPLICATIVE;
@@ -793,8 +795,6 @@ Precedence get_precedence(AST_Expression const * expr) {
 				defaut: error(ERROR_INTERNAL);
 			}
 		}
-
-		case AST_EXPRESSION_ASSIGN: return PRECEDENCE_ASSIGNMENT;
 	}
 
 	return PRECEDENCE_NONE;
