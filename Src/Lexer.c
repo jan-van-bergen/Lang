@@ -38,10 +38,11 @@ static char lexer_next(Lexer * lexer) {
 static void lexer_advance(Lexer * lexer, char target) {
 	char c = lexer_next(lexer);
 	if (c != target) {
-		printf("ERROR: Lexer encountered unexpeced char!\n");
-		printf("Expected: '%c'\n", target);
-		printf("Observed: '%c'\n", c);
-		error(ERROR_LEXER);
+		error(ERROR_LEXER, 
+			"Lexer encountered unexpeced char!\n"
+			"Expected: '%c'\n"
+			"Observed: '%c'\n", target, c
+		);
 	}
 }
 
@@ -120,7 +121,8 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 	char curr = lexer_peek(lexer);
 	
 	token->line = lexer->line;
-	
+	error_set_line(lexer->line);
+
 	// Parse HEX literal
 	if (lexer_match(lexer, "0x")) {
 		lexer->index += 2;
@@ -137,8 +139,7 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 			} else if (isdigit(curr)) {
 				hex += curr - '0';
 			} else {
-				printf("ERROR: Invalid character '%c' in hex literal!\n", curr);
-				error(ERROR_LEXER);
+				error(ERROR_LEXER, "Invalid character '%c' in hex literal!\n", curr);
 			}
 
 			curr = lexer_next(lexer);
@@ -235,7 +236,7 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 				case 'n': c = '\n'; break;
 				case 't': c = '\t'; break;
 
-				default: error(ERROR_LEXER);
+				default: error(ERROR_LEXER, "Invalid escaped character '%c'!", c);
 			}
 		}
 

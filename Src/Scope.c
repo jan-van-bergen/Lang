@@ -56,11 +56,11 @@ Scope * make_scope(Variable_Buffer * buf) {
 	
 	scope->struct_defs_len = 0;
 	scope->struct_defs_cap = 16;
-	scope->struct_defs = mem_alloc(scope->struct_defs_cap * sizeof(Struct_Def));
+	scope->struct_defs = mem_alloc(scope->struct_defs_cap * sizeof(Struct_Def *));
 
 	scope->function_defs_len = 0;
 	scope->function_defs_cap = 16;
-	scope->function_defs = mem_alloc(scope->function_defs_cap * sizeof(Function_Def));
+	scope->function_defs = mem_alloc(scope->function_defs_cap * sizeof(Function_Def *));
 
 	return scope;
 }
@@ -79,8 +79,7 @@ void scope_add_arg(Scope * scope, char const * name, Type const * type) {
 	
 	// Check if a variable with this name already exists
 	if (scope_lookup_variable(scope, name)) {
-		printf("ERROR: Argument with name '%s' already exists at this scope!\n", name);
-		error(ERROR_SCOPE);
+		error(ERROR_SCOPE, "Argument with name '%s' already exists at this scope!\n", name);
 	}
 
 	int index = variable_buffer_add_variable(scope->variable_buffer, name, type, false);
@@ -115,8 +114,7 @@ void scope_add_arg(Scope * scope, char const * name, Type const * type) {
 void scope_add_var(Scope * scope, char const * name, Type const * type) {
 	// Check if a variable with this name already exists
 	if (scope_lookup_variable(scope, name)) {
-		printf("ERROR: Variable with name '%s' already exists at this scope!\n", name);
-		error(ERROR_SCOPE);
+		error(ERROR_SCOPE, "Variable with name '%s' already exists at this scope!\n", name);
 	}
 
 	int index = variable_buffer_add_variable(scope->variable_buffer, name, type, scope_is_global(scope));
@@ -146,7 +144,7 @@ void scope_add_var(Scope * scope, char const * name, Type const * type) {
 Struct_Def * scope_add_struct_def(Scope * scope) {
 	if (scope->struct_defs_len == scope->struct_defs_cap) {
 		scope->struct_defs_cap *= 2;
-		scope->struct_defs = mem_realloc(scope->struct_defs, scope->struct_defs_cap * sizeof(Struct_Def));
+		scope->struct_defs = mem_realloc(scope->struct_defs, scope->struct_defs_cap * sizeof(Struct_Def *));
 	}
 
 	Struct_Def ** struct_def = scope->struct_defs + scope->struct_defs_len++;
@@ -158,7 +156,7 @@ Struct_Def * scope_add_struct_def(Scope * scope) {
 Function_Def * scope_add_function_def(Scope * scope) {
 	if (scope->function_defs_len == scope->function_defs_cap) {
 		scope->function_defs_cap *= 2;
-		scope->function_defs = mem_realloc(scope->function_defs, scope->function_defs_cap * sizeof(Struct_Def));
+		scope->function_defs = mem_realloc(scope->function_defs, scope->function_defs_cap * sizeof(Function_Def *));
 	}
 	
 	Function_Def ** function_def = scope->function_defs + scope->function_defs_len++;
@@ -207,8 +205,7 @@ Variable * scope_get_variable(Scope const * scope, char const * name) {
 		scope = scope->prev;
 
 		if (scope == NULL) {
-			printf("Error: Variable '%s' not defined or is not in scope!", name);
-			error(ERROR_SCOPE);
+			error(ERROR_SCOPE, "Variable '%s' not defined or is not in scope!", name);
 		}
 	}
 }
@@ -221,8 +218,7 @@ Struct_Def * scope_get_struct_def(Scope const * scope, char const * name) {
 		scope = scope->prev;
 
 		if (scope == NULL) {
-			printf("ERROR: Struct '%s' not defined or is not in scope!", name);
-			error(ERROR_SCOPE);
+			error(ERROR_SCOPE, "Struct '%s' not defined or is not in scope!", name);
 		}
 	}
 

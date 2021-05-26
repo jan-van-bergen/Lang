@@ -18,7 +18,7 @@ void config_add_lib(Compiler_Config * config, char const * lib_name) {
 		config->libs[config->lib_count++] = lib_name;
 	} else {
 		printf("ERROR: Too many libraries given, only %i are supported!\n", MAX_NUM_LIBS);
-		error(ERROR_INTERNAL);
+		error_internal();
 	}
 }
 
@@ -64,8 +64,8 @@ void compile_file(char const * filename, Compiler_Config const * config) {
 	fopen_s(&file, file_asm, "wb");
 
 	if (file == NULL) {
-		printf("ERROR: Unable to open asm file '%s' for writing!\n", file_asm);
-		error(ERROR_ASSEMBLER);
+		error_set_line(-1);
+		error(ERROR_ASSEMBLER, "Unable to open asm file '%s' for writing!\n", file_asm);
 	}
 
 	fwrite(code, 1, strlen(code), file);
@@ -79,7 +79,7 @@ void compile_file(char const * filename, Compiler_Config const * config) {
 
 	// Assemble
 	sprintf_s(cmd, sizeof(cmd), "nasm -f win64 \"%s\" -o \"%s\" -g -Werror", file_asm, file_obj);
-	if (system(cmd) != EXIT_SUCCESS) error(ERROR_ASSEMBLER);
+	if (system(cmd) != EXIT_SUCCESS) error(ERROR_ASSEMBLER, "NASM Failed!");
 
 	int cmd_offset = 0;
 
@@ -103,7 +103,7 @@ void compile_file(char const * filename, Compiler_Config const * config) {
 			break;
 		}
 
-		default: error(ERROR_INTERNAL);
+		default: error_internal();
 	}
 	
 	for (int i = 0; i < config->lib_count; i++) {
@@ -112,7 +112,7 @@ void compile_file(char const * filename, Compiler_Config const * config) {
 
 	if (system(cmd) != EXIT_SUCCESS) {
 		puts(cmd);	
-		error(ERROR_LINKER);
+		error(ERROR_LINKER, "Linker Failed!");
 	}
 
 	mem_free(file_asm);

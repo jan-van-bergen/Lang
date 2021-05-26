@@ -129,6 +129,7 @@ test_cases = [
 	("Examples\\error_linking.lang",      "",                          err.LINKER,    "",                        0, ""),
 	("Examples\\invalid_main.lang",       "",                          err.TYPECHECK, "",                        0, ""),
 	("Examples\\error_assign.lang",       "",                          err.CODEGEN,   "",                        0, ""),
+	("Examples\\error_array.lang",        "",                          err.TYPECHECK, "",                        0, ""),
 ]
 
 def run_cmd(cmd):

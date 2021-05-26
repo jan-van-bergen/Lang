@@ -95,6 +95,7 @@ typedef struct Code_Emitter {
 
 	regmask_t reg_mask;
 
+	int line;
 	int indent;
 
 	int label;

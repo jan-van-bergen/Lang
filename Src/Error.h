@@ -1,6 +1,8 @@
 #pragma once
 #include "Util.h"
 
+#include <stdarg.h>
+
 typedef enum Error {
 	ERROR_SUCCESS = 0,
 	ERROR_LEXER,
@@ -13,4 +15,9 @@ typedef enum Error {
 	ERROR_INTERNAL   
 } Error;
 
-NO_RETURN void error(Error error);
+NO_RETURN void error (Error error, char const * msg, ...);
+NO_RETURN void errorv(Error error, char const * msg, va_list args);
+
+NO_RETURN void error_internal(void);
+
+void error_set_line(int line);

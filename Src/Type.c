@@ -173,15 +173,14 @@ int type_to_string(Type const * type, char * string, int string_size) {
 
 		case TYPE_STRUCT: return sprintf_s(string, string_size, "%s", type->struct_name);
 
-		default: error(ERROR_INTERNAL);
+		default: error_internal();
 	}
 }
 
 int type_get_size(Type const * type, Scope * scope) {
 	switch (type->type) {
 		case TYPE_VOID: {
-			printf("ERROR: Cannot get size of void type!\n");
-			error(ERROR_TYPECHECK); // Invalid!
+			error(ERROR_TYPECHECK, "Cannot get size of void type!\n");
 		}
 
 		case TYPE_I8:  return 1;
@@ -206,15 +205,14 @@ int type_get_size(Type const * type, Scope * scope) {
 
 		case TYPE_STRUCT: return scope_get_struct_def(scope, type->struct_name)->member_scope->variable_buffer->size;
 
-		default: error(ERROR_INTERNAL);
+		default: error_internal();
 	}
 }
 
 int type_get_align(Type const * type, Scope * scope) {
 	switch (type->type) {
 		case TYPE_VOID: {
-			printf("ERROR: Cannot get alignment of void type!\n");
-			error(ERROR_TYPECHECK); // Invalid!
+			error(ERROR_TYPECHECK, "Cannot get alignment of void type!\n");
 		}
 		case TYPE_I8:  return 1;
 		case TYPE_I16: return 2;
@@ -238,7 +236,7 @@ int type_get_align(Type const * type, Scope * scope) {
 
 		case TYPE_STRUCT: return scope_get_struct_def(scope, type->struct_name)->member_scope->variable_buffer->align;
 
-		default: error(ERROR_INTERNAL);
+		default: error_internal();
 	}
 }
 
@@ -379,8 +377,7 @@ Type const * types_unify(Type const * a, Type const * b, Scope * scope) {
 	type_to_string(a, str_type_a, sizeof(str_type_a));
 	type_to_string(b, str_type_b, sizeof(str_type_b));
 
-	printf("TYPE ERROR: Unable to unify types '%s' and '%s'!", str_type_a, str_type_b);
-	error(ERROR_TYPECHECK);
+	error(ERROR_TYPECHECK, "Unable to unify types '%s' and '%s'!", str_type_a, str_type_b);
 }
 
 Type const * type_dereference(Type const * type) {
@@ -388,8 +385,7 @@ Type const * type_dereference(Type const * type) {
 		char str_type[128];
 		type_to_string(type, str_type, sizeof(str_type));
 
-		printf("ERROR: Attempt to dereference non-pointer type '%s'!\n", str_type);
-		error(ERROR_TYPECHECK);
+		error(ERROR_TYPECHECK, "Attempt to dereference non-pointer type '%s'!\n", str_type);
 	}
 
 	return type->base;
@@ -433,7 +429,7 @@ Type const * type_infer(AST_Expression const * expr, Scope const * scope) {
 
 				case TOKEN_KEYWORD_NULL: return make_type_pointer(make_type_void());
 					
-				default: error(ERROR_INTERNAL);
+				default: error_internal();
 			}
 		}
 
@@ -469,7 +465,7 @@ Type const * type_infer(AST_Expression const * expr, Scope const * scope) {
 						return make_type_bool();
 					}
 
-					error(ERROR_TYPECHECK);
+					error(ERROR_TYPECHECK, "Operand of logical operator was not bool!");
 				}
 
 				case OPERATOR_BIN_MINUS: {
@@ -497,12 +493,12 @@ Type const * type_infer(AST_Expression const * expr, Scope const * scope) {
 				case OPERATOR_BIN_SHIFT_LEFT:
 				case OPERATOR_BIN_SHIFT_RIGHT: {
 					if (!type_is_integral(type_left) || !type_is_integral(type_right)) {
-						error(ERROR_TYPECHECK);
+						error(ERROR_TYPECHECK, "Non-integral operand!");
 					}
 					break; // Unify types
 				}
 
-				default: error(ERROR_INTERNAL);
+				default: error_internal();
 			}
 			
 			if (types_unifiable(type_left, type_right)) {
@@ -531,7 +527,7 @@ Type const * type_infer(AST_Expression const * expr, Scope const * scope) {
 							case TYPE_U32: return make_type_i32();
 							case TYPE_U64: return make_type_i64();
 
-							default: error(ERROR_INTERNAL);
+							default: error_internal();
 						}
 					}
 					return type_inner;
@@ -547,7 +543,7 @@ Type const * type_infer(AST_Expression const * expr, Scope const * scope) {
 			Type const * type_function = type_infer(expr->expr_call.expr_function, scope);
 
 			if (!type_is_function(type_function)) {
-				error(ERROR_TYPECHECK);
+				error(ERROR_TYPECHECK, "Attempting to call non-function!");
 			}
 
 			return type_function->function.return_type;
@@ -557,7 +553,7 @@ Type const * type_infer(AST_Expression const * expr, Scope const * scope) {
 			Type const * type = type_infer(expr->expr_array_access.expr_array, scope);
 
 			if (!type_is_array(type) && !type_is_pointer(type)) {
-				error(ERROR_TYPECHECK);
+				error(ERROR_TYPECHECK, "Operator '[]' must have array or pointer left operand");
 			}
 
 			return type->base;
@@ -575,7 +571,7 @@ Type const * type_infer(AST_Expression const * expr, Scope const * scope) {
 			} else if (type_is_array(struct_type) && strcmp(expr->expr_struct_member.member_name, "length") == 0) {
 				return make_type_u64();
 			} else {
-				error(ERROR_TYPECHECK);
+				error(ERROR_TYPECHECK, "Non-struct type!");
 			}
 
 			Struct_Def * struct_def = scope_get_struct_def(scope, struct_name);
@@ -588,6 +584,5 @@ Type const * type_infer(AST_Expression const * expr, Scope const * scope) {
 	char str_expr[1024];
 	ast_print_expression(expr, str_expr, sizeof(str_expr));
 
-	printf("ERROR: Unable to infer type of exprssion '%s'!\n", str_expr);
-	error(ERROR_TYPECHECK);
+	error(ERROR_TYPECHECK, "Unable to infer type of exprssion '%s'!\n", str_expr);
 }

@@ -12,7 +12,7 @@ void * mem_alloc(size_t size) {
 
 	if (!ptr) {
 		puts("ERROR: malloc failed!");
-		error(ERROR_INTERNAL);
+		error_internal();
 	}
 
 	return ptr;
@@ -23,7 +23,7 @@ void * mem_realloc(void * old_ptr, size_t new_size) {
 
 	if (!ptr) {
 		puts("ERROR: realloc failed!");
-		error(ERROR_INTERNAL);
+		error_internal();
 	}
 
 	return ptr;
@@ -98,7 +98,7 @@ void swap(void * a, void * b, size_t size_in_bytes) {
 
 	char tmp[1024];
 	if (size_in_bytes > sizeof(tmp)) {
-		error(ERROR_INTERNAL);
+		error_internal();
 	}
 
 	memcpy(tmp, a, size_in_bytes);
@@ -112,8 +112,7 @@ char const * read_file(char const * filename) {
 	fopen_s(&f, filename, "rb");
 
 	if (f == NULL) {
-		printf("ERROR: Unable to open file %s!\n", filename);
-		error(ERROR_INTERNAL);
+		error(ERROR_INTERNAL, "Unable to open file %s!\n", filename);
 	}
 
 	fseek(f, 0, SEEK_END);

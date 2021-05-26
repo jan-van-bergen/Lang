@@ -20,7 +20,7 @@ bool match_arg(char const ** arg, char const * target) {
 }
 
 int main(int arg_count, char const * args[]) {
-	char const * filename = "Examples\\game_of_life.lang";
+	char const * filename = "Examples\\error_scope.lang";
 
 	Compiler_Config config = {
 		.output    = COMPILER_OUTPUT_EXE,

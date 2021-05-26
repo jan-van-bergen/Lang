@@ -36,8 +36,7 @@ Register register_alloc(Code_Emitter * emit) {
 		}
 	}
 
-	printf("ERROR: Out of registers!");
-	error(ERROR_CODEGEN);
+	error(ERROR_CODEGEN, "Out of registers!");
 }
 
 Register register_alloc_float(Code_Emitter * emit) {
@@ -49,8 +48,7 @@ Register register_alloc_float(Code_Emitter * emit) {
 		}
 	}
 
-	printf("ERROR: Out of XMM registers!");
-	error(ERROR_CODEGEN);
+	error(ERROR_CODEGEN, "Out of XMM registers!");
 }
 
 bool register_is_reserved(Code_Emitter * emit, Register reg) {
@@ -65,7 +63,7 @@ void register_free(Code_Emitter * emit, Register reg) {
 }
 
 Register get_call_register(int argument_index, bool is_float) {
-	if (argument_index >= 4) error(ERROR_INTERNAL);
+	if (argument_index >= 4) error_internal();
 
 	if (is_float) {
 		return XMM0 + argument_index;
@@ -87,7 +85,7 @@ char const * get_reg_name(Register reg, int size) {
 	static char const * reg_names_32bit[] = { [RAX] = "eax", [RBX] = "ebx", [RCX] = "ecx", [RDX] = "edx", [RSP] = "esp", [RBP] = "ebp", [RSI] = "esi", [RDI] = "edi", [R8]  = "r8d", [R9]  = "r9d", [R10] = "r10d", [R11] = "r11d", [R12] = "r12d", [R13] = "r13d", [R14] = "r14d", [R15] = "r15d" };
 	static char const * reg_names_64bit[] = { [RAX] = "rax", [RBX] = "rbx", [RCX] = "rcx", [RDX] = "rdx", [RSP] = "rsp", [RBP] = "rbp", [RSI] = "rsi", [RDI] = "rdi", [R8]  = "r8",  [R9]  = "r9",  [R10] = "r10",  [R11] = "r11",  [R12] = "r12",  [R13] = "r13",  [R14] = "r14",  [R15] = "r15"  };
 
-	if (reg < RAX || reg > R15) error(ERROR_CODEGEN);
+	if (reg < RAX || reg > R15) error_internal();
 
 	switch (size) {
 		case 1: return reg_names_8bit [reg];
@@ -95,7 +93,7 @@ char const * get_reg_name(Register reg, int size) {
 		case 4: return reg_names_32bit[reg];
 		case 8: return reg_names_64bit[reg];
 
-		default: error(ERROR_CODEGEN);
+		default: error_internal();
 	}
 }
 
@@ -119,7 +117,6 @@ Code_Emitter make_emit(bool needs_main, bool emit_debug_lines) {
 
 		.reg_mask = 0,
 
-		.line   = 0,
 		.indent = 0,
 
 		.label = 0,
@@ -204,7 +201,7 @@ void emit_bss(Code_Emitter * emit, char const * bss) {
 }
 
 void emit_trace_push_expr(Code_Emitter * emit, AST_Expression * expr) {
-	if (emit->trace_stack_size == MAX_TRACE) error(ERROR_CODEGEN);
+	if (emit->trace_stack_size == MAX_TRACE) error_internal();
 
 	Trace_Element * trace_elem = emit->trace_stack + emit->trace_stack_size++;
 	trace_elem->type = TRACE_EXPRESSION;
@@ -212,7 +209,7 @@ void emit_trace_push_expr(Code_Emitter * emit, AST_Expression * expr) {
 }
 
 void emit_trace_push_stat(Code_Emitter * emit, AST_Statement * stat) {
-	if (emit->trace_stack_size == MAX_TRACE) error(ERROR_CODEGEN);
+	if (emit->trace_stack_size == MAX_TRACE) error_internal();
 
 	Trace_Element * trace_elem = emit->trace_stack + emit->trace_stack_size++;
 	trace_elem->type = TRACE_STATEMENT;
@@ -247,15 +244,8 @@ NO_RETURN void type_error(Code_Emitter * emit, char const * msg, ...) {
 
 	va_list args;
 	va_start(args, msg);
-
-	char str_error[512];
-	vsprintf_s(str_error, sizeof(str_error), msg, args);
-
-	printf("TYPE ERROR at line %i: %s\n", emit->line, str_error);
-
+	errorv(ERROR_TYPECHECK, msg, args);
 	va_end(args);
-	
-	error(ERROR_TYPECHECK);
 }
 
 // Adds global variable to data segment
@@ -282,7 +272,7 @@ void emit_global(Code_Emitter * emit, Variable * var, bool sign, uint64_t value)
 			case 2: define_keyword = "dw"; break; // define word
 			case 4: define_keyword = "dd"; break; // define dword
 			case 8: define_keyword = "dq"; break; // define qword
-			default: error(ERROR_INTERNAL);
+			default: error_internal();
 		}
 
 		if (sign) {
@@ -346,10 +336,7 @@ void emit_string_literal(Code_Emitter * emit, char const * str_name, char const 
 
 				case '\\': str_lit_cpy[idx++] = '\\'; break;
 
-				default: {
-					printf("ERROR at line %i: Invalid escape char '%c'!\n", emit->line, escaped);
-					error(ERROR_CODEGEN);
-				}
+				default: error(ERROR_CODEGEN, "Invalid escape char '%c'!\n", escaped);
 			}
 
 			curr += 2;
@@ -384,7 +371,7 @@ Condition_Code condition_code_invert(Condition_Code cc) {
 		case CC_NZ: return CC_Z;
 		case CC_S:  return CC_NS;
 		case CC_NS: return CC_S;
-		default: error(ERROR_INTERNAL);
+		default: error_internal();
 	}
 }
 
@@ -404,7 +391,7 @@ char const * condition_code_to_str(Condition_Code cc) {
 		case CC_NZ: return "nz";
 		case CC_S:  return "s";
 		case CC_NS: return "ns";
-		default: error(ERROR_INTERNAL);
+		default: error_internal();
 	}
 }
 
@@ -453,7 +440,7 @@ Condition_Code get_condition_code(Operator_Bin operator, Result const * lhs, Res
 		case OPERATOR_BIN_EQ: return CC_E;
 		case OPERATOR_BIN_NE: return CC_NE;
 	}
-	error(ERROR_INTERNAL);
+	error_internal();
 }
 
 Condition_Code result_get_condition_code(Code_Emitter * emit, Result * result) {
@@ -512,7 +499,7 @@ Result result_deref(Code_Emitter * emit, Result * address, bool allow_same_regis
 	}
 
 	switch (address->form) {
-		case RESULT_IMMEDIATE: error(ERROR_CODEGEN);
+		case RESULT_IMMEDIATE: error(ERROR_CODEGEN, "Cannot dereference immediate");
 		case RESULT_REGISTER: {
 			int reg_size = 8;
 			int result_size = type_get_size(address->type, emit->current_scope);
@@ -545,7 +532,7 @@ Result result_deref(Code_Emitter * emit, Result * address, bool allow_same_regis
 			emit_mov(emit, &result, address);
 			return result;
 		}
-		default: error(ERROR_INTERNAL);
+		default: error_internal();
 	}
 }
 
@@ -572,7 +559,7 @@ void result_to_str_sized(char * str, int str_size, Result const * result, int si
 			} else if (type_is_f64(result->type)) {
 				sprintf_s(str, str_size, "%f", result->f64);
 			} else {
-				error(ERROR_INTERNAL);
+				error_internal();
 			}
 			break;
 		}
@@ -599,7 +586,7 @@ void result_to_str_sized(char * str, int str_size, Result const * result, int si
 			}
 			break;
 		}
-		default: error(ERROR_INTERNAL);
+		default: error_internal();
 	}
 }
 
@@ -610,7 +597,7 @@ void result_to_str(char * str, int str_size, Result const * result) {
 
 void emit_lea(Code_Emitter * emit, Result * lhs, Result * rhs) {
 	if (lhs->form != RESULT_REGISTER || !result_is_indirect(rhs)) {
-		error(ERROR_CODEGEN);
+		error(ERROR_CODEGEN, "Invalid lea");
 	}
 
 	char str_lhs[RESULT_STR_BUF_SIZE]; result_to_str(str_lhs, sizeof(str_lhs), lhs);
@@ -629,7 +616,7 @@ void emit_mov(Code_Emitter * emit, Result * lhs, Result * rhs) {
 	}
 
 	switch (lhs->form) {
-		case RESULT_IMMEDIATE: error(ERROR_INTERNAL);
+		case RESULT_IMMEDIATE: error_internal();
 		case RESULT_REGISTER: {
 			if (lhs->form == RESULT_REGISTER && rhs->form == RESULT_IMMEDIATE && rhs->u64 == 0) {
 				emit_xor(emit, lhs, lhs);
@@ -720,7 +707,7 @@ void emit_mov_indirect(Code_Emitter * emit, Result * lhs, Result * rhs) {
 	char str_rhs[RESULT_STR_BUF_SIZE]; result_to_str_sized(str_rhs, sizeof(str_rhs), rhs, size_right);
 
 	switch (lhs->form) {
-		case RESULT_IMMEDIATE: error(ERROR_INTERNAL);
+		case RESULT_IMMEDIATE: error_internal();
 		case RESULT_REGISTER: {
 			emit_asm(emit, "%s %s [%s], %s\n", mov, get_word_name(size_right), str_lhs, str_rhs);
 			break;
@@ -756,7 +743,7 @@ void emit_add(Code_Emitter * emit, Result * lhs, Result * rhs) {
 		} else if (type_is_f32(lhs->type) && type_is_f32(rhs->type)) {
 			lhs->f32 += rhs->f32;
 		} else {
-			error(ERROR_TYPECHECK);
+			error(ERROR_TYPECHECK, "Invalid operands for 'add'");
 		}
 	} else {
 		if (lhs->form == RESULT_IMMEDIATE) {
@@ -818,7 +805,7 @@ void emit_sub(Code_Emitter * emit, Result * lhs, Result * rhs) {
 		} else if (type_is_f32(lhs->type) && type_is_f32(rhs->type)) {
 			lhs->f32 -= rhs->f32;
 		} else {
-			error(ERROR_TYPECHECK);
+			error(ERROR_TYPECHECK, "Invalid operands for 'sub'");
 		}
 	} else {
 		if (rhs->form == RESULT_IMMEDIATE) {
@@ -877,7 +864,7 @@ void emit_mul(Code_Emitter * emit, Result * lhs, Result * rhs) {
 		} else if (type_is_f32(lhs->type) && type_is_f32(rhs->type)) {
 			lhs->f32 *= rhs->f32;
 		} else {
-			error(ERROR_TYPECHECK);
+			error(ERROR_TYPECHECK, "Invalid operands for 'mul'");
 		}
 	} else {
 		if (lhs->form == RESULT_IMMEDIATE) {
@@ -946,7 +933,7 @@ void emit_div(Code_Emitter * emit, Result * lhs, Result * rhs) {
 		} else if (type_is_f32(lhs->type) && type_is_f32(rhs->type)) {
 			lhs->f32 /= rhs->f32;
 		} else {
-			error(ERROR_TYPECHECK);
+			error(ERROR_TYPECHECK, "Invalid operands for 'div'");
 		}
 	} else {
 		result_ensure_in_register(emit, lhs);
@@ -957,8 +944,7 @@ void emit_div(Code_Emitter * emit, Result * lhs, Result * rhs) {
 			uint64_t divisor = rhs->u64;
 
 			if (divisor == 0) {
-				puts("ERROR at line %i: Integer division by 0!", emit->line);
-				error(ERROR_CODEGEN);
+				error(ERROR_CODEGEN, "Integer division by 0!");
 			} else if (divisor == 1) {
 				return;
 			} else if (is_power_of_two(divisor)) {
@@ -1078,7 +1064,7 @@ void emit_shift_left(Code_Emitter * emit, Result * lhs, Result * rhs) {
 		} else if (type_is_integral(lhs->type) && type_is_integral(rhs->type)) {
 			lhs->u64 <<= rhs->u64;
 		} else {
-			error(ERROR_TYPECHECK);
+			error(ERROR_TYPECHECK, "Invalid operands to 'shift_left'");
 		}
 	} else {
 		result_ensure_in_register(emit, lhs);
@@ -1103,7 +1089,7 @@ void emit_shift_right(Code_Emitter * emit, Result * lhs, Result * rhs) {
 		} else if (type_is_integral(lhs->type) && type_is_integral(rhs->type)) {
 			lhs->u64 >>= rhs->u64;
 		} else {
-			error(ERROR_TYPECHECK);
+			error(ERROR_TYPECHECK, "Invalid operands to 'shift_right'");
 		}
 	} else {
 		result_ensure_in_register(emit, lhs);
@@ -1298,7 +1284,7 @@ void emit_cmp(Code_Emitter * emit, Operator_Bin operator, Result * lhs, Result *
 				case OPERATOR_BIN_GE: compare_result = lhs->f32 >= rhs->f32; break;
 				case OPERATOR_BIN_EQ: compare_result = lhs->f32 == rhs->f32; break;
 				case OPERATOR_BIN_NE: compare_result = lhs->f32 != rhs->f32; break;
-				default: error(ERROR_INTERNAL);
+				default: error_internal();
 			}
 		} else if (type_is_f64(lhs->type)) {
 			switch (operator) {
@@ -1308,7 +1294,7 @@ void emit_cmp(Code_Emitter * emit, Operator_Bin operator, Result * lhs, Result *
 				case OPERATOR_BIN_GE: compare_result = lhs->f64 >= rhs->f64; break;
 				case OPERATOR_BIN_EQ: compare_result = lhs->f64 == rhs->f64; break;
 				case OPERATOR_BIN_NE: compare_result = lhs->f64 != rhs->f64; break;
-				default: error(ERROR_INTERNAL);
+				default: error_internal();
 			}
 		} else if (type_is_integral_signed(lhs->type) && type_is_integral_signed(rhs->type)) {
 			switch (operator) {
@@ -1318,7 +1304,7 @@ void emit_cmp(Code_Emitter * emit, Operator_Bin operator, Result * lhs, Result *
 				case OPERATOR_BIN_GE: compare_result = lhs->i64 >= rhs->i64; break;
 				case OPERATOR_BIN_EQ: compare_result = lhs->i64 == rhs->i64; break;
 				case OPERATOR_BIN_NE: compare_result = lhs->i64 != rhs->i64; break;
-				default: error(ERROR_INTERNAL);
+				default: error_internal();
 			}
 		} else {
 			switch (operator) {
@@ -1328,7 +1314,7 @@ void emit_cmp(Code_Emitter * emit, Operator_Bin operator, Result * lhs, Result *
 				case OPERATOR_BIN_GE: compare_result = lhs->u64 >= rhs->u64; break;
 				case OPERATOR_BIN_EQ: compare_result = lhs->u64 == rhs->u64; break;
 				case OPERATOR_BIN_NE: compare_result = lhs->u64 != rhs->u64; break;
-				default: error(ERROR_INTERNAL);
+				default: error_internal();
 			}
 		}
 
@@ -1391,7 +1377,7 @@ void emit_jcc(Code_Emitter * emit, Condition_Code cc, char const * label) {
 
 void emit_setcc(Code_Emitter * emit, Condition_Code cc, Result * result) {
 	if (result->form != RESULT_REGISTER) {
-		error(ERROR_CODEGEN);
+		error(ERROR_CODEGEN, "'setcc' requires operand to be in register");
 	}
 
 	char str_result[RESULT_STR_BUF_SIZE]; result_to_str_sized(str_result, sizeof(str_result), result, 1);

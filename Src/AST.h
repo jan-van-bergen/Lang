@@ -68,6 +68,7 @@ typedef struct AST_Call_Arg {
 typedef struct AST_Expression {
 	AST_Expression_Type type;
 
+	int line;
 	int height;
 
 	union {
@@ -155,6 +156,8 @@ typedef struct AST_Def_Arg {
 typedef struct AST_Statement {
 	AST_Statement_Type type;
 
+	int line;
+
 	union {
 		struct Program {
 			Variable_Buffer * globals;
@@ -222,40 +225,40 @@ typedef struct AST_Statement {
 	};
 } AST_Statement;
 
-AST_Expression * ast_make_expr_const(Token const * token);
-AST_Expression * ast_make_expr_var  (char  const * name);
+AST_Expression * ast_make_expr_const(int line, Token const * token);
+AST_Expression * ast_make_expr_var  (int line, char  const * name);
 
-AST_Expression * ast_make_expr_array_access (AST_Expression * expr_array, AST_Expression * expr_index);
-AST_Expression * ast_make_expr_struct_member(AST_Expression * expr_struct, char  const * member_name);
+AST_Expression * ast_make_expr_array_access (int line, AST_Expression * expr_array, AST_Expression * expr_index);
+AST_Expression * ast_make_expr_struct_member(int line, AST_Expression * expr_struct, char  const * member_name);
 
-AST_Expression * ast_make_expr_cast  (Type const * type, AST_Expression * expr);
-AST_Expression * ast_make_expr_sizeof(Type const * type);
+AST_Expression * ast_make_expr_cast  (int line, Type const * type, AST_Expression * expr);
+AST_Expression * ast_make_expr_sizeof(int line, Type const * type);
 
-AST_Expression * ast_make_expr_op_bin (Operator_Bin  operator, AST_Expression * expr_left, AST_Expression * expr_right);
-AST_Expression * ast_make_expr_op_pre (Operator_Pre  operator, AST_Expression * expr);
-AST_Expression * ast_make_expr_op_post(Operator_Post operator, AST_Expression * expr);
+AST_Expression * ast_make_expr_op_bin (int line, Operator_Bin  operator, AST_Expression * expr_left, AST_Expression * expr_right);
+AST_Expression * ast_make_expr_op_pre (int line, Operator_Pre  operator, AST_Expression * expr);
+AST_Expression * ast_make_expr_op_post(int line, Operator_Post operator, AST_Expression * expr);
 
-AST_Expression * ast_make_expr_call(AST_Expression * expr_function, int arg_count, AST_Call_Arg * args); 
+AST_Expression * ast_make_expr_call(int line, AST_Expression * expr_function, int arg_count, AST_Call_Arg * args); 
 
 
-AST_Statement * ast_make_stat_program(Variable_Buffer * globals, Scope * global_scope, AST_Statement * stat);
+AST_Statement * ast_make_stat_program(int line, Variable_Buffer * globals, Scope * global_scope, AST_Statement * stat);
 
-AST_Statement * ast_make_stat_stats(AST_Statement * head, AST_Statement * cons);
-AST_Statement * ast_make_stat_block(Scope * scope, AST_Statement * stat);
+AST_Statement * ast_make_stat_stats(int line, AST_Statement * head, AST_Statement * cons);
+AST_Statement * ast_make_stat_block(int line, Scope * scope, AST_Statement * stat);
 
-AST_Statement * ast_make_stat_expr(AST_Expression * expr);
+AST_Statement * ast_make_stat_expr(int line, AST_Expression * expr);
 
-AST_Statement * ast_make_stat_def_var (char const * name, Type const * type, AST_Expression * assign);
-AST_Statement * ast_make_stat_def_func(Function_Def * function_def, Variable_Buffer * buffer_args, Variable_Buffer * buffer_vars, Scope * scope_args, AST_Statement * body);
-AST_Statement * ast_make_stat_extern  (Function_Def * function_def);
-AST_Statement * ast_make_stat_export  (char const * name);
+AST_Statement * ast_make_stat_def_var (int line, char const * name, Type const * type, AST_Expression * assign);
+AST_Statement * ast_make_stat_def_func(int line, Function_Def * function_def, Variable_Buffer * buffer_args, Variable_Buffer * buffer_vars, Scope * scope_args, AST_Statement * body);
+AST_Statement * ast_make_stat_extern  (int line, Function_Def * function_def);
+AST_Statement * ast_make_stat_export  (int line, char const * name);
 
-AST_Statement * ast_make_stat_if   (AST_Expression * condition, AST_Statement * case_true, AST_Statement * case_false);
-AST_Statement * ast_make_stat_while(AST_Expression * condition, AST_Statement * body);
+AST_Statement * ast_make_stat_if   (int line, AST_Expression * condition, AST_Statement * case_true, AST_Statement * case_false);
+AST_Statement * ast_make_stat_while(int line, AST_Expression * condition, AST_Statement * body);
 
-AST_Statement * ast_make_stat_break   ();
-AST_Statement * ast_make_stat_continue();
-AST_Statement * ast_make_stat_return  (AST_Expression * expr);
+AST_Statement * ast_make_stat_break   (int line);
+AST_Statement * ast_make_stat_continue(int line);
+AST_Statement * ast_make_stat_return  (int line, AST_Expression * expr);
 
 
 bool ast_is_lvalue(AST_Expression const * expr);

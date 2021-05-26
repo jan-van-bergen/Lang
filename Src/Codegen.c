@@ -97,7 +97,7 @@ static Result codegen_expression_const(Code_Emitter * emit, AST_Expression const
 
 		case TOKEN_KEYWORD_NULL: return result_make_u64(type, 0);
 	}
-	error(ERROR_INTERNAL);
+	error_internal();
 }
 
 static Result codegen_expression_var(Code_Emitter * emit, AST_Expression const * expr) {
@@ -324,7 +324,7 @@ static Result codegen_expression_cast(Code_Emitter * emit, AST_Expression * expr
 				return result;
 			}
 		}
-		error(ERROR_INTERNAL);
+		error_internal();
 	}
 
 	if (!type_is_pointer(type_old)) {
@@ -478,8 +478,7 @@ static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression cons
 	if (operator == OPERATOR_BIN_ASSIGN) {
 		if (!ast_is_lvalue(expr_left)) {
 			char str_expr_left[512]; ast_print_expression(expr_left, str_expr_left, sizeof(str_expr_left));
-			printf("ERROR: Left hand operand of assignment '%s' must be an l-value!\n", str_expr_left);
-			error(ERROR_CODEGEN);
+			error(ERROR_CODEGEN, "Left hand operand of assignment '%s' must be an l-value!\n", str_expr_left);
 		}
 
 		// Traverse tallest subtree first
@@ -501,8 +500,7 @@ static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression cons
 
 		if (result_left.form == RESULT_IMMEDIATE) {
 			char str_expr_left[512]; ast_print_expression(expr_left, str_expr_left, sizeof(str_expr_left));
-			printf("ERROR: Cannot assign left hand operand '%s'!\n", str_expr_left);
-			error(ERROR_CODEGEN);
+			error(ERROR_CODEGEN, "Cannot assign left hand operand '%s'!\n", str_expr_left);
 		}
 
 		if (type_is_void(result_right.type)) {
@@ -564,7 +562,7 @@ static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression cons
 			} else if (result_left.u64 == 1) {
 				return codegen_expression(emit, expr_right);
 			} else {
-				error(ERROR_CODEGEN);
+				error_internal();
 			}
 		}
 
@@ -609,7 +607,7 @@ static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression cons
 			} else if (result_left.u64 == 0) {
 				return codegen_expression(emit, expr_right);
 			} else {
-				error(ERROR_CODEGEN);
+				error_internal();
 			}
 		}
 
@@ -788,7 +786,7 @@ static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression cons
 			break;
 		}
 
-		default: error(ERROR_INTERNAL);
+		default: error_internal();
 	}
 
 	result_free(emit, &result_right);
@@ -958,7 +956,7 @@ static Result codegen_expression_op_pre(Code_Emitter * emit, AST_Expression cons
 			break;
 		}
 
-		default: error(ERROR_INTERNAL);
+		default: error_internal();
 	}
 
 	return result;
@@ -1059,7 +1057,7 @@ static Result codegen_expression_op_post(Code_Emitter * emit, AST_Expression con
 			break;
 		}
 
-		default: error(ERROR_CODEGEN);
+		default: error_internal();
 	}
 
 	return result;
@@ -1240,6 +1238,9 @@ static Result codegen_expression(Code_Emitter * emit, AST_Expression const * exp
 	assert(expr->height >= 0);
 
 	emit_trace_push_expr(emit, expr);
+	
+	emit->line = expr->line;
+	error_set_line(expr->line);
 
 	Result result;
 	switch (expr->type) {
@@ -1258,7 +1259,7 @@ static Result codegen_expression(Code_Emitter * emit, AST_Expression const * exp
 
 		case AST_EXPRESSION_CALL_FUNC: result = codegen_expression_call_func(emit, expr); break;
 
-		default: error(ERROR_CODEGEN);
+		default: error_internal();
 	}
 	
 	emit_trace_pop(emit);
@@ -1304,8 +1305,7 @@ static void codegen_statement_def_var(Code_Emitter * emit, AST_Statement const *
 			AST_Expression const * literal_expr = stat->stat_def_var.assign->expr_op_bin.expr_right;
 			
 			if (literal_expr->type != AST_EXPRESSION_CONST) {
-				printf("ERROR: Globals can only be initialized to constant values! Variable name: '%s'", var_name); 
-				error(ERROR_CODEGEN);
+				error(ERROR_CODEGEN, "Cannot initialize global '%s' to non-constant", var_name);
 			}
 
 			Token const * literal = &literal_expr->expr_const.token;
@@ -1317,7 +1317,7 @@ static void codegen_statement_def_var(Code_Emitter * emit, AST_Statement const *
 				case TOKEN_LITERAL_F32: emit_f32_literal(emit, var_name, literal->value_float);  break;
 				case TOKEN_LITERAL_F64: emit_f64_literal(emit, var_name, literal->value_double); break;
 
-				default: error(ERROR_CODEGEN);
+				default: error_internal();
 			}
 		} else {
 			emit_global(emit, var, false, 0);
@@ -1427,8 +1427,7 @@ static void codegen_statement_export(Code_Emitter * emit, AST_Statement const * 
 	// Lookup function to make sure it exists
 	Function_Def * function_def = scope_get_function_def(emit->current_scope, name);
 	if (function_def == NULL) {
-		printf("ERROR: Trying to export function '%s' that is not in scope!", name);
-		error(ERROR_SCOPE);
+		error(ERROR_SCOPE, "Trying to export function '%s' that is not in scope!", name);
 	}
 
 	emit_asm(emit, "global %s\n", name);
@@ -1551,8 +1550,7 @@ static void codegen_statement_break(Code_Emitter * emit, AST_Statement const * s
 	assert(stat->type == AST_STATEMENT_BREAK);
 
 	if (emit->current_loop_label == -1) {
-		printf("ERROR: Cannot use 'break' outside of loop!");
-		error(ERROR_CODEGEN);
+		error(ERROR_CODEGEN, "Cannot use 'break' outside of loop!");
 	}
 
 	if (emit->emit_debug_lines) {
@@ -1567,8 +1565,7 @@ static void codegen_statement_continue(Code_Emitter * emit, AST_Statement const 
 	assert(stat->type == AST_STATEMENT_CONTINUE);
 	
 	if (emit->current_loop_label == -1) {
-		printf("ERROR: Cannot use 'continue' outside of loop!");
-		error(ERROR_CODEGEN);
+		error(ERROR_CODEGEN, "Cannot use 'continue' outside of loop!");
 	}
 	
 	if (emit->emit_debug_lines) {
@@ -1710,8 +1707,7 @@ static void codegen_statement_program(Code_Emitter * emit, AST_Statement const *
 			puts("WARNING: A 'main' function was defined but was not needed for entry!");
 		}
 	} else if (emit->needs_main) {
-		puts("ERROR: No function 'main' was defined!");
-		error(ERROR_CODEGEN);
+		error(ERROR_CODEGEN, "No function 'main' was defined!");
 	}
 
 	codegen_statement(emit, stat->stat_program.stat);
@@ -1719,6 +1715,8 @@ static void codegen_statement_program(Code_Emitter * emit, AST_Statement const *
 
 static void codegen_statement(Code_Emitter * emit, AST_Statement const * stat) {
 	if (stat->type != AST_STATEMENTS) emit_trace_push_stat(emit, stat);
+
+	emit->line = stat->line;
 
 	switch (stat->type) {
 		case AST_STATEMENT_PROGRAM: codegen_statement_program(emit, stat); break;
@@ -1740,7 +1738,7 @@ static void codegen_statement(Code_Emitter * emit, AST_Statement const * stat) {
 		case AST_STATEMENT_CONTINUE: codegen_statement_continue(emit, stat); break;
 		case AST_STATEMENT_RETURN:   codegen_statement_return  (emit, stat); break;
 
-		default: error(ERROR_CODEGEN);
+		default: error_internal();
 	}
 
 	// No regs should be active after a statement is complete

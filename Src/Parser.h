@@ -8,6 +8,7 @@ typedef struct Parser {
 	Token const * tokens;
 
 	int index;
+	int current_line;
 
 	Variable_Buffer * current_variable_buffer;
 	Scope           * current_scope;
