@@ -46,27 +46,27 @@ typedef struct Type {
 	};
 } Type;
 
-void type_table_init();
-void type_table_mem_free();
+void type_table_init(void);
+void type_table_mem_free(void);
 
-Type * type_table_new_type();
+Type * type_table_new_type(void);
 
-Type const * make_type_void();
+Type const * make_type_void(void);
 
-Type const * make_type_i8 ();
-Type const * make_type_i16();
-Type const * make_type_i32();
-Type const * make_type_i64();
+Type const * make_type_i8 (void);
+Type const * make_type_i16(void);
+Type const * make_type_i32(void);
+Type const * make_type_i64(void);
 
-Type const * make_type_u8 ();
-Type const * make_type_u16();
-Type const * make_type_u32();
-Type const * make_type_u64();
+Type const * make_type_u8 (void);
+Type const * make_type_u16(void);
+Type const * make_type_u32(void);
+Type const * make_type_u64(void);
 
-Type const * make_type_f32();
-Type const * make_type_f64();
+Type const * make_type_f32(void);
+Type const * make_type_f64(void);
 
-Type const * make_type_bool();
+Type const * make_type_bool(void);
 
 Type const * make_type_array  (Type const * base_type, int size);
 Type const * make_type_pointer(Type const * base_type);

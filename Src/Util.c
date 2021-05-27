@@ -11,8 +11,7 @@ void * mem_alloc(size_t size) {
 	void * ptr = malloc(size);
 
 	if (!ptr) {
-		puts("ERROR: malloc failed!");
-		error_internal();
+		error(ERROR_INTERNAL, "malloc failed!");
 	}
 
 	return ptr;
@@ -22,8 +21,7 @@ void * mem_realloc(void * old_ptr, size_t new_size) {
 	void * ptr = realloc(old_ptr, new_size);
 
 	if (!ptr) {
-		puts("ERROR: realloc failed!");
-		error_internal();
+		error(ERROR_INTERNAL, "realloc failed!");
 	}
 
 	return ptr;

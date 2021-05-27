@@ -27,7 +27,7 @@ typedef struct Type_Block {
 static Type_Block * type_block_first;
 static Type_Block * type_block_curr;
 
-void type_table_init() {
+void type_table_init(void) {
 	type_block_first = mem_alloc(sizeof(Type_Block));
 	type_block_first->next = NULL;
 
@@ -60,13 +60,13 @@ static void free_type_block(Type_Block * block) {
 	mem_free(block);
 }
 
-void type_table_mem_free() {
+void type_table_mem_free(void) {
 	free_type_block(type_block_first);
 
 	type_block_curr = NULL;
 }
 
-Type * type_table_new_type() {
+Type * type_table_new_type(void) {
 	if (type_block_curr->table_len == TYPE_TABLE_BLOCK_SIZE) {
 		Type_Block * block = mem_alloc(sizeof(Type_Block));
 		block->table_len = 0;
@@ -80,22 +80,22 @@ Type * type_table_new_type() {
 }
 
 
-Type const * make_type_void() { return &type_block_first->table[TYPE_VOID]; }
+Type const * make_type_void(void) { return &type_block_first->table[TYPE_VOID]; }
 
-Type const * make_type_i8 () { return &type_block_first->table[TYPE_I8 ]; }
-Type const * make_type_i16() { return &type_block_first->table[TYPE_I16]; }
-Type const * make_type_i32() { return &type_block_first->table[TYPE_I32]; }
-Type const * make_type_i64() { return &type_block_first->table[TYPE_I64]; }
+Type const * make_type_i8 (void) { return &type_block_first->table[TYPE_I8 ]; }
+Type const * make_type_i16(void) { return &type_block_first->table[TYPE_I16]; }
+Type const * make_type_i32(void) { return &type_block_first->table[TYPE_I32]; }
+Type const * make_type_i64(void) { return &type_block_first->table[TYPE_I64]; }
 
-Type const * make_type_u8 () { return &type_block_first->table[TYPE_U8 ]; }
-Type const * make_type_u16() { return &type_block_first->table[TYPE_U16]; }
-Type const * make_type_u32() { return &type_block_first->table[TYPE_U32]; }
-Type const * make_type_u64() { return &type_block_first->table[TYPE_U64]; }
+Type const * make_type_u8 (void) { return &type_block_first->table[TYPE_U8 ]; }
+Type const * make_type_u16(void) { return &type_block_first->table[TYPE_U16]; }
+Type const * make_type_u32(void) { return &type_block_first->table[TYPE_U32]; }
+Type const * make_type_u64(void) { return &type_block_first->table[TYPE_U64]; }
 
-Type const * make_type_f32() { return &type_block_first->table[TYPE_F32]; }
-Type const * make_type_f64() { return &type_block_first->table[TYPE_F64]; }
+Type const * make_type_f32(void) { return &type_block_first->table[TYPE_F32]; }
+Type const * make_type_f64(void) { return &type_block_first->table[TYPE_F64]; }
 
-Type const * make_type_bool() { return &type_block_first->table[TYPE_BOOL]; }
+Type const * make_type_bool(void) { return &type_block_first->table[TYPE_BOOL]; }
 
 
 Type const * make_type_array(Type const * base_type, int size) {

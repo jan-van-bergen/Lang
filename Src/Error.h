@@ -18,6 +18,6 @@ typedef enum Error {
 NO_RETURN void error (Error error, char const * msg, ...);
 NO_RETURN void errorv(Error error, char const * msg, va_list args);
 
-NO_RETURN void error_internal(void);
+NO_RETURN void error_internal();
 
 void error_set_line(int line);

@@ -40,6 +40,7 @@ extern WriteFile(handle: void *, buffer: void *, bytes_to_write: int, bytes_writ
 extern CloseHandle(handle: void *);
 
 extern QueryPerformanceCounter(counter: u64 *) -> bool;
+extern QueryPerformanceFrequency(freq: u64 *) -> bool;
 
 extern ExitProcess(exit_code: int);
 
@@ -202,14 +203,32 @@ func fwrite(handle: void *, bytes: char *, num_bytes: int) -> bool {
 	return WriteFile(handle, bytes, num_bytes, &num_bytes_written, null);
 }
 
-func rand_seed() -> u64 {
-	seed : u64;
-	success := QueryPerformanceCounter(&seed);
+func time_get() -> u64 {
+	result : u64;
+	success := QueryPerformanceCounter(&result);
 	
 	if (!success) {
 		puts("Call to 'QueryPerformanceCounter' failed!\n");
 		exit(-1);
 	}
+	
+	return result;
+}
+
+func time_freq() -> u64 {
+	result : u64;
+	success := QueryPerformanceFrequency(&result);
+	
+	if (!success) {
+		puts("Call to 'QueryPerformanceFrequency' failed!\n");
+		exit(-1);
+	}
+	
+	return result;
+}
+
+func rand_seed() -> u64 {
+	seed := time_get();
 	
 	// Wang hash
 	seed = (seed ^ 61) ^ (seed >> 16);

@@ -17,8 +17,7 @@ void config_add_lib(Compiler_Config * config, char const * lib_name) {
 	if (config->lib_count < MAX_NUM_LIBS) {
 		config->libs[config->lib_count++] = lib_name;
 	} else {
-		printf("ERROR: Too many libraries given, only %i are supported!\n", MAX_NUM_LIBS);
-		error_internal();
+		error(ERROR_INTERNAL, "Too many libraries given, only %i are supported!\n", MAX_NUM_LIBS);
 	}
 }
 

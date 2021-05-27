@@ -24,7 +24,7 @@ NO_RETURN void errorv(Error error, char const * msg, va_list args) {
 	exit(error);
 }
 
-NO_RETURN void error_internal(void) {
+NO_RETURN void error_internal() {
 	error(ERROR_INTERNAL, "Internal Compiler Error!\n");
 }
 

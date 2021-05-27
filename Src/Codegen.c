@@ -1069,7 +1069,7 @@ static Result codegen_expression_call_func(Code_Emitter * emit, AST_Expression *
 	Type const * function_type = type_infer(expr->expr_call.expr_function, emit->current_scope);
 	
 	if (!type_is_function(function_type)) {
-		type_error(emit, "ERROR: Attempting to perform function call on non-function expression!");
+		type_error(emit, "Attempting to perform function call on non-function expression!");
 	}
 
 	Type const ** arg_types   = function_type->function.args;
