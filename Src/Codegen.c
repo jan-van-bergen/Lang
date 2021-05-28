@@ -554,6 +554,11 @@ static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression cons
 	
 	// Handle operators that require short-circuit evaluation separately
 	if (operator == OPERATOR_BIN_LOGICAL_AND) {
+		bool inside_condition = flag_is_set(emit->flags, EMIT_FLAG_INSIDE_CONDITION);
+		if (expr_left->type == AST_EXPRESSION_OPERATOR_BIN && expr_left->expr_op_bin.operator == OPERATOR_BIN_LOGICAL_OR) {
+			flag_unset(&emit->flags, EMIT_FLAG_INSIDE_CONDITION);
+		}
+
 		result_left = codegen_expression(emit, expr_left);
 
 		if (result_left.form == RESULT_IMMEDIATE) {
@@ -565,6 +570,8 @@ static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression cons
 				error_internal();
 			}
 		}
+
+		if (inside_condition) flag_set(&emit->flags, EMIT_FLAG_INSIDE_CONDITION);
 
 		if (flag_is_set(emit->flags, EMIT_FLAG_INSIDE_CONDITION)) {
 			assert(emit->current_condition_label_true);
@@ -599,6 +606,11 @@ static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression cons
 		
 		return result_right;
 	} else if (operator == TOKEN_OPERATOR_LOGICAL_OR) {
+		bool inside_condition = flag_is_set(emit->flags, EMIT_FLAG_INSIDE_CONDITION);
+		if (expr_left->type == AST_EXPRESSION_OPERATOR_BIN && expr_left->expr_op_bin.operator == OPERATOR_BIN_LOGICAL_AND) {
+			flag_unset(&emit->flags, EMIT_FLAG_INSIDE_CONDITION);
+		}
+
 		result_left = codegen_expression(emit, expr_left);
 		
 		if (result_left.form == RESULT_IMMEDIATE) {
@@ -610,6 +622,8 @@ static Result codegen_expression_op_bin(Code_Emitter * emit, AST_Expression cons
 				error_internal();
 			}
 		}
+		
+		if (inside_condition) flag_set(&emit->flags, EMIT_FLAG_INSIDE_CONDITION);
 
 		if (flag_is_set(emit->flags, EMIT_FLAG_INSIDE_CONDITION)) {
 			assert(emit->current_condition_label_true);

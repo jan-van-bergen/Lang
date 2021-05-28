@@ -1,0 +1,14 @@
+func main() -> int {
+	t := true;
+	f := false;
+	
+	if ((t || f) && f) {
+		return -1; // Invalid
+	}
+	
+	if ((f && t) || t) {
+		return 0;
+	}
+	
+	return -1; // Invalid
+}

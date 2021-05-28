@@ -49,6 +49,7 @@ test_cases = [
 #	("Examples\\gui.lang", "/lib:Examples\\stdlib.lib /lib:user32.lib /lib:gdi32.lib",                   0, "", 0, "done"),
 #	("Examples\\gl.lang",  "/lib:Examples\\stdlib.lib /lib:user32.lib /lib:gdi32.lib /lib:opengl32.lib", 0, "", 0, "done"),
 
+	("Examples\\short_circuit2.lang",     "",                          0,             "",                        0, ""),
 	("Examples\\game_of_life.lang",       "/lib:Examples\\stdlib.lib", 0,             "",                        0, "Step 1:\n..........\n..........\n..........\n..........\n..........\n...xxx....\n...x......\n....x.....\n..........\n..........\nStep 2:\n..........\n..........\n..........\n..........\n....x.....\n...xx.....\n...x.x....\n..........\n..........\n..........\nStep 3:\n..........\n..........\n..........\n..........\n...xx.....\n...x.x....\n...x......\n..........\n..........\n..........\nStep 4:\n..........\n..........\n..........\n..........\n...xx.....\n..xx......\n....x.....\n..........\n..........\n..........\n"),
 	("Examples\\array_length.lang",       "",                          0,             "",                        3, ""),
 	("Examples\\operator_swap.lang",      "/lib:Examples\\stdlib.lib", 0,             "",                        0, ""),
