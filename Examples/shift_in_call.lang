@@ -1,0 +1,8 @@
+func function(a: int, b: int) -> int {
+	return a;
+}
+
+func main() -> int {
+	x := 2;
+	return function(6, 1 << x); // Both argument 0 and the bitshift want to use the RCX register
+}

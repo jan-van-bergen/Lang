@@ -1160,7 +1160,7 @@ static Result codegen_expression_call_func(Code_Emitter * emit, AST_Expression *
 
 	// Evaluate arguments and put them into the right register / stack address
 	// The first 4 arguments go in registers, the rest spill onto the stack
-	for (int i = 0; i < call_arg_count; i++) {
+	for (int i = call_arg_count - 1; i >= 0; i--) {
 		Result result_arg = codegen_expression(emit, expr->expr_call.args[i].expr);
 
 		Type const * arg_type = arg_types[i];
