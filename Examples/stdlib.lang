@@ -231,18 +231,20 @@ func rand_seed() -> u64 {
 	seed := time_get();
 	
 	// Wang hash
-	seed = (seed ^ 61) ^ (seed >> 16);
-	seed = seed * 9;
-	seed = seed ^ (seed >> 4);
-	seed = seed * 0x27d4eb2d;
-	seed = seed ^ (seed >> 15);
+	seed = (~seed) + (seed << 21);
+	seed = seed ^ (seed >> 24);
+	seed = (seed + (seed << 3)) + (seed << 8);
+	seed = seed ^ (seed >> 14);
+	seed = (seed + (seed << 2)) + (seed << 4);
+	seed = seed ^ (seed >> 28);
+	seed = seed + (seed << 31);
 	return seed;
 }
 
 func rand(seed: u64 *) -> u64 {
 	// Random XOR
 	*seed = *seed ^ (*seed << 13);
-	*seed = *seed ^ (*seed >> 17);
-	*seed = *seed ^ (*seed << 5);
+	*seed = *seed ^ (*seed >> 7);
+	*seed = *seed ^ (*seed << 17);
 	return *seed;
 }
