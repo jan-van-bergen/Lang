@@ -1,0 +1,6 @@
+struct Empty { }
+
+func main() -> int {
+	empty: Empty;
+	return sizeof(Empty);
+}
