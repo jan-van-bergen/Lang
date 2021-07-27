@@ -28,3 +28,5 @@ void swap(void * a, void * b, size_t size_in_bytes);
 char const * read_file(char const * filename);
 
 char const * replace_file_extension(char const * filename, char const * file_extension);
+
+bool find_windows_sdk_lib_folder(char * path, int path_len);

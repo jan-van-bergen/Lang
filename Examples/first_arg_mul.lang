@@ -1,0 +1,8 @@
+func f(arg0: int, arg1: int) -> int {
+	return arg1;
+}
+
+func main() -> int {
+	a : u64 = 0xffffffffffffffff;
+	return f(cast(int) (a / 0xffffffff), 7);
+}

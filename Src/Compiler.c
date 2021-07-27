@@ -72,11 +72,11 @@ void compile_file(char const * filename, Compiler_Config const * config) {
 
 	mem_free(code);
 
-	char const * lib_path = "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.18362.0\\um\\x64";
-	
-	char const cmd[1024] = { 0 };
+	char const lib_path[260] = { '\0' };
+	find_windows_sdk_lib_folder(lib_path, sizeof(lib_path));
 
 	// Assemble
+	char const cmd[1024] = { '\0' };
 	sprintf_s(cmd, sizeof(cmd), "nasm -f win64 \"%s\" -o \"%s\" -g -Werror", file_asm, file_obj);
 	if (system(cmd) != EXIT_SUCCESS) error(ERROR_ASSEMBLER, "NASM Failed!");
 

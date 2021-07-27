@@ -7,6 +7,10 @@
 
 #include "Error.h"
 
+#define VC_EXTRALEAN
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+
 void * mem_alloc(size_t size) {
 	void * ptr = malloc(size);
 
@@ -152,4 +156,47 @@ char const * replace_file_extension(char const * filename, char const * file_ext
 	str[str_size - 1]    = '\0';
 
 	return str;
+}
+
+bool find_windows_sdk_lib_folder(char * path, int path_len) {
+	const char windows_sdk_base[] = "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\*";
+
+	WIN32_FIND_DATA find_data;
+	HANDLE handle = FindFirstFile(windows_sdk_base, &find_data);
+	
+	if (handle == INVALID_HANDLE_VALUE) return false;
+
+	char const * best_directory = NULL;
+	uint64_t     best_number = 0;
+
+	do {
+		if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+			uint64_t number = 0;
+
+			char const * c = find_data.cFileName;
+			while (*c) {
+				if (isdigit(*c)) {
+					number += *c - '0';
+					number *= 10;
+				}
+				c++;
+			}
+
+			if (number > best_number) {
+				if (best_directory) free(best_directory);
+				best_directory = strdup(find_data.cFileName);
+				best_number = number;
+			}
+		}
+	} while (FindNextFile(handle, &find_data) != NULL);
+
+	FindClose(handle);
+
+	if (best_number == 0) {
+		error(ERROR_INTERNAL, "Unable to locate Windows SDK!\n");
+	}
+
+	sprintf_s(path, path_len, "%.*s%s\\um\\x64", (int)(sizeof(windows_sdk_base) - 2), windows_sdk_base, best_directory);
+
+	free(best_directory);
 }
