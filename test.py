@@ -49,6 +49,7 @@ test_cases = [
 #	("Examples\\gui.lang", "/lib:Examples\\stdlib.lib /lib:user32.lib /lib:gdi32.lib",                   0, "", 0, "done"),
 #	("Examples\\gl.lang",  "/lib:Examples\\stdlib.lib /lib:user32.lib /lib:gdi32.lib /lib:opengl32.lib", 0, "", 0, "done"),
 
+	("Examples\\struct_int.lang",         "",                          err.PARSER,    "",                        0, ""),
 	("Examples\\inc_constant.lang",       "",                          err.CODEGEN,   "",                        0, ""),
 	("Examples\\empty_struct.lang",       "",                          0,             "",                        0, ""),
 	("Examples\\shift_in_call.lang",      "",                          0,             "",                        6, ""),

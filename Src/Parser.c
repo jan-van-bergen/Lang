@@ -74,7 +74,7 @@ static Token const * parser_advance(Parser * parser) {
 	return token;
 }
 
-static Token const * parser_match_and_advance(Parser * parser, Token_Type token_type) {
+static Token const * parser_expect(Parser * parser, Token_Type token_type) {
 	bool match = parser_match(parser, token_type);
 	if (!match) {
 		parser_error_expected(parser, token_type);
@@ -84,7 +84,25 @@ static Token const * parser_match_and_advance(Parser * parser, Token_Type token_
 }
 
 static bool parser_match_type(Parser const * parser) {
-	return parser_match(parser, TOKEN_PARENTESES_OPEN) || parser_match(parser, TOKEN_IDENTIFIER);
+	return 
+		parser_match(parser, TOKEN_PARENTESES_OPEN) ||
+		parser_match(parser, TOKEN_KEYWORD_VOID)   ||
+		parser_match(parser, TOKEN_KEYWORD_BOOL)   ||
+		parser_match(parser, TOKEN_KEYWORD_CHAR)   ||
+		parser_match(parser, TOKEN_KEYWORD_INT)    ||
+		parser_match(parser, TOKEN_KEYWORD_FLOAT)  ||
+		parser_match(parser, TOKEN_KEYWORD_DOUBLE) ||
+		parser_match(parser, TOKEN_KEYWORD_I8)  ||
+		parser_match(parser, TOKEN_KEYWORD_I16) ||
+		parser_match(parser, TOKEN_KEYWORD_I32) ||
+		parser_match(parser, TOKEN_KEYWORD_I64) ||
+		parser_match(parser, TOKEN_KEYWORD_U8)  ||
+		parser_match(parser, TOKEN_KEYWORD_U16) ||
+		parser_match(parser, TOKEN_KEYWORD_U32) ||
+		parser_match(parser, TOKEN_KEYWORD_U64) ||
+		parser_match(parser, TOKEN_KEYWORD_F32) ||
+		parser_match(parser, TOKEN_KEYWORD_F64) ||
+		parser_match(parser, TOKEN_IDENTIFIER);
 }
 
 static bool parser_match_expression(Parser const * parser) {
@@ -213,7 +231,7 @@ static Type const * parser_parse_type(Parser * parser) {
 			}
 		}
 
-		parser_match_and_advance(parser, TOKEN_PARENTESES_CLOSE);
+		parser_expect(parser, TOKEN_PARENTESES_CLOSE);
 
 		// Parse return type
 		Type const * return_type = NULL;
@@ -226,38 +244,50 @@ static Type const * parser_parse_type(Parser * parser) {
 		}
 
 		for (int i = 0; i < num_extra_parens; i++) {
-			parser_match_and_advance(parser, TOKEN_PARENTESES_CLOSE);
+			parser_expect(parser, TOKEN_PARENTESES_CLOSE);
 		}
 
 		type = make_type_function(arg_types, arg_count, return_type);
 	} else {
-		char const * identifier = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
-
-		if (strcmp(identifier, "void") == 0) {
+		if (parser_match(parser, TOKEN_KEYWORD_VOID)) {
 			type->type = TYPE_VOID;
-		} else if (strcmp(identifier, "i8") == 0) {
-			type->type = TYPE_I8;
-		} else if (strcmp(identifier, "i16") == 0) {
-			type->type = TYPE_I16;
-		} else if (strcmp(identifier, "i32") == 0 || strcmp(identifier, "int") == 0) {
-			type->type = TYPE_I32;
-		} else if (strcmp(identifier, "i64") == 0) {
-			type->type = TYPE_I64;
-		} else if (strcmp(identifier, "u8") == 0 || strcmp(identifier, "char") == 0) {
-			type->type = TYPE_U8;
-		} else if (strcmp(identifier, "u16") == 0) {
-			type->type = TYPE_U16;
-		} else if (strcmp(identifier, "u32") == 0) {
-			type->type = TYPE_U32;
-		} else if (strcmp(identifier, "u64") == 0) {
-			type->type = TYPE_U64;
-		} else if (strcmp(identifier, "f32") == 0 || strcmp(identifier, "float") == 0) {
-			type->type = TYPE_F32;
-		} else if (strcmp(identifier, "f64") == 0 || strcmp(identifier, "double") == 0) {
-			type->type = TYPE_F64;
-		} else if (strcmp(identifier, "bool") == 0) {
+			parser_advance(parser);
+		} else if (parser_match(parser, TOKEN_KEYWORD_BOOL)) {
 			type->type = TYPE_BOOL;
+			parser_advance(parser);
+		} else if (parser_match(parser, TOKEN_KEYWORD_I8)) {
+			type->type = TYPE_I8;
+			parser_advance(parser);
+		} else if (parser_match(parser, TOKEN_KEYWORD_I16)) {
+			type->type = TYPE_I16;
+			parser_advance(parser);
+		} else if (parser_match(parser, TOKEN_KEYWORD_I32) || parser_match(parser, TOKEN_KEYWORD_INT)) {
+			type->type = TYPE_I32;
+			parser_advance(parser);
+		} else if (parser_match(parser, TOKEN_KEYWORD_I64)) {
+			type->type = TYPE_I64;
+			parser_advance(parser);
+		} else if (parser_match(parser, TOKEN_KEYWORD_U8) || parser_match(parser, TOKEN_KEYWORD_CHAR)) {
+			type->type = TYPE_U8;
+			parser_advance(parser);
+		} else if (parser_match(parser, TOKEN_KEYWORD_U16)) {
+			type->type = TYPE_U16;
+			parser_advance(parser);
+		} else if (parser_match(parser, TOKEN_KEYWORD_U32)) {
+			type->type = TYPE_U32;
+			parser_advance(parser);
+		} else if (parser_match(parser, TOKEN_KEYWORD_U64)) {
+			type->type = TYPE_U64;
+			parser_advance(parser);
+		} else if (parser_match(parser, TOKEN_KEYWORD_F32) || parser_match(parser, TOKEN_KEYWORD_FLOAT)) {
+			type->type = TYPE_F32;
+			parser_advance(parser);
+		} else if (parser_match(parser, TOKEN_KEYWORD_F64) || parser_match(parser, TOKEN_KEYWORD_DOUBLE)) {
+			type->type = TYPE_F64;
+			parser_advance(parser);
 		} else {
+			char const * identifier = parser_expect(parser, TOKEN_IDENTIFIER)->value_str;
+
 			type->type        = TYPE_STRUCT;
 			type->struct_name = identifier;
 		}
@@ -273,8 +303,8 @@ static Type const * parser_parse_type(Parser * parser) {
 			} else if (parser_match(parser, TOKEN_SQUARE_BRACES_OPEN)) {
 				parser_advance(parser);
 
-				int array_size = parser_match_and_advance(parser, TOKEN_LITERAL_INT)->value_int;
-				parser_match_and_advance(parser, TOKEN_SQUARE_BRACES_CLOSE);
+				int array_size = parser_expect(parser, TOKEN_LITERAL_INT)->value_int;
+				parser_expect(parser, TOKEN_SQUARE_BRACES_CLOSE);
 
 				type = make_type_array(type, array_size);
 			}
@@ -297,7 +327,7 @@ static AST_Call_Arg * parser_parse_call_args(Parser * parser, int * arg_count) {
 	int arg_capacity = 16;
 	AST_Call_Arg * args = mem_alloc(arg_capacity * sizeof(AST_Call_Arg));
 
-	parser_match_and_advance(parser, TOKEN_PARENTESES_OPEN);
+	parser_expect(parser, TOKEN_PARENTESES_OPEN);
 	
 	if (parser_match_expression(parser)) {
 		parser_parse_call_arg(parser, args + (*arg_count)++);
@@ -315,7 +345,7 @@ static AST_Call_Arg * parser_parse_call_args(Parser * parser, int * arg_count) {
 		parser_parse_call_arg(parser, arg);
 	}
 
-	parser_match_and_advance(parser, TOKEN_PARENTESES_CLOSE);
+	parser_expect(parser, TOKEN_PARENTESES_CLOSE);
 
 	return args;
 }
@@ -338,9 +368,9 @@ static AST_Expression * parser_parse_expression_elementary(Parser * parser) {
 	} else if (parser_match(parser, TOKEN_KEYWORD_CAST)) {
 		parser_advance(parser);
 
-		parser_match_and_advance(parser, TOKEN_PARENTESES_OPEN);
+		parser_expect(parser, TOKEN_PARENTESES_OPEN);
 		Type const * type = parser_parse_type(parser);
-		parser_match_and_advance(parser, TOKEN_PARENTESES_CLOSE);
+		parser_expect(parser, TOKEN_PARENTESES_CLOSE);
 
 		AST_Expression * expr = parser_parse_expression(parser);
 		
@@ -348,9 +378,9 @@ static AST_Expression * parser_parse_expression_elementary(Parser * parser) {
 	} else if (parser_match(parser, TOKEN_KEYWORD_SIZEOF)) {
 		parser_advance(parser);
 
-		parser_match_and_advance(parser, TOKEN_PARENTESES_OPEN);
+		parser_expect(parser, TOKEN_PARENTESES_OPEN);
 		Type const * type = parser_parse_type(parser);
-		parser_match_and_advance(parser, TOKEN_PARENTESES_CLOSE);
+		parser_expect(parser, TOKEN_PARENTESES_CLOSE);
 
 		return ast_make_expr_sizeof(parser->current_line, type);
 	} else if (parser_match(parser, TOKEN_PARENTESES_OPEN)) {
@@ -358,7 +388,7 @@ static AST_Expression * parser_parse_expression_elementary(Parser * parser) {
 
 		AST_Expression * expr = parser_parse_expression(parser);
 
-		parser_match_and_advance(parser, TOKEN_PARENTESES_CLOSE);
+		parser_expect(parser, TOKEN_PARENTESES_CLOSE);
 
 		return expr;
 	} else {
@@ -374,13 +404,13 @@ static AST_Expression * parser_parse_expression_dot_or_array_access(Parser * par
 		if (parser_match(parser, TOKEN_DOT)) {
 			parser_advance(parser);
 
-			char const * member_name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
+			char const * member_name = parser_expect(parser, TOKEN_IDENTIFIER)->value_str;
 			lhs = ast_make_expr_struct_member(parser->current_line, lhs, member_name);
 		} else if (parser_match(parser, TOKEN_SQUARE_BRACES_OPEN)) {
 			parser_advance(parser);
 
 			AST_Expression * expr_index = parser_parse_expression(parser);
-			parser_match_and_advance(parser, TOKEN_SQUARE_BRACES_CLOSE);
+			parser_expect(parser, TOKEN_SQUARE_BRACES_CLOSE);
 
 			lhs = ast_make_expr_array_access(parser->current_line, lhs, expr_index);
 		} else {
@@ -646,14 +676,14 @@ static AST_Statement * parser_parse_statement_block(Parser * parser);
 
 static AST_Statement * parser_parse_statement_expr(Parser * parser) {
 	AST_Expression * expr = parser_parse_expression(parser);
-	parser_match_and_advance(parser, TOKEN_SEMICOLON);
+	parser_expect(parser, TOKEN_SEMICOLON);
 
 	return ast_make_stat_expr(parser->current_line, expr);
 }
 
 static AST_Statement * parser_parse_statement_def_var(Parser * parser) {
-	char const * var_name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
-	parser_match_and_advance(parser, TOKEN_COLON);
+	char const * var_name = parser_expect(parser, TOKEN_IDENTIFIER)->value_str;
+	parser_expect(parser, TOKEN_COLON);
 
 	Type const * type = NULL;
 	if (parser_match_type(parser)) {
@@ -671,7 +701,7 @@ static AST_Statement * parser_parse_statement_def_var(Parser * parser) {
 		expr_assign = ast_make_expr_op_bin(parser->current_line, OPERATOR_BIN_ASSIGN, lhs, rhs);
 	}
 
-	parser_match_and_advance(parser, TOKEN_SEMICOLON);
+	parser_expect(parser, TOKEN_SEMICOLON);
 
 	if (type == NULL) {
 		if (expr_assign == NULL) {
@@ -686,8 +716,8 @@ static AST_Statement * parser_parse_statement_def_var(Parser * parser) {
 }
 
 static void parser_parse_def_arg(Parser * parser,  AST_Def_Arg * arg) {
-	arg->name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
-	parser_match_and_advance(parser, TOKEN_COLON);
+	arg->name = parser_expect(parser, TOKEN_IDENTIFIER)->value_str;
+	parser_expect(parser, TOKEN_COLON);
 	arg->type = parser_parse_type(parser);
 }
 
@@ -697,7 +727,7 @@ static AST_Def_Arg * parser_parse_def_args(Parser * parser, int * arg_count) {
 	int arg_capacity = 16;
 	AST_Def_Arg * args = mem_alloc(arg_capacity * sizeof(AST_Def_Arg));
 
-	parser_match_and_advance(parser, TOKEN_PARENTESES_OPEN);
+	parser_expect(parser, TOKEN_PARENTESES_OPEN);
 	
 	if (parser_match(parser, TOKEN_IDENTIFIER)) {
 		parser_parse_def_arg(parser, args + (*arg_count)++);
@@ -714,15 +744,15 @@ static AST_Def_Arg * parser_parse_def_args(Parser * parser, int * arg_count) {
 		parser_parse_def_arg(parser, args + (*arg_count)++);
 	}
 		
-	parser_match_and_advance(parser, TOKEN_PARENTESES_CLOSE);
+	parser_expect(parser, TOKEN_PARENTESES_CLOSE);
 
 	return args;
 }
 
 static AST_Statement * parser_parse_statement_def_func(Parser * parser) {
-	parser_match_and_advance(parser, TOKEN_KEYWORD_FUNC);
+	parser_expect(parser, TOKEN_KEYWORD_FUNC);
 
-	char const * func_name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
+	char const * func_name = parser_expect(parser, TOKEN_IDENTIFIER)->value_str;
 
 	Variable_Buffer * buffer_args = make_variable_buffer(func_name);
 	Variable_Buffer * buffer_vars = make_variable_buffer(func_name);
@@ -775,22 +805,22 @@ static AST_Statement * parser_parse_statement_def_func(Parser * parser) {
 }
 
 static AST_Statement * parser_parse_statement_def_struct(Parser * parser) {
-	parser_match_and_advance(parser, TOKEN_KEYWORD_STRUCT);
+	parser_expect(parser, TOKEN_KEYWORD_STRUCT);
 
-	char const * name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
+	char const * name = parser_expect(parser, TOKEN_IDENTIFIER)->value_str;
 
 	Variable_Buffer * members = make_variable_buffer(name);
 	Scope           * member_scope = make_scope(members);
 	member_scope->prev = parser->current_scope;
 
-	parser_match_and_advance(parser, TOKEN_BRACES_OPEN);
+	parser_expect(parser, TOKEN_BRACES_OPEN);
 
 	while (parser_match(parser, TOKEN_IDENTIFIER)) {
-		char const * member_name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
-		parser_match_and_advance(parser, TOKEN_COLON);
+		char const * member_name = parser_expect(parser, TOKEN_IDENTIFIER)->value_str;
+		parser_expect(parser, TOKEN_COLON);
 
 		Type const * member_type = parser_parse_type(parser);
-		parser_match_and_advance(parser, TOKEN_SEMICOLON);
+		parser_expect(parser, TOKEN_SEMICOLON);
 
 		scope_add_var(member_scope, member_name, member_type);
 	}
@@ -801,16 +831,16 @@ static AST_Statement * parser_parse_statement_def_struct(Parser * parser) {
 	
 	align(&struct_def->member_scope->variable_buffer->size, struct_def->member_scope->variable_buffer->align);
 
-	parser_match_and_advance(parser, TOKEN_BRACES_CLOSE);
+	parser_expect(parser, TOKEN_BRACES_CLOSE);
 
 	return NULL;
 }
 
 static AST_Statement * parser_parse_statement_extern(Parser * parser) {
-	parser_match_and_advance(parser, TOKEN_KEYWORD_EXTERN);
+	parser_expect(parser, TOKEN_KEYWORD_EXTERN);
 
 	Function_Def * function_def = scope_add_function_def(parser->current_scope);
-	function_def->name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
+	function_def->name = parser_expect(parser, TOKEN_IDENTIFIER)->value_str;
 	function_def->args = parser_parse_def_args(parser, &function_def->arg_count);
 	
 	if (parser_match(parser, TOKEN_ARROW)) {
@@ -821,7 +851,7 @@ static AST_Statement * parser_parse_statement_extern(Parser * parser) {
 		function_def->return_type = make_type_void();
 	}
 
-	parser_match_and_advance(parser, TOKEN_SEMICOLON);
+	parser_expect(parser, TOKEN_SEMICOLON);
 	
 	Type const ** type_args = NULL;
 	if (function_def->arg_count > 0) {
@@ -838,22 +868,22 @@ static AST_Statement * parser_parse_statement_extern(Parser * parser) {
 }
 
 static AST_Statement * parser_parse_statement_export(Parser * parser) {
-	parser_match_and_advance(parser, TOKEN_KEYWORD_EXPORT);
+	parser_expect(parser, TOKEN_KEYWORD_EXPORT);
 
-	char const * name = parser_match_and_advance(parser, TOKEN_IDENTIFIER)->value_str;
+	char const * name = parser_expect(parser, TOKEN_IDENTIFIER)->value_str;
 
-	parser_match_and_advance(parser, TOKEN_SEMICOLON);
+	parser_expect(parser, TOKEN_SEMICOLON);
 
 	return ast_make_stat_export(parser->current_line, name);
 }
 
 static AST_Statement * parser_parse_statement_if(Parser * parser) {
-	parser_match_and_advance(parser, TOKEN_KEYWORD_IF);
-	parser_match_and_advance(parser, TOKEN_PARENTESES_OPEN);
+	parser_expect(parser, TOKEN_KEYWORD_IF);
+	parser_expect(parser, TOKEN_PARENTESES_OPEN);
 
 	AST_Expression * condition = parser_parse_expression(parser);
 
-	parser_match_and_advance(parser, TOKEN_PARENTESES_CLOSE);
+	parser_expect(parser, TOKEN_PARENTESES_CLOSE);
 
 	AST_Statement * case_true  = parser_parse_statement(parser);
 	AST_Statement * case_false = NULL;
@@ -868,11 +898,11 @@ static AST_Statement * parser_parse_statement_if(Parser * parser) {
 }
 
 static AST_Statement * parser_parse_statement_while(Parser * parser) {
-	parser_match_and_advance(parser, TOKEN_KEYWORD_WHILE);
+	parser_expect(parser, TOKEN_KEYWORD_WHILE);
 
-	parser_match_and_advance(parser, TOKEN_PARENTESES_OPEN);
+	parser_expect(parser, TOKEN_PARENTESES_OPEN);
 	AST_Expression * condition = parser_parse_expression(parser);
-	parser_match_and_advance(parser, TOKEN_PARENTESES_CLOSE);
+	parser_expect(parser, TOKEN_PARENTESES_CLOSE);
 
 	AST_Statement * body = parser_parse_statement(parser);
 
@@ -880,21 +910,21 @@ static AST_Statement * parser_parse_statement_while(Parser * parser) {
 }
 
 static AST_Statement * parser_parse_statement_break(Parser * parser) {
-	parser_match_and_advance(parser, TOKEN_KEYWORD_BREAK);
-	parser_match_and_advance(parser, TOKEN_SEMICOLON);
+	parser_expect(parser, TOKEN_KEYWORD_BREAK);
+	parser_expect(parser, TOKEN_SEMICOLON);
 
 	return ast_make_stat_break(parser->current_line);
 }
 
 static AST_Statement * parser_parse_statement_continue(Parser * parser) {
-	parser_match_and_advance(parser, TOKEN_KEYWORD_CONTINUE);
-	parser_match_and_advance(parser, TOKEN_SEMICOLON);
+	parser_expect(parser, TOKEN_KEYWORD_CONTINUE);
+	parser_expect(parser, TOKEN_SEMICOLON);
 
 	return ast_make_stat_continue(parser->current_line);
 }
 
 static AST_Statement * parser_parse_statement_return(Parser * parser) {
-	parser_match_and_advance(parser, TOKEN_KEYWORD_RETURN);
+	parser_expect(parser, TOKEN_KEYWORD_RETURN);
 
 	AST_Expression * expr = NULL;
 
@@ -902,13 +932,13 @@ static AST_Statement * parser_parse_statement_return(Parser * parser) {
 		expr = parser_parse_expression(parser);
 	}
 
-	parser_match_and_advance(parser, TOKEN_SEMICOLON);
+	parser_expect(parser, TOKEN_SEMICOLON);
 
 	return ast_make_stat_return(parser->current_line, expr);
 }
 
 static AST_Statement * parser_parse_statement_block(Parser * parser) {
-	parser_match_and_advance(parser, TOKEN_BRACES_OPEN);
+	parser_expect(parser, TOKEN_BRACES_OPEN);
 
 	Scope * scope = make_scope(parser->current_variable_buffer);
 	parser_push_scope(parser, scope);
@@ -918,7 +948,7 @@ static AST_Statement * parser_parse_statement_block(Parser * parser) {
 		stat = parser_parse_statements(parser);
 	}
 	
-	parser_match_and_advance(parser, TOKEN_BRACES_CLOSE);
+	parser_expect(parser, TOKEN_BRACES_CLOSE);
 
 	parser_pop_scope(parser);
 
@@ -976,7 +1006,7 @@ AST_Statement * parser_parse_program(Parser * parser) {
 
 	AST_Statement * stat = parser_parse_statements(parser);
 
-	parser_match_and_advance(parser, TOKEN_EOF);
+	parser_expect(parser, TOKEN_EOF);
 
 	return ast_make_stat_program(parser->current_line, globals, global_scope, stat);
 }

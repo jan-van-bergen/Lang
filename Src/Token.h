@@ -14,6 +14,22 @@ typedef enum Token_Type {
 
 	TOKEN_DOT,
 
+	TOKEN_KEYWORD_VOID,     // void
+	TOKEN_KEYWORD_BOOL,     // bool
+	TOKEN_KEYWORD_CHAR,     // char
+	TOKEN_KEYWORD_INT,      // int
+	TOKEN_KEYWORD_FLOAT,    // float
+	TOKEN_KEYWORD_DOUBLE,   // double
+	TOKEN_KEYWORD_I8,       // i8
+	TOKEN_KEYWORD_I16,      // i16
+	TOKEN_KEYWORD_I32,      // i32
+	TOKEN_KEYWORD_I64,      // i64
+	TOKEN_KEYWORD_U8,       // u8
+	TOKEN_KEYWORD_U16,      // u16
+	TOKEN_KEYWORD_U32,      // u32
+	TOKEN_KEYWORD_U64,      // u64
+	TOKEN_KEYWORD_F32,      // f32
+	TOKEN_KEYWORD_F64,      // f64
 	TOKEN_KEYWORD_CAST,     // cast()
 	TOKEN_KEYWORD_SIZEOF,   // sizeof
 	TOKEN_KEYWORD_NULL,     // null

@@ -335,6 +335,22 @@ void lexer_get_token(Lexer * lexer, Token * token) {
 	str[str_len] = '\0';
 
 	// Keywords
+	if (strcmp(str, "void")     == 0) { token->type = TOKEN_KEYWORD_VOID;     return; } 
+	if (strcmp(str, "bool")     == 0) { token->type = TOKEN_KEYWORD_BOOL;     return; }
+	if (strcmp(str, "char")     == 0) { token->type = TOKEN_KEYWORD_CHAR; 	  return; }
+	if (strcmp(str, "int")      == 0) { token->type = TOKEN_KEYWORD_INT;  	  return; }
+	if (strcmp(str, "float")    == 0) { token->type = TOKEN_KEYWORD_FLOAT;	  return; }
+	if (strcmp(str, "double")   == 0) { token->type = TOKEN_KEYWORD_DOUBLE;	  return; }
+	if (strcmp(str, "i8")       == 0) { token->type = TOKEN_KEYWORD_I8;   	  return; }
+	if (strcmp(str, "i16")      == 0) { token->type = TOKEN_KEYWORD_I16;  	  return; }
+	if (strcmp(str, "i32")      == 0) { token->type = TOKEN_KEYWORD_I32;  	  return; }
+	if (strcmp(str, "i64")      == 0) { token->type = TOKEN_KEYWORD_I64;  	  return; }
+	if (strcmp(str, "f32")      == 0) { token->type = TOKEN_KEYWORD_F32;  	  return; }
+	if (strcmp(str, "f64")      == 0) { token->type = TOKEN_KEYWORD_F64;  	  return; }
+	if (strcmp(str, "u8")       == 0) { token->type = TOKEN_KEYWORD_U8;   	  return; }
+	if (strcmp(str, "u16")      == 0) { token->type = TOKEN_KEYWORD_U16;  	  return; }
+	if (strcmp(str, "u32")      == 0) { token->type = TOKEN_KEYWORD_U32;  	  return; }
+	if (strcmp(str, "u64")      == 0) { token->type = TOKEN_KEYWORD_U64;  	  return; }
 	if (strcmp(str, "cast")     == 0) { token->type = TOKEN_KEYWORD_CAST;     return; }
 	if (strcmp(str, "sizeof")   == 0) { token->type = TOKEN_KEYWORD_SIZEOF;   return; }
 	if (strcmp(str, "null")     == 0) { token->type = TOKEN_KEYWORD_NULL;     return; }

@@ -61,6 +61,22 @@ void token_to_string(Token const * token, char * string, int string_size) {
 
 		case TOKEN_DOT: strcpy_s(string, string_size, "."); return;
 
+		case TOKEN_KEYWORD_VOID:     strcpy_s(string, string_size, "void");     return;
+		case TOKEN_KEYWORD_BOOL:     strcpy_s(string, string_size, "bool");     return;
+		case TOKEN_KEYWORD_CHAR:     strcpy_s(string, string_size, "char");     return;
+		case TOKEN_KEYWORD_INT:      strcpy_s(string, string_size, "int");      return;
+		case TOKEN_KEYWORD_FLOAT:    strcpy_s(string, string_size, "float");    return;
+		case TOKEN_KEYWORD_DOUBLE:   strcpy_s(string, string_size, "double");   return;
+		case TOKEN_KEYWORD_I8:       strcpy_s(string, string_size, "i8");       return;
+		case TOKEN_KEYWORD_I16:      strcpy_s(string, string_size, "i16");      return;
+		case TOKEN_KEYWORD_I32:      strcpy_s(string, string_size, "i32");      return;
+		case TOKEN_KEYWORD_I64:      strcpy_s(string, string_size, "i64");      return;
+		case TOKEN_KEYWORD_U8:	     strcpy_s(string, string_size, "u8");       return;
+		case TOKEN_KEYWORD_U16:	     strcpy_s(string, string_size, "u16");      return;
+		case TOKEN_KEYWORD_U32:	     strcpy_s(string, string_size, "u32");      return;
+		case TOKEN_KEYWORD_U64:      strcpy_s(string, string_size, "u64");      return;
+		case TOKEN_KEYWORD_F32:      strcpy_s(string, string_size, "f32");      return;
+		case TOKEN_KEYWORD_F64:      strcpy_s(string, string_size, "f64");      return;
 		case TOKEN_KEYWORD_CAST:     strcpy_s(string, string_size, "cast");     return;
 		case TOKEN_KEYWORD_SIZEOF:   strcpy_s(string, string_size, "sizeof");   return;
 		case TOKEN_KEYWORD_NULL:     strcpy_s(string, string_size, "null");     return;
